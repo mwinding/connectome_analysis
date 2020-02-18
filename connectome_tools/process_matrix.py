@@ -35,3 +35,19 @@ def binary_matrix(matrix_path, threshold):
                 binMat.iat[int(i/2), int(j/2)] = 1
         
     return(binMat)
+
+
+# compares neuron similarity based on inputs, outputs, or both
+# outputs a matrix where each row/column is a pair of neurons
+# todo
+def similarity_matrix(matrix_path, type):
+    matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
+
+    oddCols = np.arange(0, len(matrix.columns), 2)
+    oddRows = np.arange(0, len(matrix.index), 2)
+
+    # column names are the skid of left neuron from pair
+    sim_matrix = np.zeros(shape=(len(oddRows),len(oddCols)))
+    sim_matrix = pd.DataFrame(sim_matrix, columns = matrix.columns[oddCols], index = matrix.index[oddRows])
+
+    return(sim_matrix)
