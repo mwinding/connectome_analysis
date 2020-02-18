@@ -4,11 +4,12 @@ import pandas
 
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list
 def identify_pair(skid, pairList):
+    
     if(skid in pairList["leftid"].values):
         pair_skid = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
 
     if(skid in pairList["rightid"].values):
-        pair_skid = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
+        pair_skid = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
 
     return(pair_skid)
         
