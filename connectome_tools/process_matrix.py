@@ -1,6 +1,7 @@
 # module for processing adjacency matrices in various ways
 
-import pandas
+import pandas as pd
+import numpy as np
 
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list
 def identify_pair(skid, pairList):
@@ -15,7 +16,23 @@ def identify_pair(skid, pairList):
         
 
 # converts a interlaced left-right pair adjacency matrix into a binary connection matrix based on some threshold
-def binary_matrix(matrix): # matrix is a pandas object
-    for i in range(0, len(matrix.index)):
-        print("This is index %d" % i)
-    return(matrix)
+def binary_matrix(matrix_path, threshold): 
+    matrix_path = 'data/CN_test_matrix_G-pair-sorted.csv'
+    matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
+
+    oddCols = np.arange(0, len(matrix.columns), 2)
+    oddRows = np.arange(0, len(matrix.index), 2)
+
+    # column names are the skid of left neuron from pair
+    binMat = np.zeros(shape=(len(oddRows),len(oddCols)))
+    binMat = pd.DataFrame(binMat, columns = matrix.columns[oddCols], index = matrix.index[oddRows])
+
+    for i in oddRows:
+        for j in oddCols:
+            if(matrix.iat[i, j] + matrix.iat[i+1, j+1] >= threshold):
+                binMat.iat[int(i/2), int(j/2)] = 1
+
+            if(matrix.iat[i+1, j] + matrix.iat[i, j+1] >= threshold):
+                binMat.iat[int(i/2), int(j/2)] = 1
+        
+    return(binMat)
