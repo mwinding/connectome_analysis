@@ -17,7 +17,6 @@ def identify_pair(skid, pairList):
 
 # converts a interlaced left-right pair adjacency matrix into a binary connection matrix based on some threshold
 def binary_matrix(matrix_path, threshold): 
-    matrix_path = 'data/CN_test_matrix_G-pair-sorted.csv'
     matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
 
     oddCols = np.arange(0, len(matrix.columns), 2)
@@ -29,10 +28,10 @@ def binary_matrix(matrix_path, threshold):
 
     for i in oddRows:
         for j in oddCols:
-            if(matrix.iat[i, j] + matrix.iat[i+1, j+1] >= threshold):
+            if(matrix.iat[i, j] >= threshold and matrix.iat[i+1, j+1] >= threshold):
                 binMat.iat[int(i/2), int(j/2)] = 1
 
-            if(matrix.iat[i+1, j] + matrix.iat[i, j+1] >= threshold):
+            if(matrix.iat[i+1, j] >= threshold and matrix.iat[i, j+1] >= threshold):
                 binMat.iat[int(i/2), int(j/2)] = 1
         
     return(binMat)
