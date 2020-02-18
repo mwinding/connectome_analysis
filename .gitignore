@@ -1,3 +1,5 @@
 .vscode
 connectome_tools_venv
 data
+plots
+neuron_groups_data

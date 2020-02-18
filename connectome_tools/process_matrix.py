@@ -13,7 +13,23 @@ def identify_pair(skid, pairList):
         pair_skid = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
 
     return(pair_skid)
-        
+
+# returns paired skids in array [left, right]; can input either left or right skid of a pair to identify
+def get_paired_skids(skid, pairList):
+     
+    if(skid in pairList["leftid"].values):
+        pair_right = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
+        pair_left = skid
+
+    if(skid in pairList["rightid"].values):
+        pair_left = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
+        pair_right = skid
+
+    return([pair_left, pair_right])
+
+# converts array of skids into left-right pairs in separate columns
+def extract_pairs_from_list(filepath):
+    return()
 
 # converts a interlaced left-right pair adjacency matrix into a binary connection matrix based on some threshold
 def binary_matrix(matrix_path, threshold): 
