@@ -26,22 +26,13 @@ def skid_as_networkx_graph(skeleton_path):
 
     return(G)
 
-
-
-path = 'data/test_skeleton.csv'
-graph = skid_as_networkx_graph(path)
-
 # find rootnode id
-root=nx.get_node_attributes(graph,'root')
+def identify_root(G):
+    root=nx.get_node_attributes(G,'root')
 
-rootnode = []
-for i in root:
-    if(root[i]==True):
-        rootnode = i
+    rootnode = []
+    for i in root:
+        if(root[i]==True):
+            rootnode = i
 
-print(graph.nodes(data=True)[rootnode])
-#print(graph.nodes())
-#print(nx.bidirectional_shortest_path(graph, 1867733, graph['root']==True))
-
-#nodes = graph.nodes()
-#attributes = nx.get_node_attributes(graph, 'root')
+    return(rootnode)
