@@ -1,5 +1,8 @@
 import networkx as nx 
+from networkx.utils import pairwise
 import pandas as pd
+import numpy as np
+import math
 
 def skid_as_networkx_graph(skeleton_path):
 
@@ -36,3 +39,18 @@ def identify_root(G):
             rootnode = i
 
     return(rootnode)
+
+def calculate_dist_2nodes(G, source, target):
+    path = nx.bidirectional_shortest_path(G, source, target)
+    path = list(pairwise(path))
+
+    dist = []
+    for i in path:
+        p1 = np.array([G.nodes(data=True)[i[0]]['x'], G.nodes(data=True)[i[0]]['y'], G.nodes(data=True)[i[0]]['z']])
+        p2 = np.array([G.nodes(data=True)[i[1]]['x'], G.nodes(data=True)[i[1]]['y'], G.nodes(data=True)[i[1]]['z']])
+
+        dist.append(np.linalg.norm(p1-p2))
+
+    total_dist = np.sum(dist)
+
+    return(total_dist)
