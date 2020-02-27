@@ -1,5 +1,7 @@
 .vscode
 connectome_tools_venv
 data
+data2
 plots
+outputs
 neuron_groups_data

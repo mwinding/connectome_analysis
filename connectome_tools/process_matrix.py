@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import csv
 
 # trim out neurons not currently in the brain matrix
 def trim_missing(skidList, brainMatrix):
@@ -79,22 +80,6 @@ def binary_matrix(matrix_path, threshold):
         
     return(binMat)
 
-
-# compares neuron similarity based on inputs, outputs, or both
-# outputs a matrix where each row/column is a pair of neurons
-# NOT currently working
-def similarity_matrix(matrix_path, type):
-    matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
-
-    oddCols = np.arange(0, len(matrix.columns), 2)
-    oddRows = np.arange(0, len(matrix.index), 2)
-
-    # column names are the skid of left neuron from pair
-    sim_matrix = np.zeros(shape=(len(oddRows),len(oddCols)))
-    sim_matrix = pd.DataFrame(sim_matrix, columns = matrix.columns[oddCols], index = matrix.index[oddRows])
-
-    return(sim_matrix)
-
 # summing input from a group of upstream neurons
 # generating DataFrame with sorted leftid, rightid, summed-input left, summed-input right
 def summed_input(group_skids, matrix, pairList):
@@ -117,3 +102,41 @@ def summed_input(group_skids, matrix, pairList):
     summed_paired = pd.DataFrame(summed_paired, columns= cols)
 
     return(summed_paired)
+
+# identifies downstream neurons based on summed threshold (summed left/right input) and low_threshold (required edge weight on weak side)
+def identify_downstream(sum_df, summed_threshold, low_threshold):
+    downstream = []
+    for i in range(0, len(sum_df['leftid'])):
+        if((sum_df['leftid_input'].iloc[i] + sum_df['rightid_input'].iloc[i])>=summed_threshold):
+
+            if(sum_df['leftid_input'].iloc[i]>sum_df['rightid_input'].iloc[i] and sum_df['rightid_input'].iloc[i]>=low_threshold):
+                downstream.append(sum_df.iloc[i])
+
+            if(sum_df['rightid_input'].iloc[i]>sum_df['leftid_input'].iloc[i] and sum_df['leftid_input'].iloc[i]>=low_threshold):
+                downstream.append(sum_df.iloc[i])
+
+    return(pd.DataFrame(downstream))
+
+# compares neuron similarity based on inputs, outputs, or both
+# outputs a matrix where each row/column is a pair of neurons
+# NOT currently working
+def similarity_matrix(matrix_path, type):
+    matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
+
+    oddCols = np.arange(0, len(matrix.columns), 2)
+    oddRows = np.arange(0, len(matrix.index), 2)
+
+    # column names are the skid of left neuron from pair
+    sim_matrix = np.zeros(shape=(len(oddRows),len(oddCols)))
+    sim_matrix = pd.DataFrame(sim_matrix, columns = matrix.columns[oddCols], index = matrix.index[oddRows])
+
+    return(sim_matrix)
+
+def writeCSV(data, path):
+    with open(path, mode='w') as file:
+        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for row in data:
+            writer.writerow(row)
+
+    print("Write complete")
+    return()
