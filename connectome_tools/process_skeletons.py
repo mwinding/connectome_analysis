@@ -40,6 +40,10 @@ def identify_root(G):
 
     return(rootnode)
 
+def longest_dist(G):
+    dist = []
+    return(dist)
+
 # identify distance between two nodes in a treenode graph
 # G is a treenode graph
 def calculate_dist_2nodes(G, source, target):
