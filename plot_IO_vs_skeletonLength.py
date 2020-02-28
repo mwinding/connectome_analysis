@@ -4,31 +4,41 @@ import pandas as pd
 import numpy as np
 import connectome_tools.process_skeletons as proskel
 import math
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # import and store skeleton morphology data as graph
-graph = proskel.skid_as_networkx_graph('data/test_skeleton.csv')
+skeleton_csv = pd.read_csv('data/test_skeleton.csv', header=0, skipinitialspace=True, keep_default_na = False)
+graph = proskel.skid_as_networkx_graph(skeleton_csv)
 root = proskel.identify_root(graph)
 
-# import connectors (inputs/outputs)
 connectors = pd.read_csv('data/test_connectors.csv', header=0, skipinitialspace=True, keep_default_na = False)
-
-# calculating distance to root for each connector
-connector_dist = pd.DataFrame(columns = ['nodeid', 'type', 'distance_root'])
-
-for i in range(0, len(connectors['treenode_id'])):
-
-    if(connectors['relation_id'][i]=="presynaptic_to"):
-        dist = proskel.calculate_dist_2nodes(graph, connectors['treenode_id'][i], root)
-        connector_dist.append({'nodeid': connectors['treenode_id'][i], 'type': 'presynaptic', 'distance_root': dist}, ignore_index=True)
-        print(dist)
-
-    if(connectors['relation_id'][i]=="postsynaptic_to"):
-        dist = proskel.calculate_dist_2nodes(graph, connectors['treenode_id'][i], root)
-        connector_dist.append({'nodeid': connectors['treenode_id'][i], 'type': 'postsynaptic', 'distance_root': dist}, ignore_index=True)
-        print(dist)
+connectdists = proskel.connector_dists(graph, connectors, root)
 
 
-#print(connector_dist)
+inputs = []
+outputs = []
+for i in range(0, len(connectdists)):
+    if(connectdists[i]['type']=='postsynaptic'):
+        inputs.append(connectdists[i]['distance_root'])
+    if(connectdists[i]['type']=='presynaptic'):
+        outputs.append(connectdists[i]['distance_root'])
+
+fig, ax = plt.subplots(1,1,figsize=(8,4))
+#sns.distplot(data = inputs, ax = ax, )
+#sns.distplot(data = outputs, ax = ax, )
+
+ax.hist(inputs)
+ax.hist(outputs)
+plt.show()
+
+'''
+fig, axs = plt.subplots(2,1,figsize=(8,4))
+axs[0].hist(inputs)
+axs[1].hist(outputs)
+fig.suptitle("text")
+plt.show()
+'''
 
 
 '''
@@ -46,6 +56,3 @@ for i in path:
 total_dist = np.sum(dist)
 print("from source: %d to root: %d is %d nm" % (1867733, root, total_dist))
 '''
-
-#print(proskel.calculate_dist_2nodes(graph, 1867733, root))
-#print(list(pairwise(nx.bidirectional_shortest_path(graph, 1867733, root))))
