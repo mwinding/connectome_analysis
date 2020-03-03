@@ -24,12 +24,13 @@ for i in range(0, len(connectdists)):
     if(connectdists[i]['type']=='presynaptic'):
         outputs.append(connectdists[i]['distance_root'])
 
+
 fig, ax = plt.subplots(1,1,figsize=(8,4))
 #sns.distplot(data = inputs, ax = ax, )
 #sns.distplot(data = outputs, ax = ax, )
 
-ax.hist(inputs)
-ax.hist(outputs)
+ax.hist(outputs, density = True)
+ax.hist(inputs, density = True)
 plt.show()
 
 '''

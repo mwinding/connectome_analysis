@@ -45,6 +45,7 @@ for i in tqdm(range(len(skeleton_graphs))):
     connectdists = proskel.connector_dists(skeleton_graphs[i], list_connectors[i], roots[i])
     connectdists_list.append(connectdists)
 
+'''
 # normalizing neuron lengths
 for i in tqdm(range(len(connectdists_list))):
     dists = []
@@ -55,9 +56,9 @@ for i in tqdm(range(len(connectdists_list))):
 
     for j in range(len(connectdists_list[i])):
         connectdists_list[i][j]['distance_root'] = connectdists_list[i][j]['distance_root']/dist_max
+'''
 
-
-with open('outputs/connectdists.csv', mode='w') as csv_file:
+with open('outputs/connectdists_raw.csv', mode='w') as csv_file:
     csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     csv_writer.writerow(['nodeid', 'type', 'distance_root'])
     for i in range(len(connectdists_list)):
