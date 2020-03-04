@@ -27,6 +27,7 @@ connectors_unsplittable = pd.read_csv('axon_dendrite_data/unsplittable_connector
 #connectors_norm_divide = pd.read_csv('axon_dendrite_data/splittable_connectdists_left1_norm_dividebymax.csv')
 connectors_norm = pd.read_csv('axon_dendrite_data/splittable_connectdists_left1_norm_dividebymax.csv')
 #connectors_norm2 = pd.read_csv('axon_dendrite_data/splittable_connectdists_left1_norm2.csv')
+connectors_norm_right1 = pd.read_csv('axon_dendrite_data/splittable_connectors_right1_norm.csv')
 
 
 
@@ -70,6 +71,14 @@ for i in range(len(connectors_norm2)):
     if(connectors_norm2.iloc[i]['type']=='presynaptic'):
         outputs_norm2.append(connectors_norm2.iloc[i]['distance_root'])
 '''
+
+inputs_norm_right1 = []
+outputs_norm_right1 = []
+for i in range(len(connectors_norm_right1)):
+    if(connectors_norm_right1.iloc[i]['type']=='postsynaptic'):
+        inputs_norm_right1.append(connectors_norm.iloc[i]['distance_root'])
+    if(connectors_norm_right1.iloc[i]['type']=='presynaptic'):
+        outputs_norm_right1.append(connectors_norm_right1.iloc[i]['distance_root'])
 #%%
 fig, ax = plt.subplots(1,1,figsize=(8,4))
 
@@ -104,4 +113,10 @@ fig, ax = plt.subplots(1,1,figsize=(8,4))
 sns.distplot(inputs_norm2, ax = ax)
 sns.distplot(outputs_norm2, ax = ax)
 '''
+# %%
+fig, ax = plt.subplots(1,1,figsize=(8,4))
+
+sns.distplot(inputs_norm_right1, ax = ax)
+sns.distplot(outputs_norm_right1, ax = ax)
+
 # %%
