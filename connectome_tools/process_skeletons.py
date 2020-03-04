@@ -3,6 +3,8 @@ from networkx.utils import pairwise
 import pandas as pd
 import numpy as np
 import math
+from tqdm import tqdm
+import csv
 
 # import skeleton CSV (of single skeleton) in CATMAID export skeleton format
 def skid_as_networkx_graph(skeleton):
@@ -88,3 +90,76 @@ def split_skeleton_lists(connector_list):
         skelmorph_list.append(connector_list.iloc[indices[0]])
 
     return(skelmorph_list)
+
+def connector_dist_batch(path_skeletons, path_connectors, output_path_raw, output_path_norm, output_path_norm2):
+    # import and split skeletons into separate entry of list
+    skeletons_csv = pd.read_csv(path_skeletons, header=0, skipinitialspace=True, keep_default_na = False)
+    list_skeletons = split_skeleton_lists(skeletons_csv)
+
+    # convert each skeleton morphology CSV into networkx graph
+    skeleton_graphs = []
+    for i in tqdm(range(len(list_skeletons))):
+        skeleton_graph = skid_as_networkx_graph(list_skeletons[i])
+        skeleton_graphs.append(skeleton_graph)
+    
+    # identify roots of each networkx graph
+    roots = []
+    for i in tqdm(range(len(skeleton_graphs))):
+        root = identify_root(skeleton_graphs[i])
+        #print("skeleton %i has root %i" %(skeleton[], root))
+        roots.append(root)
+
+    connectors = pd.read_csv(path_connectors, header=0, skipinitialspace=True, keep_default_na = False)
+    list_connectors = split_skeleton_lists(connectors)
+
+    # calculate distances of each connector to root for each separate graph
+    connectdists_list = []
+    for i in tqdm(range(len(skeleton_graphs))):
+        connectdists = connector_dists(skeleton_graphs[i], list_connectors[i], roots[i])
+        connectdists_list.append(connectdists)
+
+    write_connectordists(output_path_raw, connectdists_list)
+
+    # normalizing neuron lengths
+    connectdists_list_norm = connectdists_list
+    for i in tqdm(range(len(connectdists_list_norm))):
+        dists = []
+        for j in range(len(connectdists_list_norm[i])):
+            dist = connectdists_list_norm[i][j]['distance_root']
+            dists.append(dist)
+        dist_max = max(dists)
+        dist_mean = np.mean(dists)
+        dist_var = np.var(dists)
+
+        for j in range(len(connectdists_list_norm[i])):
+            connectdists_list_norm[i][j]['distance_root'] = (connectdists_list_norm[i][j]['distance_root'])/dist_max
+
+    write_connectordists(output_path_norm, connectdists_list_norm)
+
+    # normalizing neuron lengths
+    connectdists_list_norm = connectdists_list
+    for i in tqdm(range(len(connectdists_list_norm))):
+        dists = []
+        for j in range(len(connectdists_list_norm[i])):
+            dist = connectdists_list_norm[i][j]['distance_root']
+            dists.append(dist)
+        dist_max = max(dists)
+        dist_mean = np.mean(dists)
+        dist_var = np.var(dists)
+
+        for j in range(len(connectdists_list_norm[i])):
+            connectdists_list_norm[i][j]['distance_root'] = (connectdists_list_norm[i][j]['distance_root']-dist_mean)/dist_var
+
+    write_connectordists(output_path_norm2, connectdists_list_norm)
+
+
+def write_connectordists(path, connectdists_list):
+    with open(path, mode='w') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer.writerow(['nodeid', 'type', 'distance_root'])
+        for i in range(len(connectdists_list)):
+            for j in range(len(connectdists_list[i])):
+                nodeid = connectdists_list[i][j]['nodeid']
+                typ = connectdists_list[i][j]['type']
+                distance_root = connectdists_list[i][j]['distance_root']
+                csv_writer.writerow([nodeid, typ, distance_root])
