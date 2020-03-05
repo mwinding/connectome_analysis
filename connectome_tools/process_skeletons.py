@@ -73,11 +73,11 @@ def connector_dists(G, connectors, root):
 
         if(connectors['relation_id'].iloc[i]=="presynaptic_to"):
             dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
-            connector_dist.append({'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance_root': dist})
+            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance_root': dist})
 
         if(connectors['relation_id'].iloc[i]=="postsynaptic_to"):
             dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
-            connector_dist.append({'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance_root': dist})
+            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance_root': dist})
 
     return(connector_dist)
 
