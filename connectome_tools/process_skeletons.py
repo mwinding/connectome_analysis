@@ -79,7 +79,33 @@ def connector_dists(G, connectors, root):
             dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
             connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance': dist})
 
-    return(connector_dist)    
+    return(connector_dist)  
+
+def connector_dists_centered(G, connectors, root, split):
+
+    connector_dist = []
+
+    for i in range(0, len(connectors['treenode_id'])):
+
+        path = nx.bidirectional_shortest_path(G, connectors['treenode_id'].iloc[i], root)
+
+        if(connectors['relation_id'].iloc[i]=="presynaptic_to"):
+            if(np.isin(split, path)):
+                dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
+                connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance': dist})
+            if(~np.isin(split, path)):
+                dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
+                connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance': -dist})
+
+        if(connectors['relation_id'].iloc[i]=="postsynaptic_to"):
+            if(np.isin(split, path)):
+                dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
+                connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance': dist})
+            if(~np.isin(split, path)):
+                dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
+                connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance': -dist})
+
+    return(connector_dist) 
 
 def split_skeleton_lists(connector_list):
     unique_skeletons = np.unique(connector_list['skeleton_id'].values)

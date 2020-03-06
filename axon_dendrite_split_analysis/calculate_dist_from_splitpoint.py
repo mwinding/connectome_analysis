@@ -5,10 +5,11 @@ import connectome_tools.process_skeletons as proskel
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
+import networkx as nx 
 
 
-connectors = pd.read_csv('axon_dendrite_data/connectors_test.csv', header=0, skipinitialspace=True, keep_default_na = False)
-skeletons = pd.read_csv('axon_dendrite_data/skeletons_test.csv', header=0, skipinitialspace=True, keep_default_na = False)
+connectors = pd.read_csv('axon_dendrite_data/splittable_connectors_all.csv', header=0, skipinitialspace=True, keep_default_na = False)
+skeletons = pd.read_csv('axon_dendrite_data/splittable_skeletons_all.csv', header=0, skipinitialspace=True, keep_default_na = False)
 splits = pd.read_csv('axon_dendrite_data/brain_acc_split_nodes.csv', header=0, skipinitialspace=True, keep_default_na = False)
 
 list_skeletons = proskel.split_skeleton_lists(skeletons)
@@ -25,17 +26,8 @@ for i in tqdm(range(len(list_skeletons))):
 roots = []
 for i in tqdm(range(len(skeleton_graphs))):
     root = proskel.identify_root(skeleton_graphs[i])
+    #print("skeleton %i has root %i" %(skeleton[], root))
     roots.append(root)
-
-'''
-# calculate distances of each connector to root for each separate graph
-connectdists_list = []
-for i in tqdm(range(len(skeleton_graphs))):
-    connectdists = proskel.connector_dists(skeleton_graphs[i], list_connectors[i], roots[i])
-    connectdists_list.append(connectdists)
-
-#print(connectdists_list)
-'''
 
 # identify split points
 skids = np.unique(skeletons['skeleton_id'])
@@ -44,24 +36,13 @@ split_ids = []
 for i in tqdm(range(len(skids))):
     split_ids.append(splits['treenode'][splits['skeleton'] == skids[i]].values[0])
 
-#print(split_ids)
+# calculate distances of each connector to split for each separate graph
+connectdists_list = []
+for i in tqdm(range(len(skeleton_graphs))):
 
-# calculate distance from roots to split points
-splitdists_list = []
-for i in tqdm(range(len(split_ids))):
-    splitdist = proskel.calculate_dist_2nodes(skeleton_graphs[i], split_ids[i], roots[i])
-    splitdists_list.append(splitdist)
+    # find shortest path to root
+    # if path contains split point, the origin is in the axon
+    connectdists = proskel.connector_dists_centered(skeleton_graphs[i], list_connectors[i], roots[i], split_ids[i])
+    connectdists_list.append(connectdists)
 
-
-connector_dists = pd.read_csv('axon_dendrite_data/testdists_raw.csv', header=0, skipinitialspace=True, keep_default_na = False)
-
-
-skids = np.unique(connector_dists['skeletonid'])
-print(connector_dists)
-for i in tqdm(range(len(splitdists_list))):
-    for j in range(len(connector_dists['skeletonid'])):
-        if(connector_dists['skeletonid'][j] == skids[i]):
-            connector_dists.iat[j, 3] = (connector_dists['distance'][j] - splitdists_list[i])
-
-#connector_dists.to_csv('axon_dendrite_data/testdists_centeredsplit.csv')
-
+proskel.write_connectordists('axon_dendrite_data/connectdists_all_centeredsplit.csv', connectdists_list)
