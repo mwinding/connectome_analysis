@@ -73,13 +73,13 @@ def connector_dists(G, connectors, root):
 
         if(connectors['relation_id'].iloc[i]=="presynaptic_to"):
             dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
-            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance_root': dist})
+            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance': dist})
 
         if(connectors['relation_id'].iloc[i]=="postsynaptic_to"):
             dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
-            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance_root': dist})
+            connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance': dist})
 
-    return(connector_dist)
+    return(connector_dist)    
 
 def split_skeleton_lists(connector_list):
     unique_skeletons = np.unique(connector_list['skeleton_id'].values)
@@ -91,7 +91,7 @@ def split_skeleton_lists(connector_list):
 
     return(skelmorph_list)
 
-def connector_dist_batch(path_skeletons, path_connectors, output_path_raw, output_path_norm, output_path_norm2):
+def connector_dist_batch(path_skeletons, path_connectors, output_path_raw, output_path_norm):
     # import and split skeletons into separate entry of list
     skeletons_csv = pd.read_csv(path_skeletons, header=0, skipinitialspace=True, keep_default_na = False)
     list_skeletons = split_skeleton_lists(skeletons_csv)
@@ -125,41 +125,42 @@ def connector_dist_batch(path_skeletons, path_connectors, output_path_raw, outpu
     for i in tqdm(range(len(connectdists_list_norm))):
         dists = []
         for j in range(len(connectdists_list_norm[i])):
-            dist = connectdists_list_norm[i][j]['distance_root']
+            dist = connectdists_list_norm[i][j]['distance']
             dists.append(dist)
         dist_max = max(dists)
-        dist_mean = np.mean(dists)
-        dist_var = np.var(dists)
+        #dist_mean = np.mean(dists)
+        #dist_var = np.var(dists)
 
         for j in range(len(connectdists_list_norm[i])):
-            connectdists_list_norm[i][j]['distance_root'] = (connectdists_list_norm[i][j]['distance_root'])/dist_max
+            connectdists_list_norm[i][j]['distance'] = (connectdists_list_norm[i][j]['distance'])/dist_max
 
     write_connectordists(output_path_norm, connectdists_list_norm)
-
+'''
     # normalizing neuron lengths
     connectdists_list_norm = connectdists_list
     for i in tqdm(range(len(connectdists_list_norm))):
         dists = []
         for j in range(len(connectdists_list_norm[i])):
-            dist = connectdists_list_norm[i][j]['distance_root']
+            dist = connectdists_list_norm[i][j]['distance']
             dists.append(dist)
         dist_max = max(dists)
         dist_mean = np.mean(dists)
         dist_var = np.var(dists)
 
         for j in range(len(connectdists_list_norm[i])):
-            connectdists_list_norm[i][j]['distance_root'] = (connectdists_list_norm[i][j]['distance_root']-dist_mean)/dist_var
+            connectdists_list_norm[i][j]['distance'] = (connectdists_list_norm[i][j]['distance']-dist_mean)/dist_var
 
     write_connectordists(output_path_norm2, connectdists_list_norm)
-
+'''
 
 def write_connectordists(path, connectdists_list):
     with open(path, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['nodeid', 'type', 'distance_root'])
+        csv_writer.writerow(['skeletonid', 'nodeid', 'type', 'distance'])
         for i in range(len(connectdists_list)):
             for j in range(len(connectdists_list[i])):
+                skeletonid = connectdists_list[i][j]['skeletonid']
                 nodeid = connectdists_list[i][j]['nodeid']
                 typ = connectdists_list[i][j]['type']
-                distance_root = connectdists_list[i][j]['distance_root']
-                csv_writer.writerow([nodeid, typ, distance_root])
+                distance_root = connectdists_list[i][j]['distance']
+                csv_writer.writerow([skeletonid, nodeid, typ, distance_root])
