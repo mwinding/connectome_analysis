@@ -41,3 +41,4 @@ fig, ax = plt.subplots(1,1,figsize=(4,2))
 sns.distplot(dVNC_outputs['y'], color = 'purple', ax = ax, hist = False, kde_kws = {'shade': True})
 sns.distplot(dSEZ_outputs['y'], color = 'black', ax = ax, hist = False, kde_kws = {'shade': True})
 sns.distplot(RG_outputs['y'], color = 'red', ax = ax, hist = False, kde_kws = {'shade': True})
+

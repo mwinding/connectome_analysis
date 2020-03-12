@@ -52,4 +52,3 @@ sns.distplot(MN_outputs['y'], color = 'grey', ax = ax, hist = False, kde_kws = {
 sns.distplot(noci_outputs['y'], color = 'brown', ax = ax, hist = False, kde_kws = {'shade': True})
 
 
-# %%
