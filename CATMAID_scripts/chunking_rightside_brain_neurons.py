@@ -11,9 +11,9 @@ from itertools import chain
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
-# breaking all brain neurons into neuron chunks of size "size" for blender import
+# breaking neurons into neuron chunks of size "size" for blender import
 # blender needs skids separated by commas
-brain = pymaid.get_annotated('mw brain neurons')
+brain = pymaid.get_annotated(['mw brain ipsilateral', 'mw right'])
 brain_skids = brain['skeleton_ids']
 
 skids = []
@@ -42,11 +42,11 @@ print(pd.Series(verify).unique)
 
 # output chunk number which
 
-which = 2
+which = 3
 # completed
-# 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+# 0, 1, 2, 3
 # saved
-# 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+# 0, 1, 2, 3
 
 print('--------------')
 print('--------------')
