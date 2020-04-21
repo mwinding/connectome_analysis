@@ -11,7 +11,7 @@ import re
 import natsort as ns
 import datetime
 
-pymaid.clear_cache()
+#pymaid.clear_cache()
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
@@ -45,17 +45,35 @@ def timeTracing(user, interval, start_date):
     return(time_sum)
 
 # %%
-users = ['ana', 'andrey', 'marc']
-times = [timeTracing(user, 3, datetime.date(2020, 3, 27)) for user in users]
+#ana = ['ana', 'andrey', 'marc']
+#ana_time = [timeTracing(user, 3, datetime.date(2020, 3, 27)) for user in users]
 
 # %%
-users2 = ['nadine', 'michael', 'keira', 'xinyu']
-times2 = [timeTracing(users2, 3, datetime.date(2020, 3, 27)) for user in users2]
+marc = timeTracing('marc', 3, datetime.date(2020, 3, 27))
+print(marc)
 # %%
-users_all = users + users2
-times_all = times + times2
-print(users_all)
-print(times_all)
+keira = timeTracing('keira', 3, datetime.date(2020, 3, 27))
+print(keira)
+# %%
+andy = timeTracing('andrey', 3, datetime.date(2020, 3, 27))
+print(andy)
+# %%
+xinyu = timeTracing('xinyu', 3, datetime.date(2020, 3, 27))
+print(xinyu)
+# %%
+michael = timeTracing('michael', 3, datetime.date(2020, 3, 27))
+print(michael)
+# %%
+nadine = timeTracing('nadine', 3, datetime.date(2020, 3, 27))
+print(nadine)
+# %%
+ana = timeTracing('ana', 3, datetime.date(2020, 3, 27))
+print(ana)
+# %%
+#correspondences = pd.DataFrame(data = correspondences, columns = ['old_name', 'new_name'])
+#print(correspondences)
+
+#correspondences.to_csv('CATMAID_scripts/brain_tracing_stats.csv')
 
 #%%
 #stats = pymaid.get_user_stats()
