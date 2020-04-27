@@ -17,6 +17,8 @@ def trim_missing(skidList, brainMatrix):
 
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list
 def identify_pair(skid, pairList):
+
+    pair_skid = []
     
     if(skid in pairList["leftid"].values):
         pair_skid = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
@@ -140,3 +142,6 @@ def writeCSV(data, path):
 
     print("Write complete")
     return()
+
+#def reorderInputsOutputs_toRow(matrix):
+#    for i in matrix[,1]
