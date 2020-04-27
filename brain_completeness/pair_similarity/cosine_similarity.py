@@ -14,6 +14,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import connectome_tools.process_matrix as promat
 from tqdm import tqdm
+from scipy.spatial import distance
+import random
 
 # import pairs
 pairs = pd.read_csv('data/bp-pairs-2020-01-28.csv', header = 0)
@@ -50,16 +52,46 @@ oddCols = np.arange(0, len(reorderMat.columns), 2)
 summedPairs = np.zeros(shape=(len(allRows),len(oddCols)))
 summedPairs = pd.DataFrame(summedPairs)
 
+threshold = 10
+
 for i in tqdm(allRows):
     for j in oddCols:
-        pair_sum = reorderMat.iat[i, j] + reorderMat.iat[i, j+1]
-        summedPairs.iat[i, int(j/2)] = pair_sum
+        # threshold used here
+        if(reorderMat.iat[i, j]>=threshold or reorderMat.iat[i, j+1]>=threshold):
+            summedPairs.iat[i, int(j/2)] = 1
+
+        #pair_sum = reorderMat.iat[i, j] + reorderMat.iat[i, j+1]
+        #summedPairs.iat[i, int(j/2)] = pair_sum
 
 # %%
-a = summedPairs.iloc[0, :].values
-b = summedPairs.iloc[1, :].values
+rows = np.arange(0, len(summedPairs.index), 2)
 
-cosine_similarity(a, b)
+pair_stats = []
+for i in tqdm(rows):
+    partner1 = summedPairs.iloc[i, :].values
+    partner2 = summedPairs.iloc[i+1, :].values
+    sim = distance.hamming(partner1, partner2)
+    #sim = cosine_similarity(partner1, partner2)
+    #sim = np.dot(partner1, partner2)
+    pair_stats.append(sim)
 
+# %%
+sns.distplot(pair_stats)
+
+# %%
+# randomized hamming distance
+rows = np.arange(0, len(summedPairs.index), 2)
+
+pair_stats_rand = []
+for i in tqdm(rows):
+    partner1 = summedPairs.iloc[random.randint(0, len(summedPairs.index)), :].values
+    partner2 = summedPairs.iloc[random.randint(0, len(summedPairs.index)), :].values
+    #sim = distance.hamming(partner1, partner2)
+    #sim = cosine_similarity(partner1, partner2)
+    #sim = np.dot(partner1, partner2)
+    pair_stats_rand.append(sim)
+
+# %%
+sns.distplot(pair_stats_rand)
 
 # %%
