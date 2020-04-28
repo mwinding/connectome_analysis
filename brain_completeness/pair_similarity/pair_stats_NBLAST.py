@@ -32,7 +32,7 @@ for i in allNBLAST.index:
                 score = allNBLAST.loc[i,:][str(partner)]
                 rowvalues = allNBLAST.loc[i,:]
                 rowvalues = rowvalues.sort_values(ascending=False)
-                rank = rowvalues.index.get_loc(str(partner))
+                rank = rowvalues.index.get_loc(str(partner))+1
 
                 scores.append(score)
                 ranks.append(rank)
