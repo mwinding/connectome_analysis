@@ -22,36 +22,39 @@ def get_connectors_group(skids):
 
 #%%
 contra_skids = pymaid.get_skids_by_annotation("mw brain crosses commissure")
-left_skids = pymaid.get_skids_by_annotation("mw left")
+#left_skids = pymaid.get_skids_by_annotation("mw left")
 right_skids = pymaid.get_skids_by_annotation("mw right")
 
-contra_left = np.intersect1d(contra_skids, left_skids)
+#contra_left = np.intersect1d(contra_skids, left_skids)
 contra_right = np.intersect1d(contra_skids, right_skids)
 
-contra_left_outputs, contra_left_inputs = get_connectors_group(contra_left)
+#contra_left_outputs, contra_left_inputs = get_connectors_group(contra_left)
 contra_right_outputs, contra_right_inputs = get_connectors_group(contra_right)
 print('done')
 
 #%%
 brain_skids = pymaid.get_skids_by_annotation("mw brain neurons")
 ipsi_skids = np.setdiff1d(brain_skids, contra_skids)
-ipsi_left = np.intersect1d(ipsi_skids, left_skids)
+#ipsi_left = np.intersect1d(ipsi_skids, left_skids)
 ipsi_right = np.intersect1d(ipsi_skids, right_skids)
 
-ipsi_left_outputs, ipsi_left_inputs = get_connectors_group(ipsi_left)
+#ipsi_left_outputs, ipsi_left_inputs = get_connectors_group(ipsi_left)
 ipsi_right_outputs, ipsi_right_inputs = get_connectors_group(ipsi_right)
 print('done')
 
 #%%
-fig, ax = plt.subplots(1,1,figsize=(4,2))
+fig, ax = plt.subplots(1,1,figsize=(4,1))
 
-sns.distplot(contra_left_outputs['x'], color = 'red', ax = ax, hist = False, kde_kws = {'shade': True})
-sns.distplot(contra_left_inputs['x'], color = 'blue', ax = ax, hist = False, kde_kws = {'shade': True})
+sns.distplot(contra_right_outputs['x'], color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
+sns.distplot(contra_right_inputs['x'], color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
+
+plt.savefig('synapse_distributions/plots/contra_right.svg', format='svg')
 
 #%%
-fig, ax = plt.subplots(1,1,figsize=(4,2))
+fig, ax = plt.subplots(1,1,figsize=(4,1))
 
-sns.distplot(ipsi_left_outputs['x'], color = 'red', ax = ax, hist = False, kde_kws = {'shade': True})
-sns.distplot(ipsi_left_inputs['x'], color = 'blue', ax = ax, hist = False, kde_kws = {'shade': True})
+sns.distplot(ipsi_right_outputs['x'], color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
+sns.distplot(ipsi_right_inputs['x'], color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
 
+plt.savefig('synapse_distributions/plots/ipsi_right.svg', format='svg')
 # %%
