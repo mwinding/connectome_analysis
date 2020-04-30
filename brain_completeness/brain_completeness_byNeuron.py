@@ -22,6 +22,7 @@ completeness = pd.read_csv('data/brain_partner_completeness_2020-04-28.csv')
 fig, ax = plt.subplots(1,1,figsize=(1,2))
 
 sns.distplot(completeness['ppn_pre'], bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
+
 #sns.distplot(values, ax = ax, hist = True, kde_kws = {'shade': True})
 
 #ax.set(xlim = (0, 10))
@@ -44,6 +45,23 @@ ax.set_xlabel('Postsynaptic Completeness')
 plt.axvline(np.mean(completeness['ppn_post']), 0, 1)
 
 plt.savefig('brain_completeness/plots/postsynaptic_completeness.svg', format='svg')
+
+
+# %%
+# combined completeness metrics
+fig, ax = plt.subplots(1,1,figsize=(1,2))
+
+sns.distplot(completeness['ppn_post'], bins = 20, ax = ax, hist = True, kde = True, norm_hist=True)
+sns.distplot(completeness['ppn_pre'], bins = 20, ax = ax, hist = True, kde = True, norm_hist=True)
+
+#ax.set(xlim = (0, 10))
+#ax.set(xticks=np.arange(1,11,1))
+ax.set_ylabel('Number of Neurons')
+ax.set_xlabel('Per Neuron Completeness')
+plt.axvline(np.mean(completeness['ppn_post']), 0, 1, linewidth = 0.5)
+plt.axvline(np.mean(completeness['ppn_pre']), 0, 1, linewidth = 0.5, color='orange')
+
+#plt.savefig('brain_completeness/plots/postsynaptic_completeness.svg', format='svg')
 
 # %%
 # removing the output neurons from analysis
