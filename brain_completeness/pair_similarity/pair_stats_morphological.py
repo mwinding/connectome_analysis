@@ -61,6 +61,10 @@ output_diff_cleaned = np.array(output_diff_cleaned)
 input_diff = np.array(input_diff)
 cable_diff = np.array(cable_diff)
 # %%
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 # generate cable_diff plot
 fig, ax = plt.subplots(1,1,figsize=(.75,1))
 
@@ -87,6 +91,10 @@ plt.savefig('brain_completeness/plots/cable_diff.pdf', bbox_inches='tight', tran
 
 
 # %%
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 fig, ax = plt.subplots(1,1,figsize=(.75,1))
 
 sns.distplot(cable_diff, color = 'gray', ax = ax, hist = False, kde = True, kde_kws=dict(linewidth=0.5), norm_hist=True)
@@ -118,6 +126,11 @@ plt.savefig('brain_completeness/plots/pairs_diff.pdf', bbox_inches='tight', tran
 
 # %%
 # difference in these metrics for published neurons
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 cable_diff_pub = []
 input_diff_pub = []
 output_diff_pub = []

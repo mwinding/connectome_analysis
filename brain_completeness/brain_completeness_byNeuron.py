@@ -19,14 +19,20 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 completeness = pd.read_csv('data/brain_partner_completeness_2020-04-28.csv')
 
 # %%
+# plot input completeness
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 fig, ax = plt.subplots(1,1,figsize=(.75,1.3))
 
-sns.distplot(completeness['ppn_pre'], color = 'royalblue',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
+sns.distplot(completeness['ppn_pre'], color = 'royalblue',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=0.5, alpha=0.7), norm_hist=False)
 
 #sns.distplot(values, ax = ax, hist = True, kde_kws = {'shade': True})
 
 ax.set(xlim = (0, 1))
-plt.axvline(np.mean(completeness['ppn_pre']), 0, 1, linewidth = 0.5, color = 'royalblue')
+plt.axvline(np.mean(completeness['ppn_pre']), 0, 1, linewidth = 0.5, color = 'royalblue', alpha = 0.5)
 
 ax.set(xticks=np.arange(0,1.5,0.5))
 ax.xaxis.set_tick_params(width=0.5)
@@ -46,14 +52,20 @@ for tick in ax.get_yticklabels():
 plt.savefig('brain_completeness/plots/presynaptic_completeness.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# plot output completeness
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 fig, ax = plt.subplots(1,1,figsize=(.75,1.3))
 
-sns.distplot(completeness['ppn_post'], color = 'crimson',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
+sns.distplot(completeness['ppn_post'], color = 'crimson',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=0.5, alpha=0.7), norm_hist=False)
 #sns.distplot(values, ax = ax, hist = True, kde_kws = {'shade': True})
 
 ax.set(xlim = (0, 1))
 #ax.set(xticks=np.arange(1,11,1))
-plt.axvline(np.mean(completeness['ppn_post']), 0, 1, linewidth = 0.5, color = 'crimson')
+plt.axvline(np.mean(completeness['ppn_post']), 0, 1, linewidth = 0.5, color = 'crimson', alpha = 0.5)
 
 ax.set(xticks=np.arange(0,1.5,0.5))
 ax.xaxis.set_tick_params(width=0.5)
