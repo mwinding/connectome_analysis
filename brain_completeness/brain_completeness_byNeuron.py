@@ -19,37 +19,63 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 completeness = pd.read_csv('data/brain_partner_completeness_2020-04-28.csv')
 
 # %%
-fig, ax = plt.subplots(1,1,figsize=(1,2))
+fig, ax = plt.subplots(1,1,figsize=(.75,1.3))
 
-sns.distplot(completeness['ppn_pre'], bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
+sns.distplot(completeness['ppn_pre'], color = 'royalblue',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
 
 #sns.distplot(values, ax = ax, hist = True, kde_kws = {'shade': True})
 
-#ax.set(xlim = (0, 10))
-ax.set_ylabel('Number of Neurons')
-ax.set_xlabel('Presynaptic Completeness')
-plt.axvline(np.mean(completeness['ppn_pre']), 0, 1)
+ax.set(xlim = (0, 1))
+plt.axvline(np.mean(completeness['ppn_pre']), 0, 1, linewidth = 0.5, color = 'royalblue')
 
-plt.savefig('brain_completeness/plots/presynaptic_completeness.svg', format='svg')
+ax.set(xticks=np.arange(0,1.5,0.5))
+ax.xaxis.set_tick_params(width=0.5)
+ax.yaxis.set_tick_params(width=0.5)
+ax.tick_params(labelsize=6)
+ax.set_ylabel('Number of Neurons', fontname="Arial", fontsize = 6)
+ax.set_xlabel('Input Completeness', fontname="Arial", fontsize = 6)
+
+for axis in ['top','bottom','left','right']:
+  ax.spines[axis].set_linewidth(0.5)
+
+for tick in ax.get_xticklabels():
+    tick.set_fontname("Arial")
+for tick in ax.get_yticklabels():
+    tick.set_fontname("Arial")
+
+plt.savefig('brain_completeness/plots/presynaptic_completeness.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-fig, ax = plt.subplots(1,1,figsize=(1,2))
+fig, ax = plt.subplots(1,1,figsize=(.75,1.3))
 
-sns.distplot(completeness['ppn_post'], bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
+sns.distplot(completeness['ppn_post'], color = 'crimson',bins = 20, ax = ax, hist = True, kde = False, hist_kws=dict(edgecolor=(0, 0, 0, 1), linewidth=1), norm_hist=False)
 #sns.distplot(values, ax = ax, hist = True, kde_kws = {'shade': True})
 
-#ax.set(xlim = (0, 10))
+ax.set(xlim = (0, 1))
 #ax.set(xticks=np.arange(1,11,1))
-ax.set_ylabel('Number of Neurons')
-ax.set_xlabel('Postsynaptic Completeness')
-plt.axvline(np.mean(completeness['ppn_post']), 0, 1)
+plt.axvline(np.mean(completeness['ppn_post']), 0, 1, linewidth = 0.5, color = 'crimson')
 
-plt.savefig('brain_completeness/plots/postsynaptic_completeness.svg', format='svg')
+ax.set(xticks=np.arange(0,1.5,0.5))
+ax.xaxis.set_tick_params(width=0.5)
+ax.yaxis.set_tick_params(width=0.5)
+ax.tick_params(labelsize=6)
+ax.set_ylabel('Number of Neurons', fontname="Arial", fontsize = 6)
+ax.set_xlabel('Output Completeness', fontname="Arial", fontsize = 6)
+
+for axis in ['top','bottom','left','right']:
+  ax.spines[axis].set_linewidth(0.5)
+
+for tick in ax.get_xticklabels():
+    tick.set_fontname("Arial")
+for tick in ax.get_yticklabels():
+    tick.set_fontname("Arial")
+
+plt.savefig('brain_completeness/plots/postsynaptic_completeness.pdf', format='pdf', bbox_inches='tight')
 
 
 # %%
 # combined completeness metrics
-fig, ax = plt.subplots(1,1,figsize=(1,2))
+fig, ax = plt.subplots(1,1,figsize=(.75,1.3))
 
 sns.distplot(completeness['ppn_post'], bins = 20, ax = ax, hist = True, kde = True, norm_hist=True)
 sns.distplot(completeness['ppn_pre'], bins = 20, ax = ax, hist = True, kde = True, norm_hist=True)
