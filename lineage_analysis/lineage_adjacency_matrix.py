@@ -50,14 +50,28 @@ for i in lineage_skids:
     lineage_index.append(index)
 
 # summing up all elements of a lineage by rows and columns
+lineage_rows = []
 for i in lineage_index:
-    matrix.iloc[i, :]
-    matrix.iloc[:, i]
+    summed_rows = matrix.iloc[i, :].sum(axis=0)
+    lineage_rows.append(summed_rows)
     
+lineage_rows_df = pd.DataFrame(lineage_rows)
 
+lineage_rows_columns = []
+for i in lineage_index:
+    summed_rows_columns = lineage_rows_df.iloc[:, i].sum(axis=1)
+    lineage_rows_columns.append(summed_rows_columns)
+    
+lineage_rows_columns_df = pd.DataFrame(lineage_rows_columns)
 
+# %%
+# plotting adjacency matrix of lineages
 
+fig, ax = plt.subplots(1,1,figsize=(4,4))
 
+sns.heatmap(lineage_rows_columns_df, cmap='OrRd', vmax = 100)
+#sns.clustermap(lineage_rows_columns_df, metric='correlation')
 
+#lineage_rows_columns_df.to_csv('lineage_analysis/lineage_matrix.csv')
 
 # %%
