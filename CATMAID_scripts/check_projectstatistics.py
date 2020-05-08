@@ -47,7 +47,6 @@ def timeTracing(user, interval, start_date):
 # %%
 #ana = ['ana', 'andrey', 'marc']
 #ana_time = [timeTracing(user, 3, datetime.date(2020, 3, 27)) for user in users]
-
 # %%
 marc = timeTracing('marc', 3, datetime.date(2020, 3, 27))
 print(marc)
