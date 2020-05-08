@@ -46,32 +46,17 @@ paired = pairs.values.flatten()
 # %%
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
-# %%
-# 
-matrix_ad = pd.read_csv('data/axon-dendrite.csv', header=0, index_col=0)
+# pull sensory annotations and then pull associated skids
+PNs = pymaid.get_skids_by_annotation('mw all PNs')
 
-# convert to %input
-total_inputs = pd.read_csv('data/input_counts.csv', header = 0, index_col = 0)
+# sensory skids
+ORNs = pymaid.get_skids_by_annotation('mw ORN')
+ANs = pymaid.get_skids_by_annotation('mw AN sensories')
+MNs = pymaid.get_skids_by_annotation('mw MN sensories')
+vtds = pymaid.get_skids_by_annotation('mw v\'td')
+visual = pymaid.get_skids_by_annotation('mw photoreceptors')
+thermo = pymaid.get_skids_by_annotation('mw thermosensories')
+pain = pymaid.get_skids_by_annotation('mw A00c')
 
-for i in np.arange(0, len(matrix_ad.index), 1):
-    inputs = total_inputs.loc[matrix_ad.index[i] == total_inputs.index, ' dendrite_inputs'].values
-    if(inputs != 0):
-        matrix_ad.loc[:, str(matrix_ad.index[i])] = matrix_ad.loc[:, str(matrix_ad.index[i])]/inputs
-
-# %% 
-
-RG = pymaid.get_skids_by_annotation("mw RG")
-dSEZ = pymaid.get_skids_by_annotation("mw dSEZ")
-dVNC = pymaid.get_skids_by_annotation("mw dVNC")
 
 # %%
-threshold = 0.1
-lower_threshold = 0.00001
-
-for i in np.arange(0, len(pairs['leftid']), 1):
-    partner1 = pairs['leftid'][i]
-    partner2 = promat.identify_pair(partner1, paired)
-
-    # compare upstream pairs to downstream pairs of descending neurons
-
-    #matrix_ad.loc[partner1, RG]

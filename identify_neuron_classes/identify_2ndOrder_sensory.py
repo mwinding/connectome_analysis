@@ -68,7 +68,7 @@ def downstream_search(matrix, source_group, threshold):
             
             print(pair)
             upstream = matrix.loc[source_group , pair]
-            downstream = matrix.loc[pair, source_group]
+            #downstream = matrix.loc[pair, source_group]
 
             #print(upstream)
 
@@ -91,7 +91,7 @@ def downstream_search(matrix, source_group, threshold):
         # dealing with unpaired neurons
         if(matrix.index[i] not in paired):
             upstream = matrix.loc[source_group , matrix.index[i]]
-            downstream = matrix.loc[matrix.index[i], source_group]
+            #downstream = matrix.loc[matrix.index[i], source_group]
 
             if(source_group not in paired):
                 upstream_bin = upstream >= threshold
@@ -110,22 +110,69 @@ def downstream_search(matrix, source_group, threshold):
     return(downstream_neurons)
 
 # %%
+# identifying neurons downstream of sensories based on percent-input
+matrix_ad = pd.read_csv('data/axon-dendrite.csv', header=0, index_col=0)
 
+# convert to %input
+total_inputs = pd.read_csv('data/input_counts.csv', header = 0, index_col = 0)
+
+for i in np.arange(0, len(matrix_ad.index), 1):
+    inputs = total_inputs.loc[matrix_ad.index[i] == total_inputs.index, ' dendrite_inputs'].values
+    if(inputs != 0):
+        matrix_ad.loc[:, str(matrix_ad.index[i])] = matrix_ad.loc[:, str(matrix_ad.index[i])]/inputs
+
+# %%
+
+sens_skids = []
+for i in np.arange(0, len(sensories), 1):
+    sens = sensories['name'][i]
+    sens = pymaid.get_skids_by_annotation(sens)
+    sens_skids.append(sens)
+
+sum_ORN = promat.summed_input(sens_skids[0], matrix_ad, pairs)
+sum_thermo = promat.summed_input(sens_skids[1], matrix_ad, pairs)
+sum_visual = promat.summed_input(sens_skids[2], matrix_ad, pairs)
+sum_AN = promat.summed_input(sens_skids[3], matrix_ad, pairs)
+sum_MN = promat.summed_input(sens_skids[4], matrix_ad, pairs)
+sum_PaN = promat.summed_input(sens_skids[5], matrix_ad, pairs)
+sum_vtd = promat.summed_input(sens_skids[6], matrix_ad, pairs)
+sum_A00c = promat.summed_input(sens_skids[7], matrix_ad, pairs)
+
+
+# %%
+ORN_2o = promat.identify_downstream(sum_ORN, 0.1, 0.00001)
+thermo_2o = promat.identify_downstream(sum_thermo, 0.1, 0.00001)
+visual_2o = promat.identify_downstream(sum_visual, 0.1, 0.00001)
+AN_2o = promat.identify_downstream(sum_AN, 0.1, 0.00001)
+MN_2o = promat.identify_downstream(sum_MN, 0.1, 0.00001)
+PaN_2o = promat.identify_downstream(sum_PaN, 0.1, 0.00001)
+vtd_2o = promat.identify_downstream(sum_vtd, 0.1, 0.00001)
+
+pd.DataFrame(ORN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_ORN.csv')
+pd.DataFrame(thermo_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_thermo.csv')
+pd.DataFrame(visual_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_visual.csv')
+pd.DataFrame(AN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_AN.csv')
+pd.DataFrame(MN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_MN.csv')
+#pd.DataFrame(PaN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_PaN.csv')
+pd.DataFrame(vtd_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_vtd.csv')
+
+# %%
+# identifying neurons downstream of sensories based on synapse-count
 downstream_sensories = []
 for i in np.arange(0, len(sensories), 1):
     sens = sensories['name'][i]
     sens = pymaid.get_skids_by_annotation(sens)
-    print(sens)
-    downstream_sens = downstream_search(matrix_ad, sens, 3)
+    #print(sens)
+    downstream_sens = downstream_search(matrix_ad, sens, 6)
 
     downstream_sensories.append(downstream_sens)
 
 # %%
+# outputing CSVs based on synapse-count threshold
 pd.DataFrame(downstream_sensories[0]).to_csv('identify_neuron_classes/csv/ds_ORN.csv')
 pd.DataFrame(downstream_sensories[1]).to_csv('identify_neuron_classes/csv/ds_thermo.csv')
 pd.DataFrame(downstream_sensories[2]).to_csv('identify_neuron_classes/csv/ds_visual.csv')
 pd.DataFrame(downstream_sensories[3]).to_csv('identify_neuron_classes/csv/ds_AN.csv')
 pd.DataFrame(downstream_sensories[4]).to_csv('identify_neuron_classes/csv/ds_MN.csv')
 pd.DataFrame(downstream_sensories[6]).to_csv('identify_neuron_classes/csv/ds_vtd.csv')
-
-# %%
+pd.DataFrame(downstream_sensories[7]).to_csv('identify_neuron_classes/csv/ds_A00c.csv')
