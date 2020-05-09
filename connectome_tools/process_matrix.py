@@ -55,8 +55,8 @@ def extract_pairs_from_list(skids, pairList):
 
         # delaying with non-paired neurons
         # UNTESTED
-        if (pair==0):
-            break
+        #if (pair==0):
+        #    break
 
     pairs = pd.DataFrame(pairs)
     return(pairs)
@@ -85,6 +85,9 @@ def binary_matrix(matrix_path, threshold, total_threshold):
 
 # summing input from a group of upstream neurons
 # generating DataFrame with sorted leftid, rightid, summed-input left, summed-input right
+
+# SOMETHING IS WRONG***
+# It works as local function within particular .py file, but not when called through process_matrix.py
 def summed_input(group_skids, matrix, pairList):
     submatrix = matrix.loc[group_skids, :]
     submatrix = submatrix.sum(axis = 0)
@@ -93,17 +96,16 @@ def summed_input(group_skids, matrix, pairList):
     summed_paired = []
 
     for i in range(0, len(pairList['leftid'])):
-        if(str(pairList['leftid'][i]) in submatrix.index):
-            left_identifier = str(pairList['leftid'][i])
+        if(pairList['leftid'][i] in submatrix.index):
+            left_identifier = pairList['leftid'][i]
             left_sum = submatrix.loc[left_identifier]
         
-            right_identifier = str(identify_pair(pairList['leftid'][i], pairList))
+            right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
             right_sum = submatrix.loc[right_identifier]
                 
             summed_paired.append([left_identifier, right_identifier, left_sum, right_sum])
 
     summed_paired = pd.DataFrame(summed_paired, columns= cols)
-
     return(summed_paired)
 
 # identifies downstream neurons based on summed threshold (summed left/right input) and low_threshold (required edge weight on weak side)

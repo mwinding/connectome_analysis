@@ -47,7 +47,7 @@ paired = pairs.values.flatten()
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 # pull sensory annotations and then pull associated skids
-sensories = pymaid.get_annotated('mw brain sensories')
+sensories = pymaid.get_annotated('mw brain inputs')
 
 # %%
 # signal coming from source_group, identify neurons with certain threshold
@@ -123,30 +123,67 @@ for i in np.arange(0, len(matrix_ad.index), 1):
 
 # %%
 
+def summed_input(group_skids, matrix, pairList):
+    submatrix = matrix.loc[group_skids, :]
+    submatrix = submatrix.sum(axis = 0)
+
+    cols = ['leftid', 'rightid', 'leftid_input', 'rightid_input']
+    summed_paired = []
+
+    for i in range(0, len(pairList['leftid'])):
+        if(pairList['leftid'][i] in submatrix.index):
+            left_identifier = pairList['leftid'][i]
+            left_sum = submatrix.loc[left_identifier]
+        
+            right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
+            right_sum = submatrix.loc[right_identifier]
+                
+            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum])
+
+    summed_paired = pd.DataFrame(summed_paired, columns= cols)
+    return(summed_paired)
+
+
 sens_skids = []
 for i in np.arange(0, len(sensories), 1):
     sens = sensories['name'][i]
     sens = pymaid.get_skids_by_annotation(sens)
     sens_skids.append(sens)
 
-sum_ORN = promat.summed_input(sens_skids[0], matrix_ad, pairs)
-sum_thermo = promat.summed_input(sens_skids[1], matrix_ad, pairs)
-sum_visual = promat.summed_input(sens_skids[2], matrix_ad, pairs)
-sum_AN = promat.summed_input(sens_skids[3], matrix_ad, pairs)
-sum_MN = promat.summed_input(sens_skids[4], matrix_ad, pairs)
-sum_PaN = promat.summed_input(sens_skids[5], matrix_ad, pairs)
-sum_vtd = promat.summed_input(sens_skids[6], matrix_ad, pairs)
-sum_A00c = promat.summed_input(sens_skids[7], matrix_ad, pairs)
-
+sum_ORN = summed_input(sens_skids[0], matrix_ad, pairs)
+sum_thermo = summed_input(sens_skids[1], matrix_ad, pairs)
+sum_visual = summed_input(sens_skids[2], matrix_ad, pairs)
+sum_AN = summed_input(sens_skids[3], matrix_ad, pairs)
+sum_MN = summed_input(sens_skids[4], matrix_ad, pairs)
+sum_PaN = summed_input(sens_skids[5], matrix_ad, pairs)
+sum_vtd = summed_input(sens_skids[6], matrix_ad, pairs)
+sum_A00c = summed_input(sens_skids[7], matrix_ad, pairs)
 
 # %%
-ORN_2o = promat.identify_downstream(sum_ORN, 0.1, 0.00001)
-thermo_2o = promat.identify_downstream(sum_thermo, 0.1, 0.00001)
-visual_2o = promat.identify_downstream(sum_visual, 0.1, 0.00001)
-AN_2o = promat.identify_downstream(sum_AN, 0.1, 0.00001)
-MN_2o = promat.identify_downstream(sum_MN, 0.1, 0.00001)
-PaN_2o = promat.identify_downstream(sum_PaN, 0.1, 0.00001)
-vtd_2o = promat.identify_downstream(sum_vtd, 0.1, 0.00001)
+
+def identify_downstream(sum_df, summed_threshold, low_threshold):
+downstream = []
+for i in range(0, len(sum_df['leftid'])):
+    if((sum_df['leftid_input'].iloc[i] + sum_df['rightid_input'].iloc[i])>=summed_threshold):
+
+        if(sum_df['leftid_input'].iloc[i]>sum_df['rightid_input'].iloc[i] and sum_df['rightid_input'].iloc[i]>=low_threshold):
+            downstream.append(sum_df.iloc[i])
+
+        if(sum_df['rightid_input'].iloc[i]>sum_df['leftid_input'].iloc[i] and sum_df['leftid_input'].iloc[i]>=low_threshold):
+            downstream.append(sum_df.iloc[i])
+
+    return(pd.DataFrame(downstream))
+
+
+ORN_2o = identify_downstream(sum_ORN, 0.1, 0.00001)
+thermo_2o = identify_downstream(sum_thermo, 0.1, 0.00001)
+visual_2o = identify_downstream(sum_visual, 0.1, 0.00001)
+AN_2o = identify_downstream(sum_AN, 0.1, 0.00001)
+MN_2o = identify_downstream(sum_MN, 0.1, 0.00001)
+PaN_2o = identify_downstream(sum_PaN, 0.1, 0.00001)
+vtd_2o = identify_downstream(sum_vtd, 0.1, 0.00001)
+A00c_2o = identify_downstream(sum_A00c, 0.1, 0.00001)
+
 
 pd.DataFrame(ORN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_ORN.csv')
 pd.DataFrame(thermo_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_thermo.csv')
@@ -155,6 +192,7 @@ pd.DataFrame(AN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neu
 pd.DataFrame(MN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_MN.csv')
 #pd.DataFrame(PaN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_PaN.csv')
 pd.DataFrame(vtd_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_vtd.csv')
+pd.DataFrame(A00c_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_A00c.csv')
 
 # %%
 # identifying neurons downstream of sensories based on synapse-count
