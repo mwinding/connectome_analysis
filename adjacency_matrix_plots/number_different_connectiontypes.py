@@ -41,7 +41,6 @@ print(aa_syn/total_syn)
 print(dd_syn/total_syn)
 print(da_syn/total_syn)
 
-
 # %%
 # edge numbers
 aa_bin = aa
@@ -71,5 +70,15 @@ print(ad_edge/total_edge)
 print(aa_edge/total_edge)
 print(dd_edge/total_edge)
 print(da_edge/total_edge)
+
+# %%
+# Density
+
+total_edges = len(ad.index)*len(ad.index)
+
+print(ad_edge/total_edges)
+print(aa_edge/total_edges)
+print(dd_edge/total_edges)
+print(da_edge/total_edges)
 
 # %%
