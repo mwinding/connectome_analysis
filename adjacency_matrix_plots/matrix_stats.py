@@ -54,22 +54,17 @@ print(da_edge/total_edges)
 import networkx as nx 
 
 #node_names = dict(zip(np.arange(0, len(ad.index), 1), ad.index))
+#Gad = nx.relabel_nodes(Gad, node_names)
 
 Gad = nx.DiGraph(np.matrix(ad), parallel_edges = False)
 Gaa = nx.DiGraph(np.matrix(aa), parallel_edges = False)
 Gdd = nx.DiGraph(np.matrix(dd), parallel_edges = False)
 Gda = nx.DiGraph(np.matrix(da), parallel_edges = False)
 
-#Gad = nx.relabel_nodes(Gad, node_names)
-
-#G = nx.MultiDiGraph(Gad)
-#G.add_edges_from(Gaa)
-#G.add_edges_from(Gdd)
-#G.add_edges_from(Gda)
-
-
 # %%
-# diameter of graph, i.e. longest shortest path between two vertices
+# calculating diameter of graph, i.e. longest shortest path between two vertices
+# mean shortest path
+# median shortest path
 
 from tqdm import tqdm
 
