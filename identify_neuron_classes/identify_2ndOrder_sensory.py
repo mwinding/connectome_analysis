@@ -40,7 +40,7 @@ matrix.columns = pd.to_numeric(matrix.columns)
 
 
 # import pair list CSV, manually generated
-pairs = pd.read_csv('data/pairs-2020-05-04.csv', header = 0)
+pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 paired = pairs.values.flatten()
 
 # %%
@@ -122,10 +122,10 @@ for i in np.arange(0, len(matrix_ad.index), 1):
         matrix_ad.loc[:, str(matrix_ad.index[i])] = matrix_ad.loc[:, str(matrix_ad.index[i])]/inputs
 
 # %%
-
 def summed_input(group_skids, matrix, pairList):
     submatrix = matrix.loc[group_skids, :]
     submatrix = submatrix.sum(axis = 0)
+    submatrix.index = pd.to_numeric(submatrix.index)
 
     cols = ['leftid', 'rightid', 'leftid_input', 'rightid_input']
     summed_paired = []
@@ -162,16 +162,17 @@ sum_A00c = summed_input(sens_skids[7], matrix_ad, pairs)
 # %%
 
 def identify_downstream(sum_df, summed_threshold, low_threshold):
-downstream = []
-for i in range(0, len(sum_df['leftid'])):
-    if((sum_df['leftid_input'].iloc[i] + sum_df['rightid_input'].iloc[i])>=summed_threshold):
+    downstream = []
+    for i in np.arange(0, len(sum_df['leftid']), 1):
+        if((sum_df['leftid_input'].iloc[i] + sum_df['rightid_input'].iloc[i])>=summed_threshold):
 
-        if(sum_df['leftid_input'].iloc[i]>sum_df['rightid_input'].iloc[i] and sum_df['rightid_input'].iloc[i]>=low_threshold):
-            downstream.append(sum_df.iloc[i])
+            if(sum_df['leftid_input'].iloc[i]>sum_df['rightid_input'].iloc[i] and sum_df['rightid_input'].iloc[i]>=low_threshold):
+                downstream.append(sum_df.iloc[i])
 
-        if(sum_df['rightid_input'].iloc[i]>sum_df['leftid_input'].iloc[i] and sum_df['leftid_input'].iloc[i]>=low_threshold):
-            downstream.append(sum_df.iloc[i])
+            if(sum_df['rightid_input'].iloc[i]>sum_df['leftid_input'].iloc[i] and sum_df['leftid_input'].iloc[i]>=low_threshold):
+                downstream.append(sum_df.iloc[i])
 
+        
     return(pd.DataFrame(downstream))
 
 
@@ -184,7 +185,6 @@ PaN_2o = identify_downstream(sum_PaN, 0.1, 0.00001)
 vtd_2o = identify_downstream(sum_vtd, 0.1, 0.00001)
 A00c_2o = identify_downstream(sum_A00c, 0.1, 0.00001)
 
-
 pd.DataFrame(ORN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_ORN.csv')
 pd.DataFrame(thermo_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_thermo.csv')
 pd.DataFrame(visual_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_visual.csv')
@@ -193,7 +193,7 @@ pd.DataFrame(MN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neu
 #pd.DataFrame(PaN_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_PaN.csv')
 pd.DataFrame(vtd_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_vtd.csv')
 pd.DataFrame(A00c_2o[['leftid', 'rightid']].values.flatten()).to_csv('identify_neuron_classes/csv/ds_A00c.csv')
-
+print('finish csvs')
 # %%
 # identifying neurons downstream of sensories based on synapse-count
 downstream_sensories = []
