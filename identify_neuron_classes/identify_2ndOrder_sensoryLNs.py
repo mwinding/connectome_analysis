@@ -81,12 +81,20 @@ for skid in skids:
 
 outputs = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
 
+outputs_axon = []
+for skid in skids:
+    temp = connectors[connectors['presynaptic_to'] == skid]
+    temp = temp[temp['presynaptic_type'] == 'axon']
+    #temp = temp[temp['postsynaptic_type'] == 'dendrite']
+    outputs_axon.append([skid, len(temp['connector_id'])])
+
+outputs_axon = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
+
 def intragroup_connections(matrix, sens2_skids, sens_skids, outputs):
     mat = matrix.loc[sens2_skids, sens2_skids + sens_skids]
     mat = mat.sum(axis=1)
 
     # convert to % outputs
-    # UPDATE with Ben's x,y,z input/output data
     for i in np.arange(0, len(mat.index), 1):
         axon_output = outputs.loc[outputs['skeleton_ID']==mat.index[i], 'outputs'].values
         if(axon_output != 0):
@@ -94,19 +102,29 @@ def intragroup_connections(matrix, sens2_skids, sens_skids, outputs):
 
     return(mat)
 
+# checking 50% output (all to all) intragroup
 ORN2_mat = intragroup_connections(matrix, sens2_skids[0], sens_skids[0], outputs)
 thermo2_mat = intragroup_connections(matrix, sens2_skids[1], sens_skids[1], outputs)
 photo2_mat = intragroup_connections(matrix, sens2_skids[2], sens_skids[2], outputs)
 AN2_mat = intragroup_connections(matrix, sens2_skids[3], sens_skids[3], outputs)
 MN2_mat = intragroup_connections(matrix, sens2_skids[4], sens_skids[4], outputs)
-AN2_MN2_mat = intragroup_connections(matrix, sens2_skids[3] + sens2_skids[4], sens_skids[3] + sens_skids[4], outputs)
-ORN_AN2_MN2_mat = intragroup_connections(matrix, sens2_skids[0] + sens2_skids[3] + sens2_skids[4], sens_skids[0] + sens_skids[3] + sens_skids[4], outputs)
+AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[3] + sens_skids[4]).tolist(), outputs)
+ORN_AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs)
 vtd2_mat = intragroup_connections(matrix, sens2_skids[5], sens_skids[5], outputs)
 A00c2_mat = intragroup_connections(matrix, sens2_skids[6], sens_skids[6], outputs)
 
-
+# checking 50% output from axon intragroup
+ORN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[0], sens_skids[0], outputs_axon)
+thermo2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[1], sens_skids[1], outputs_axon)
+photo2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[2], sens_skids[2], outputs_axon)
+AN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[3], sens_skids[3], outputs_axon)
+MN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[4], sens_skids[4], outputs_axon)
+AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[3] + sens_skids[4]).tolist(), outputs_axon)
+ORN_AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs_axon)
+vtd2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[5], sens_skids[5], outputs_axon)
+A00c2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[6], sens_skids[6], outputs_axon)
 # %%
-# test with known LNs in AL
+# output CSVs of each putative LN and non-LN for each sensory modality
 ORN2_mat.loc[ORN2_mat>=0.5].to_csv('identify_neuron_classes/csv/ORN_2o_LN.csv')
 ORN2_mat.loc[ORN2_mat<0.5].to_csv('identify_neuron_classes/csv/ORN_2o_nonLN.csv')
 
