@@ -146,3 +146,6 @@ thermo3_mat.loc[thermo3_mat>=0.5].to_csv('identify_neuron_classes/csv/thermo3_LN
 ORN3_mat.loc[ORN3_mat>=0.5].to_csv('identify_neuron_classes/csv/ORN3_LN.csv')
 AN3_mat.loc[AN3_mat>=0.5].to_csv('identify_neuron_classes/csv/AN3_LN.csv')
 AN_MN3_mat.loc[AN_MN3_mat>=0.5].to_csv('identify_neuron_classes/csv/AN_MN3_LN.csv')
+
+
+# %%
