@@ -80,9 +80,8 @@ sum_thermo = summed_input(sens_skids[1], matrix_ad, pairs, 'thermo')
 sum_visual = summed_input(sens_skids[2], matrix_ad, pairs, 'visual')
 sum_AN = summed_input(sens_skids[3], matrix_ad, pairs, 'AN')
 sum_MN = summed_input(sens_skids[4], matrix_ad, pairs, 'MN')
-sum_PaN = summed_input(sens_skids[5], matrix_ad, pairs, 'PaN')
-sum_vtd = summed_input(sens_skids[6], matrix_ad, pairs, 'vtd')
-sum_A00c = summed_input(sens_skids[7], matrix_ad, pairs, 'A00c')
+sum_vtd = summed_input(sens_skids[5], matrix_ad, pairs, 'vtd')
+sum_A00c = summed_input(sens_skids[6], matrix_ad, pairs, 'A00c')
 
 sensory_sum = pd.concat([sum_ORN, sum_AN.iloc[:,2:4], sum_MN.iloc[:,2:4], sum_thermo.iloc[:,2:4], sum_visual.iloc[:,2:4], sum_PaN.iloc[:,2:4], sum_vtd.iloc[:,2:4], sum_A00c.iloc[:,2:4]], axis=1)
 
@@ -91,13 +90,12 @@ sum_thermo_combined = sum_thermo.iloc[:, 2:4].sum(axis = 1)/2
 sum_visual_combined = sum_visual.iloc[:, 2:4].sum(axis = 1)/2
 sum_AN_combined = sum_AN.iloc[:, 2:4].sum(axis = 1)/2
 sum_MN_combined = sum_MN.iloc[:, 2:4].sum(axis = 1)/2
-sum_PaN_combined = sum_PaN.iloc[:, 2:4].sum(axis = 1)/2
 sum_vtd_combined = sum_vtd.iloc[:, 2:4].sum(axis = 1)/2
 sum_A00c_combined = sum_A00c.iloc[:, 2:4].sum(axis = 1)/2
 
 sensory_sum_combined = pd.concat([sum_ORN.iloc[:, 0:2], sum_ORN_combined, sum_thermo_combined,
                         sum_visual_combined, sum_AN_combined, sum_MN_combined,
-                        sum_PaN_combined, sum_vtd_combined, sum_A00c_combined], axis=1)
+                        sum_vtd_combined, sum_A00c_combined], axis=1)
 
 
 # %%
@@ -119,8 +117,8 @@ sensory_sum_combined.index = sensory_sum['leftid'].values
 uPNs = load_skids_pairs("mw uPN", pairs)
 vPNs = load_skids_pairs("mw vPN", pairs)
 tPNs = load_skids_pairs("mw tPN", pairs)
-AN_PNs = load_skids_pairs("mw AN PN putative", pairs)
-MN_PNs = load_skids_pairs("mw MN PN putative", pairs)
+AN_PNs = load_skids_pairs("mw AN PN", pairs)
+MN_PNs = load_skids_pairs("mw MN PN", pairs)
 ANMN_PNs = load_skids_pairs("mw AN_MN PN putative", pairs)
 vtd_PNs = load_skids_pairs("mw vtd PN putative", pairs)
 
@@ -147,10 +145,15 @@ fig, ax = plt.subplots(1,1,figsize=(8,4))
 sns.heatmap(np.transpose(PNs_sum.iloc[:, 2:]), ax = ax)
 
 # %%
-PNs_sum_combined.columns = ['leftid', 'rightid', 'ORN', 'thermo', 'visual', 'AN', 'MN', 'PaN', 'vtd', 'A00c']
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+PNs_sum_combined.columns = ['leftid', 'rightid', 'ORN', 'thermo', 'visual', 'AN', 'MN', 'vtd', 'A00c']
 
 fig, ax = plt.subplots(1,1,figsize=(8,4))
 
 sns.heatmap(np.transpose(PNs_sum_combined.iloc[:, 2:]), ax = ax, robust = True)
+#plt.savefig('identify_neuron_classes/plots/PNs.pdf', format='pdf', bbox_inches='tight')
 
 # %%
