@@ -15,8 +15,6 @@ sys.path.append("/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/")
 import pandas as pd
 import numpy as np
 import connectome_tools.process_matrix as promat
-import math
-import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 import pymaid
@@ -29,7 +27,6 @@ matrix_aa = pd.read_csv('data/axon-axon.csv', header=0, index_col=0)
 matrix_da = pd.read_csv('data/dendrite-axon.csv', header=0, index_col=0)
 
 matrix = matrix_ad + matrix_dd + matrix_aa + matrix_da
-
 
 # the columns are string by default and the indices int; now both are int
 matrix_ad.columns = pd.to_numeric(matrix_ad.columns)
@@ -79,7 +76,24 @@ for skid in skids:
 
 outputs_axon = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
 
-def intragroup_connections(matrix, skids, outputs):
+def sortPairs(mat, pairList):
+    cols = ['leftid', 'rightid', 'leftid_output', 'rightid_output']
+    summed_paired = []
+
+    for i in range(0, len(pairList['leftid'])):
+        if(pairList['leftid'][i] in mat.index):
+            left_identifier = pairList['leftid'][i]
+            left_sum = mat.loc[left_identifier]
+        
+            right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
+            right_sum = mat.loc[right_identifier]
+                
+            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum])
+
+    summed_paired = pd.DataFrame(summed_paired, columns= cols)
+    return(summed_paired)
+
+def intragroup_connections(matrix, skids, outputs, pairs = pairs, sort = True):
     mat = matrix.loc[skids, skids]
     mat = mat.sum(axis=1)
 
@@ -88,6 +102,9 @@ def intragroup_connections(matrix, skids, outputs):
         axon_output = outputs.loc[outputs['skeleton_ID']==mat.index[i], 'outputs'].values
         if(axon_output != 0):
             mat.loc[mat.index[i]] = mat.loc[mat.index[i]]/axon_output
+
+    if(sort):
+        mat = sortPairs(mat, pairs)
 
     return(mat)
 
@@ -103,7 +120,6 @@ AN_MN3_mat = intragroup_connections(matrix, skids3[7], outputs) # ten here
 ORN_AN3_mat = intragroup_connections(matrix, skids3[8], outputs)
 ORN_MN3_mat = intragroup_connections(matrix, skids3[9], outputs)
 
-
 # checking 50% output from axon intragroup
 A00c3_mat_ad = intragroup_connections(matrix_ad, skids3[0], outputs)
 thermo3_mat_ad = intragroup_connections(matrix_ad, skids3[1], outputs)
@@ -115,7 +131,6 @@ AN3_mat_ad = intragroup_connections(matrix_ad, skids3[6], outputs) # seven LNs h
 AN_MN3_mat_ad = intragroup_connections(matrix_ad, skids3[7], outputs) # one here; repeat from non-Ad graph
 ORN_AN3_mat_ad = intragroup_connections(matrix_ad, skids3[8], outputs)
 ORN_MN3_mat_ad = intragroup_connections(matrix_ad, skids3[9], outputs)
-
 # %%
 threshold = 0.5
 len(np.unique(A00c3_mat[A00c3_mat>=threshold].index.tolist() + 

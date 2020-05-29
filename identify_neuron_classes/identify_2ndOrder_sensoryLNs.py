@@ -90,8 +90,25 @@ for skid in skids:
 
 outputs_axon = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
 
-def intragroup_connections(matrix, sens2_skids, sens_skids, outputs):
-    mat = matrix.loc[sens2_skids, sens2_skids + sens_skids]
+def sortPairs(mat, pairList):
+    cols = ['leftid', 'rightid', 'leftid_output', 'rightid_output', 'average_output']
+    summed_paired = []
+
+    for i in range(0, len(pairList['leftid'])):
+        if(pairList['leftid'][i] in mat.index):
+            left_identifier = pairList['leftid'][i]
+            left_sum = mat.loc[left_identifier]
+        
+            right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
+            right_sum = mat.loc[right_identifier]
+                
+            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum, (left_sum + right_sum)/2])
+
+    summed_paired = pd.DataFrame(summed_paired, columns= cols)
+    return(summed_paired)
+
+def intragroup_connections(matrix, skids, sens_skids, outputs, pairs = pairs, sort = True):
+    mat = matrix.loc[skids, skids + sens_skids]
     mat = mat.sum(axis=1)
 
     # convert to % outputs
@@ -99,6 +116,9 @@ def intragroup_connections(matrix, sens2_skids, sens_skids, outputs):
         axon_output = outputs.loc[outputs['skeleton_ID']==mat.index[i], 'outputs'].values
         if(axon_output != 0):
             mat.loc[mat.index[i]] = mat.loc[mat.index[i]]/axon_output
+
+    if(sort):
+        mat = sortPairs(mat, pairs)
 
     return(mat)
 
@@ -123,6 +143,18 @@ AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[3] + se
 ORN_AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs_axon)
 vtd2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[5], sens_skids[5], outputs_axon)
 A00c2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[6], sens_skids[6], outputs_axon)
+
+# %%
+ORN2LN = ORN2_mat[ORN2_mat['average_output']>=0.5]
+thermo2LN = thermo2_mat[thermo2_mat['average_output']>=0.5]
+photo2LN = photo2_mat[photo2_mat['average_output']>=0.5]
+AN2LN = AN2_mat[AN2_mat['average_output']>=0.5]
+MN2LN = MN2_mat[MN2_mat['average_output']>=0.5]
+vtd2LN = vtd2_mat[vtd2_mat['average_output']>=0.5]
+A00c2LN = A00c2_mat[A00c2_mat['average_output']>=0.5]
+AN2_MN2LN = AN2_MN2_mat[AN2_MN2_mat['average_output']>=0.5]
+ORN2_AN2_MN2LN = ORN_AN2_MN2_mat[ORN_AN2_MN2_mat['average_output']>=0.5]
+
 # %%
 # output CSVs of each putative LN and non-LN for each sensory modality
 ORN2_mat.loc[ORN2_mat>=0.5].to_csv('identify_neuron_classes/csv/ORN_2o_LN.csv')
