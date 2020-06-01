@@ -67,28 +67,7 @@ for i in np.arange(0, len(sensories_2ndorder), 1):
 # %%
 # connections among group members
 
-# import connector list CSV
-connectors = pd.read_csv('data/connectors.csv', header=0, index_col=0)
-#connectors = connectors[~connectors['connector_id'].duplicated(keep='first')] # remove duplicated presynaptic sites
-skids = pd.unique(connectors['presynaptic_to'])
-
-outputs = []
-for skid in skids:
-    temp = connectors[connectors['presynaptic_to'] == skid]
-    #temp = temp[temp['presynaptic_type'] == 'axon']
-    #temp = temp[temp['postsynaptic_type'] == 'dendrite']
-    outputs.append([skid, len(temp['connector_id'])])
-
-outputs = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
-
-outputs_axon = []
-for skid in skids:
-    temp = connectors[connectors['presynaptic_to'] == skid]
-    temp = temp[temp['presynaptic_type'] == 'axon']
-    #temp = temp[temp['postsynaptic_type'] == 'dendrite']
-    outputs_axon.append([skid, len(temp['connector_id'])])
-
-outputs_axon = pd.DataFrame(outputs, columns = ['skeleton_ID', 'outputs'])
+outputs = pd.read_csv('data/mw_brain_matrix_skeleton_measurements.csv', header=0, index_col=0)
 
 def sortPairs(mat, pairList):
     cols = ['leftid', 'rightid', 'leftid_output', 'rightid_output', 'average_output']
@@ -113,9 +92,9 @@ def intragroup_connections(matrix, skids, sens_skids, outputs, pairs = pairs, so
 
     # convert to % outputs
     for i in np.arange(0, len(mat.index), 1):
-        axon_output = outputs.loc[outputs['skeleton_ID']==mat.index[i], 'outputs'].values
-        if(axon_output != 0):
-            mat.loc[mat.index[i]] = mat.loc[mat.index[i]]/axon_output
+        output = outputs.loc[outputs['Skeleton']==mat.index[i], 'N outputs'].values
+        if(output != 0):
+            mat.loc[mat.index[i]] = mat.loc[mat.index[i]]/output
 
     if(sort):
         mat = sortPairs(mat, pairs)
@@ -132,17 +111,6 @@ AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[3] + sens2_sk
 ORN_AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs)
 vtd2_mat = intragroup_connections(matrix, sens2_skids[5], sens_skids[5], outputs)
 A00c2_mat = intragroup_connections(matrix, sens2_skids[6], sens_skids[6], outputs)
-
-# checking 50% output from axon intragroup
-ORN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[0], sens_skids[0], outputs_axon)
-thermo2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[1], sens_skids[1], outputs_axon)
-photo2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[2], sens_skids[2], outputs_axon)
-AN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[3], sens_skids[3], outputs_axon)
-MN2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[4], sens_skids[4], outputs_axon)
-AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[3] + sens_skids[4]).tolist(), outputs_axon)
-ORN_AN2_MN2_mat_ad = intragroup_connections(matrix_ad, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs_axon)
-vtd2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[5], sens_skids[5], outputs_axon)
-A00c2_mat_ad = intragroup_connections(matrix_ad, sens2_skids[6], sens_skids[6], outputs_axon)
 
 # %%
 ORN2LN = ORN2_mat[ORN2_mat['average_output']>=0.5]
@@ -171,4 +139,15 @@ ORN2_AN2_MN2LN.to_csv('identify_neuron_classes/csv/ORN2_AN2_MN2LN.csv')
 sns.distplot(ORN2_mat['average_output'], bins = 50)
 
 
+# %%
+print('Percent LNs per modality (2nd-order)\nORN: %f\nthermo: %f\nphoto: %f\nAN: %f\nMN: %f\nvtd2: %f\nA00c2: %f\n'
+    %(len(ORN2LN)/len(ORN2_mat)*100,
+    len(thermo2LN)/len(thermo2_mat)*100,
+    len(photo2LN)/len(photo2_mat)*100,
+    len(AN2LN)/len(AN2_mat)*100,
+    len(MN2LN)/len(MN2_mat)*100,
+    len(vtd2LN)/len(vtd2_mat)*100,
+    len(A00c2LN)/len(A00c2_mat)*100))
+
+print('Number of ORN2_AN2_MN2 local neurons: %i' %len(ORN2_AN2_MN2LN))
 # %%
