@@ -157,37 +157,18 @@ ORN2_AN2_MN2LN = ORN_AN2_MN2_mat[ORN_AN2_MN2_mat['average_output']>=0.5]
 
 # %%
 # output CSVs of each putative LN and non-LN for each sensory modality
-ORN2_mat.loc[ORN2_mat>=0.5].to_csv('identify_neuron_classes/csv/ORN_2o_LN.csv')
-ORN2_mat.loc[ORN2_mat<0.5].to_csv('identify_neuron_classes/csv/ORN_2o_nonLN.csv')
-
-thermo2_mat.loc[thermo2_mat>=0.5].to_csv('identify_neuron_classes/csv/thermo_2o_LN.csv')
-thermo2_mat.loc[thermo2_mat<0.5].to_csv('identify_neuron_classes/csv/thermo_2o_nonLN.csv')
-
-photo2_mat.loc[photo2_mat>=0.5].to_csv('identify_neuron_classes/csv/photo_2o_LN.csv')
-photo2_mat.loc[photo2_mat<0.5].to_csv('identify_neuron_classes/csv/photo_2o_nonLN.csv')
-
-AN2_mat.loc[AN2_mat>=0.5].to_csv('identify_neuron_classes/csv/AN_2o_LN.csv')
-AN2_mat.loc[AN2_mat<0.5].to_csv('identify_neuron_classes/csv/AN_2o_nonLN.csv')
-
-MN2_mat.loc[MN2_mat>=0.5].to_csv('identify_neuron_classes/csv/MN_2o_LN.csv')
-MN2_mat.loc[MN2_mat<0.5].to_csv('identify_neuron_classes/csv/MN_2o_nonLN.csv')
-
-AN2_MN2_mat.loc[AN2_MN2_mat>=0.5].to_csv('identify_neuron_classes/csv/AN_MN_2o_LN.csv')
-AN2_MN2_mat.loc[AN2_MN2_mat<0.5].to_csv('identify_neuron_classes/csv/AN_MN_2o_nonLN.csv')
-
-ORN_AN2_MN2_mat.loc[ORN_AN2_MN2_mat>=0.5].to_csv('identify_neuron_classes/csv/ORN_AN_MN_2o_LN.csv')
-ORN_AN2_MN2_mat.loc[ORN_AN2_MN2_mat<0.5].to_csv('identify_neuron_classes/csv/ORN_AN_MN_2o_nonLN.csv')
-
-vtd2_mat.loc[vtd2_mat>=0.5].to_csv('identify_neuron_classes/csv/vtd_2o_LN.csv')
-vtd2_mat.loc[vtd2_mat<0.5].to_csv('identify_neuron_classes/csv/vtd_2o_nonLN.csv')
-
-A00c2_mat.loc[A00c2_mat>=0.5].to_csv('identify_neuron_classes/csv/A00c_2o_LN.csv')
-A00c2_mat.loc[A00c2_mat<0.5].to_csv('identify_neuron_classes/csv/A00c_2o_nonLN.csv')
-# %%
-sns.distplot(ORN_AN2_MN2_mat, bins = 50)
+ORN2LN.to_csv('identify_neuron_classes/csv/ORN2LN.csv')
+thermo2LN.to_csv('identify_neuron_classes/csv/thermo2LN.csv')
+photo2LN.to_csv('identify_neuron_classes/csv/photo2LN.csv')
+AN2LN.to_csv('identify_neuron_classes/csv/AN2LN.csv')
+MN2LN.to_csv('identify_neuron_classes/csv/MN2LN.csv')
+vtd2LN.to_csv('identify_neuron_classes/csv/vtd2LN.csv')
+A00c2LN.to_csv('identify_neuron_classes/csv/A00c2LN.csv')
+AN2_MN2LN.to_csv('identify_neuron_classes/csv/AN2_MN2LN.csv')
+ORN2_AN2_MN2LN.to_csv('identify_neuron_classes/csv/ORN2_AN2_MN2LN.csv')
 
 # %%
-sns.distplot(ORN2_mat, bins = 50)
+sns.distplot(ORN2_mat['average_output'], bins = 50)
 
 
 # %%
