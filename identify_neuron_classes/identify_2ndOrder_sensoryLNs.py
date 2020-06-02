@@ -28,15 +28,14 @@ matrix_dd = pd.read_csv('data/dendrite-dendrite.csv', header=0, index_col=0)
 matrix_aa = pd.read_csv('data/axon-axon.csv', header=0, index_col=0)
 matrix_da = pd.read_csv('data/dendrite-axon.csv', header=0, index_col=0)
 
-matrix = matrix_ad + matrix_dd + matrix_aa + matrix_da
-
-
 # the columns are string by default and the indices int; now both are int
 matrix_ad.columns = pd.to_numeric(matrix_ad.columns)
 matrix_dd.columns = pd.to_numeric(matrix_dd.columns)
 matrix_aa.columns = pd.to_numeric(matrix_aa.columns)
 matrix_da.columns = pd.to_numeric(matrix_da.columns)
-matrix.columns = pd.to_numeric(matrix.columns)
+
+matrix = matrix_ad + matrix_dd + matrix_aa + matrix_da
+matrix_axon = matrix_aa + matrix_da
 
 
 # import pair list CSV, manually generated
@@ -86,8 +85,8 @@ def sortPairs(mat, pairList):
     summed_paired = pd.DataFrame(summed_paired, columns= cols)
     return(summed_paired)
 
-def intragroup_connections(matrix, skids, sens_skids, outputs, pairs = pairs, sort = True):
-    mat = matrix.loc[skids, skids + sens_skids]
+def intragroup_connections(matrix, skids, input_skids, outputs, pairs = pairs, sort = True):
+    mat = matrix.loc[skids, skids + input_skids]
     mat = mat.sum(axis=1)
 
     # convert to % outputs
@@ -101,16 +100,38 @@ def intragroup_connections(matrix, skids, sens_skids, outputs, pairs = pairs, so
 
     return(mat)
 
+def intragroup_connections2(matrix, matrix_axon, skids, input_skids, outputs, pairs = pairs, sort = True):
+    mat = matrix.loc[skids, skids]
+    mat = mat.sum(axis=1)
+
+    mat_axon = matrix_axon.loc[skids, input_skids]
+    mat_axon = mat_axon.sum(axis=1)
+
+    # convert to % outputs
+    for i in np.arange(0, len(mat.index), 1):
+        output = outputs.loc[outputs['Skeleton']==mat.index[i], 'N outputs'].values
+        if(output != 0):
+            mat.loc[mat.index[i]] = mat.loc[mat.index[i]]/output
+            mat_axon.loc[mat.index[i]] = mat_axon.loc[mat.index[i]]/output
+
+            #combining outputs to axons of this layer's input neurons and all->all connections intragroup
+            mat_combo = mat + mat_axon
+
+    if(sort):
+        mat = sortPairs(mat_combo, pairs)
+
+    return(mat)
+
 # checking 50% output (all to all) intragroup
-ORN2_mat = intragroup_connections(matrix, sens2_skids[0], sens_skids[0], outputs)
-thermo2_mat = intragroup_connections(matrix, sens2_skids[1], sens_skids[1], outputs)
-photo2_mat = intragroup_connections(matrix, sens2_skids[2], sens_skids[2], outputs)
-AN2_mat = intragroup_connections(matrix, sens2_skids[3], sens_skids[3], outputs)
-MN2_mat = intragroup_connections(matrix, sens2_skids[4], sens_skids[4], outputs)
-AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[3] + sens_skids[4]).tolist(), outputs)
-ORN_AN2_MN2_mat = intragroup_connections(matrix, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs)
-vtd2_mat = intragroup_connections(matrix, sens2_skids[5], sens_skids[5], outputs)
-A00c2_mat = intragroup_connections(matrix, sens2_skids[6], sens_skids[6], outputs)
+ORN2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[0], sens_skids[0], outputs)
+thermo2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[1], sens_skids[1], outputs)
+photo2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[2], sens_skids[2], outputs)
+AN2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[3], sens_skids[3], outputs)
+MN2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[4], sens_skids[4], outputs)
+AN2_MN2_mat = intragroup_connections2(matrix, matrix_axon, np.unique(sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[3] + sens_skids[4]).tolist(), outputs)
+ORN_AN2_MN2_mat = intragroup_connections2(matrix, matrix_axon, np.unique(sens2_skids[0] + sens2_skids[3] + sens2_skids[4]).tolist(), np.unique(sens_skids[0] + sens_skids[3] + sens_skids[4]).tolist(), outputs)
+vtd2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[5], sens_skids[5], outputs)
+A00c2_mat = intragroup_connections2(matrix, matrix_axon, sens2_skids[6], sens_skids[6], outputs)
 
 # %%
 ORN2LN = ORN2_mat[ORN2_mat['average_output']>=0.5]
@@ -125,15 +146,15 @@ ORN2_AN2_MN2LN = ORN_AN2_MN2_mat[ORN_AN2_MN2_mat['average_output']>=0.5]
 
 # %%
 # output CSVs of each putative LN and non-LN for each sensory modality
-ORN2LN.to_csv('identify_neuron_classes/csv/ORN2LN.csv')
-thermo2LN.to_csv('identify_neuron_classes/csv/thermo2LN.csv')
-photo2LN.to_csv('identify_neuron_classes/csv/photo2LN.csv')
-AN2LN.to_csv('identify_neuron_classes/csv/AN2LN.csv')
-MN2LN.to_csv('identify_neuron_classes/csv/MN2LN.csv')
-vtd2LN.to_csv('identify_neuron_classes/csv/vtd2LN.csv')
-A00c2LN.to_csv('identify_neuron_classes/csv/A00c2LN.csv')
-AN2_MN2LN.to_csv('identify_neuron_classes/csv/AN2_MN2LN.csv')
-ORN2_AN2_MN2LN.to_csv('identify_neuron_classes/csv/ORN2_AN2_MN2LN.csv')
+ORN2LN.to_csv('identify_neuron_classes/csv/order2LN_ORN.csv')
+thermo2LN.to_csv('identify_neuron_classes/csv/order2LN_thermo.csv')
+photo2LN.to_csv('identify_neuron_classes/csv/order2LN_photo.csv')
+AN2LN.to_csv('identify_neuron_classes/csv/order2LN_AN.csv')
+MN2LN.to_csv('identify_neuron_classes/csv/order2LN_MN.csv')
+vtd2LN.to_csv('identify_neuron_classes/csv/order2LN_vtd.csv')
+A00c2LN.to_csv('identify_neuron_classes/csv/order2LN_A00c.csv')
+AN2_MN2LN.to_csv('identify_neuron_classes/csv/order2LN_AN_MN.csv')
+ORN2_AN2_MN2LN.to_csv('identify_neuron_classes/csv/order2LN_ORN_AN_MN.csv')
 
 # %%
 sns.distplot(ORN2_mat['average_output'], bins = 50)
