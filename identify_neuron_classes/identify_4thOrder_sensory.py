@@ -38,7 +38,6 @@ matrix_aa.columns = pd.to_numeric(matrix_aa.columns)
 matrix_da.columns = pd.to_numeric(matrix_da.columns)
 matrix.columns = pd.to_numeric(matrix.columns)
 
-
 # import pair list CSV, manually generated
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 paired = pairs.values.flatten()
@@ -47,7 +46,7 @@ paired = pairs.values.flatten()
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 # pull sensory annotations and then pull associated skids
-order3 = pymaid.get_annotated('mw brain inputs 3rd_order')
+order3 = pymaid.get_annotated('mw brain inputs 3rd_order PN')
 
 # %%
 # identifying neurons downstream of sensories based on percent-input
@@ -67,7 +66,7 @@ def summed_input(group_skids, matrix, pairList):
     submatrix = submatrix.sum(axis = 0)
     submatrix.index = pd.to_numeric(submatrix.index)
 
-    cols = ['leftid', 'rightid', 'leftid_input', 'rightid_input']
+    cols = ['leftid', 'rightid', 'leftid_input', 'rightid_input', 'average_input']
     summed_paired = []
 
     for i in range(0, len(pairList['leftid'])):
@@ -78,7 +77,7 @@ def summed_input(group_skids, matrix, pairList):
             right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
             right_sum = submatrix.loc[right_identifier]
                 
-            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum])
+            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum, (left_sum + right_sum)/2])
 
     summed_paired = pd.DataFrame(summed_paired, columns= cols)
     return(summed_paired)
@@ -91,70 +90,51 @@ for i in np.arange(0, len(order3), 1):
     order3_skids.append(sens)
 
 sum_A00c3 = summed_input(order3_skids[0], matrix_ad, pairs)
-sum_thermo3 = summed_input(order3_skids[1], matrix_ad, pairs)
+sum_MN3 = summed_input(order3_skids[1], matrix_ad, pairs)
 sum_photo3 = summed_input(order3_skids[2], matrix_ad, pairs)
 sum_vtd3 = summed_input(order3_skids[3], matrix_ad, pairs)
-sum_ORN3 = summed_input(order3_skids[4], matrix_ad, pairs)
-sum_MN3 = summed_input(order3_skids[5], matrix_ad, pairs)
-sum_AN3 = summed_input(order3_skids[6], matrix_ad, pairs)
-sum_AN_MN3 = summed_input(order3_skids[7], matrix_ad, pairs)
-sum_ORN_AN3 = summed_input(order3_skids[8], matrix_ad, pairs)
-sum_ORN_MN3 = summed_input(order3_skids[9], matrix_ad, pairs)
+sum_AN3 = summed_input(order3_skids[4], matrix_ad, pairs)
+sum_ORN3 = summed_input(order3_skids[5], matrix_ad, pairs)
+sum_thermo3 = summed_input(order3_skids[6], matrix_ad, pairs)
+
+#sum_AN_MN3 = summed_input(order3_skids[7], matrix_ad, pairs)
+#sum_ORN_AN3 = summed_input(order3_skids[8], matrix_ad, pairs)
+#sum_ORN_MN3 = summed_input(order3_skids[9], matrix_ad, pairs)
+
+data = [sum_AN3['leftid'], sum_AN3['rightid'], sum_AN3['average_input'],
+                                                sum_MN3['average_input'],
+                                                sum_ORN3['average_input'],
+                                                sum_thermo3['average_input'],
+                                                sum_vtd3['average_input'],
+                                                sum_A00c3['average_input'],
+                                                sum_photo3['average_input']]
+headers = ["leftid", "rightid", "AN", "MN", "ORN","thermo", "vtd", "A00c", "photo"]
+input_all = pd.concat(data, axis=1, keys=headers)
+
+
+# use threshold to identify neurons
+threshold = 0.05
+
+thermo4 = input_all.loc[(input_all['thermo']>=threshold) & (sum_thermo3['leftid_input']>0) & (sum_thermo3['rightid_input']>0)]
+photo4 = input_all.loc[(input_all['photo']>=threshold) & (sum_photo3['leftid_input']>0) & (sum_photo3['rightid_input']>0)]
+vtd4 = input_all.loc[(input_all['vtd']>=threshold) & (sum_vtd3['leftid_input']>0) & (sum_vtd3['rightid_input']>0)]
+A00c4 = input_all.loc[(input_all['A00c']>=threshold) & (sum_A00c3['leftid_input']>0) & (sum_A00c3['rightid_input']>0)]
+AN4 = input_all.loc[(input_all['AN']>=threshold) & (sum_AN3['leftid_input']>0) & (sum_AN3['rightid_input']>0)]
+MN4 = input_all.loc[(input_all['MN']>=threshold) & (sum_MN3['leftid_input']>0) & (sum_MN3['rightid_input']>0)]
+ORN4 = input_all.loc[(input_all['ORN']>=threshold) & (sum_ORN3['leftid_input']>0) & (sum_ORN3['rightid_input']>0)]
+
+input_all4 = input_all.sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False])
+sns.heatmap(input_all4.iloc[:, 2:9], cmap = 'Reds')
+
 
 # %%
-def identify_downstream(sum_df, summed_threshold, low_threshold):
-    downstream = []
-    for i in np.arange(0, len(sum_df['leftid']), 1):
-        if((sum_df['leftid_input'].iloc[i] + sum_df['rightid_input'].iloc[i])>=summed_threshold):
-
-            if(sum_df['leftid_input'].iloc[i]>sum_df['rightid_input'].iloc[i] and sum_df['rightid_input'].iloc[i]>=low_threshold):
-                downstream.append(sum_df.iloc[i])
-
-            if(sum_df['rightid_input'].iloc[i]>sum_df['leftid_input'].iloc[i] and sum_df['leftid_input'].iloc[i]>=low_threshold):
-                downstream.append(sum_df.iloc[i])
-
-        
-    return(pd.DataFrame(downstream))
-
-A00c_4o = identify_downstream(sum_A00c3, 0.1, 0.00001)
-thermo_4o = identify_downstream(sum_thermo3, 0.1, 0.00001)
-photo_4o = identify_downstream(sum_photo3, 0.1, 0.00001)
-vtd_4o = identify_downstream(sum_vtd3, 0.1, 0.00001)
-ORN_4o = identify_downstream(sum_ORN3, 0.1, 0.00001)
-MN_4o = identify_downstream(sum_MN3, 0.1, 0.00001)
-AN_4o = identify_downstream(sum_AN3, 0.1, 0.00001)
-AN_MN_4o = identify_downstream(sum_AN_MN3, 0.1, 0.00001)
-ORN_AN_4o = identify_downstream(sum_ORN_AN3, 0.1, 0.00001)
-ORN_MN_4o = identify_downstream(sum_ORN_MN3, 0.1, 0.00001)
-
-# %%
-# investigate numbers of modalities
-
-A00c4_skids = A00c_4o[['leftid', 'rightid']].values.flatten().tolist()
-thermo4_skids = thermo_4o[['leftid', 'rightid']].values.flatten().tolist()
-photo4_skids = photo_4o[['leftid', 'rightid']].values.flatten().tolist()
-vtd4_skids = vtd_4o[['leftid', 'rightid']].values.flatten().tolist()
-ORN4_skids = ORN_4o[['leftid', 'rightid']].values.flatten().tolist()
-MN4_skids = MN_4o[['leftid', 'rightid']].values.flatten().tolist()
-AN4_skids = AN_4o[['leftid', 'rightid']].values.flatten().tolist()
-ANMN4_skids = AN_MN_4o[['leftid', 'rightid']].values.flatten().tolist()
-ORNAN4_skids = ORN_AN_4o[['leftid', 'rightid']].values.flatten().tolist()
-ORNMN4_skids = ORN_MN_4o[['leftid', 'rightid']].values.flatten().tolist()
-
-mixed_skids = np.unique(ANMN4_skids + ORNAN4_skids + ORNMN4_skids).tolist()
-all_skids = np.unique(A00c4_skids + thermo4_skids + photo4_skids + ORN4_skids + MN4_skids + AN4_skids + ANMN4_skids + ORNAN4_skids + ORNMN4_skids).tolist()
-
-print('Number of skids per 4th-order input category\nA00c: %i\nthermo: %i\nphoto: %i\nvtd: %i\nORN: %i\nMN: %i\nAN: %i\nMixed: %i\nAll: %i' 
-        %(len(A00c4_skids), len(thermo4_skids), len(photo4_skids), len(vtd4_skids), len(ORN4_skids), len(MN4_skids), len(AN4_skids), len(mixed_skids), len(all_skids)))
-# %%
-# output CSVs for 4th order neurons
-pd.DataFrame(A00c4_skids).to_csv('identify_neuron_classes/csv/4o_A00c.csv')
-pd.DataFrame(thermo4_skids).to_csv('identify_neuron_classes/csv/4o_thermo.csv')
-pd.DataFrame(photo4_skids).to_csv('identify_neuron_classes/csv/4o_photo.csv')
-pd.DataFrame(vtd4_skids).to_csv('identify_neuron_classes/csv/4o_vtd.csv')
-pd.DataFrame(ORN4_skids).to_csv('identify_neuron_classes/csv/4o_ORN.csv')
-pd.DataFrame(MN4_skids).to_csv('identify_neuron_classes/csv/4o_MN.csv')
-pd.DataFrame(AN4_skids).to_csv('identify_neuron_classes/csv/4o_AN.csv')
-pd.DataFrame(mixed_skids).to_csv('identify_neuron_classes/csv/4o_mixed_MN_AN_ORN.csv')
+# output CSVs 
+ORN4.to_csv('identify_neuron_classes/csv/order4_ORN.csv')
+thermo4.to_csv('identify_neuron_classes/csv/order4_thermo.csv')
+photo4.to_csv('identify_neuron_classes/csv/order4_photo.csv')
+AN4.to_csv('identify_neuron_classes/csv/order4_AN.csv')
+MN4.to_csv('identify_neuron_classes/csv/order4_MN.csv')
+vtd4.to_csv('identify_neuron_classes/csv/order4_vtd.csv')
+A00c4.to_csv('identify_neuron_classes/csv/order4_A00c.csv')
 
 # %%
