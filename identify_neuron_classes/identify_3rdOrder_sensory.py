@@ -88,52 +88,6 @@ for i in np.arange(0, len(order2), 1):
     sens = pymaid.get_skids_by_annotation(sens)
     order2_skids.append(sens)
 
-sum_ORN2 = summed_input(order2_skids[0], matrix_ad, pairs)
-sum_AN2 = summed_input(order2_skids[1], matrix_ad, pairs)
-sum_MN2 = summed_input(order2_skids[2], matrix_ad, pairs)
-sum_vtd2 = summed_input(order2_skids[3], matrix_ad, pairs)
-sum_thermo2 = summed_input(order2_skids[4], matrix_ad, pairs)
-sum_photo2 = summed_input(order2_skids[5], matrix_ad, pairs)
-sum_A00c2 = summed_input(order2_skids[6], matrix_ad, pairs)
-
-data = [sum_AN2['leftid'], sum_AN2['rightid'], sum_AN2['average_input'],
-                                                sum_MN2['average_input'],
-                                                sum_ORN2['average_input'],
-                                                sum_thermo2['average_input'],
-                                                sum_vtd2['average_input'],
-                                                sum_A00c2['average_input'],
-                                                sum_photo2['average_input']]
-headers = ["leftid", "rightid", "AN", "MN", "ORN", "thermo", "vtd", "A00c", "photo"]
-input_all = pd.concat(data, axis=1, keys=headers)
-# %%
-threshold = 0.05
-
-#ORN3 = input_all.loc[(input_all['ORN']>=threshold) & (sum_ORN2['leftid_input']>0) & (sum_ORN2['rightid_input']>0)]
-thermo3 = input_all.loc[(input_all['thermo']>=threshold) & (sum_thermo2['leftid_input']>0) & (sum_thermo2['rightid_input']>0)]
-photo3 = input_all.loc[(input_all['photo']>=threshold) & (sum_photo2['leftid_input']>0) & (sum_photo2['rightid_input']>0)]
-#AN3 = input_all.loc[(input_all['AN']>=threshold) & (sum_AN2['leftid_input']>0) & (sum_AN2['rightid_input']>0)]
-#MN3 = input_all.loc[(input_all['MN']>=threshold) & (sum_MN2['leftid_input']>0) & (sum_MN2['rightid_input']>0)]
-vtd3 = input_all.loc[(input_all['vtd']>=threshold) & (sum_vtd2['leftid_input']>0) & (sum_vtd2['rightid_input']>0)]
-A00c3 = input_all.loc[(input_all['A00c']>=threshold) & (sum_A00c2['leftid_input']>0) & (sum_A00c2['rightid_input']>0)]
-
-#all_index = ORN3.index.values.tolist() + thermo3.index.values.tolist() + photo3.index.values.tolist() + AN3.index.values.tolist() + MN3.index.values.tolist() + vtd3.index.values.tolist() + A00c3.index.values.tolist() 
-#all_index = np.unique(all_index)
-
-#all3 = input_all.iloc[all_index, :]
-
-# sorting data by %input
-#ORN3 = ORN3.loc[ORN3['ORN'].sort_values(ascending=False).index, :]
-thermo3 = thermo3.loc[thermo3['thermo'].sort_values(ascending=False).index, :]
-photo3 = photo3.loc[photo3['photo'].sort_values(ascending=False).index, :]
-#AN3 = AN3.loc[AN3['AN'].sort_values(ascending=False).index, :]
-#MN3 = MN3.loc[MN3['MN'].sort_values(ascending=False).index, :]
-vtd3 = vtd3.loc[vtd3['vtd'].sort_values(ascending=False).index, :]
-A00c3 = A00c3.loc[A00c3['A00c'].sort_values(ascending=False).index, :]
-
-#all3 = all3.sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False])
-#input_all3 = input_all.sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False])
-#sns.heatmap(input_all3.iloc[:, 2:9], cmap = 'Reds')
-
 # the AN/MN/ORN groups are too big
 # below I rerun using PNs only
 # %%
@@ -146,30 +100,24 @@ ORN_PN = pymaid.get_skids_by_annotation("mw ORN 2nd_order PN")
 AN_PN = pymaid.get_skids_by_annotation("mw AN 2nd_order PN")
 MN_PN = pymaid.get_skids_by_annotation("mw MN 2nd_order PN")
 three_PNtypes = np.unique(ORN_PN + AN_PN + MN_PN).tolist()
+mixed_PN = np.setdiff1d(three_PNtypes, np.unique(ORN_PNonly + AN_PNonly + MN_PNonly))
 
 # mixed PN skids
 ORN_AN_PN = np.intersect1d(ORN_PN, AN_PN).tolist()
 MN_AN_PN = np.intersect1d(MN_PN, AN_PN).tolist()
 ORN_MN_PN = np.intersect1d(ORN_PN, MN_PN).tolist()
-mixed_PN = np.unique(ORN_AN_PN + MN_AN_PN + ORN_MN_PN).tolist()
 
+sum_vtd2 = summed_input(order2_skids[2], matrix_ad, pairs)
+sum_thermo2 = summed_input(order2_skids[3], matrix_ad, pairs)
+sum_photo2 = summed_input(order2_skids[4], matrix_ad, pairs)
+sum_A00c2 = summed_input(order2_skids[5], matrix_ad, pairs)
 sum_AN2 = summed_input(AN_PNonly, matrix_ad, pairs)
 sum_MN2 = summed_input(MN_PNonly, matrix_ad, pairs)
 sum_ORN2 = summed_input(ORN_PNonly, matrix_ad, pairs)
 sum_AN_MN_ORN2 = summed_input(mixed_PN, matrix_ad, pairs)
-sum_ORN_AN2 = summed_input(ORN_AN_PN, matrix_ad, pairs)
-sum_MN_AN2 = summed_input(MN_AN_PN, matrix_ad, pairs)
-sum_ORN_MN2 = summed_input(ORN_MN_PN, matrix_ad, pairs)
-
-threshold = 0.05
-
-AN3 = input_all.loc[(input_all['ORN']>=threshold) & (sum_ORN2['leftid_input']>0) & (sum_ORN2['rightid_input']>0)]
-MN3 = input_all.loc[(input_all['thermo']>=threshold) & (sum_thermo2['leftid_input']>0) & (sum_thermo2['rightid_input']>0)]
-ORN3 = input_all.loc[(input_all['photo']>=threshold) & (sum_photo2['leftid_input']>0) & (sum_photo2['rightid_input']>0)]
-AN_MN_ORN3 = input_all.loc[(input_all['AN']>=threshold) & (sum_AN2['leftid_input']>0) & (sum_AN2['rightid_input']>0)]
-ORN_AN3 = input_all.loc[(input_all['MN']>=threshold) & (sum_MN2['leftid_input']>0) & (sum_MN2['rightid_input']>0)]
-MN_AN3 = input_all.loc[(input_all['vtd']>=threshold) & (sum_vtd2['leftid_input']>0) & (sum_vtd2['rightid_input']>0)]
-ORN_MN3 = input_all.loc[(input_all['A00c']>=threshold) & (sum_A00c2['leftid_input']>0) & (sum_A00c2['rightid_input']>0)]
+#sum_ORN_AN2 = summed_input(ORN_AN_PN, matrix_ad, pairs)
+#sum_MN_AN2 = summed_input(MN_AN_PN, matrix_ad, pairs)
+#sum_ORN_MN2 = summed_input(ORN_MN_PN, matrix_ad, pairs)
 
 data = [sum_AN2['leftid'], sum_AN2['rightid'], sum_AN2['average_input'],
                                                 sum_MN2['average_input'],
@@ -182,10 +130,19 @@ data = [sum_AN2['leftid'], sum_AN2['rightid'], sum_AN2['average_input'],
 headers = ["leftid", "rightid", "AN", "MN", "ORN", "AN_MN_ORN","thermo", "vtd", "A00c", "photo"]
 input_all = pd.concat(data, axis=1, keys=headers)
 
-all_index = ORN3.index.values.tolist() + thermo3.index.values.tolist() + photo3.index.values.tolist() + AN3.index.values.tolist() + MN3.index.values.tolist() + vtd3.index.values.tolist() + A00c3.index.values.tolist() + AN_MN_ORN3.index.values.tolist()
-all_index = np.unique(all_index)
 
-input_all3 = input_all.sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False])
+threshold = 0.05
+
+thermo3 = input_all.loc[(input_all['thermo']>=threshold) & (sum_thermo2['leftid_input']>0) & (sum_thermo2['rightid_input']>0)]
+photo3 = input_all.loc[(input_all['photo']>=threshold) & (sum_photo2['leftid_input']>0) & (sum_photo2['rightid_input']>0)]
+vtd3 = input_all.loc[(input_all['vtd']>=threshold) & (sum_vtd2['leftid_input']>0) & (sum_vtd2['rightid_input']>0)]
+A00c3 = input_all.loc[(input_all['A00c']>=threshold) & (sum_A00c2['leftid_input']>0) & (sum_A00c2['rightid_input']>0)]
+AN3 = input_all.loc[(input_all['AN']>=threshold) & (sum_AN2['leftid_input']>0) & (sum_AN2['rightid_input']>0)]
+MN3 = input_all.loc[(input_all['MN']>=threshold) & (sum_MN2['leftid_input']>0) & (sum_MN2['rightid_input']>0)]
+ORN3 = input_all.loc[(input_all['ORN']>=threshold) & (sum_ORN2['leftid_input']>0) & (sum_ORN2['rightid_input']>0)]
+AN_MN_ORN3 = input_all.loc[(input_all['AN_MN_ORN']>=threshold) & (sum_AN_MN_ORN2['leftid_input']>0) & (sum_AN_MN_ORN2['rightid_input']>0)]
+
+input_all3 = input_all.sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c', 'AN_MN_ORN'], ascending=[False, False, False, False, False, False, False, False])
 sns.heatmap(input_all3.iloc[:, 2:9], cmap = 'Reds')
 # %%
 # output CSVs 
@@ -197,5 +154,6 @@ MN3.to_csv('identify_neuron_classes/csv/order3_MN.csv')
 vtd3.to_csv('identify_neuron_classes/csv/order3_vtd.csv')
 A00c3.to_csv('identify_neuron_classes/csv/order3_A00c.csv')
 AN_MN_ORN3.to_csv('identify_neuron_classes/csv/order3_AN_MN_ORN.csv')
+# perhaps more can be done with this category, AN_MN vs MN_ORN vs AN_MN vs AN_ORN vs MN_AN_ORN?
 
 # %%

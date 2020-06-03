@@ -15,7 +15,6 @@ sys.path.append("/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/")
 import pandas as pd
 import numpy as np
 import connectome_tools.process_matrix as promat
-import math
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -36,7 +35,6 @@ matrix_da.columns = pd.to_numeric(matrix_da.columns)
 
 matrix = matrix_ad + matrix_dd + matrix_aa + matrix_da
 matrix_axon = matrix_aa + matrix_da
-
 
 # import pair list CSV, manually generated
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
