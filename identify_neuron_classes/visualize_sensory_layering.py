@@ -50,37 +50,40 @@ order2 = pymaid.get_annotated('mw brain inputs 2nd_order')
 order3 = pymaid.get_annotated('mw brain inputs 3rd_order')
 order4 = pymaid.get_annotated('mw brain inputs 4th_order')
 
-inputs = inputs.iloc[[3,4,0,1,5,6,2],]
-order3 = order3.iloc[[6, 5, 4, 1, 3, 0, 2, 7, 8, 9],]
-order4 = order4.iloc[[1, 2, 3, 5, 6, 0, 4, 7],]
+inputs = inputs['name'].sort_values()
+order2 = order2['name'].sort_values()
+order3 = order3['name'].sort_values()
+order4 = order4['name'].sort_values()
 
-inputs.index = np.arange(0, len(inputs['name']), 1) # reset indices
-order3.index = np.arange(0, len(order3['name']), 1) # reset indices
-order4.index = np.arange(0, len(order4['name']), 1) # reset indices
+inputs.index = np.arange(0, len(inputs), 1) # reset indices
+order2.index = np.arange(0, len(order2), 1) # reset indices
+order3.index = np.arange(0, len(order3), 1) # reset indices
+order4.index = np.arange(0, len(order4), 1) # reset indices
 
 input_skids = []
 for i in np.arange(0, len(inputs), 1):
-    input_skid = inputs['name'][i]
+    input_skid = inputs[i]
     input_skid = pymaid.get_skids_by_annotation(input_skid)
     input_skids.append(input_skid)
 
 order2_skids = []
 for i in np.arange(0, len(order2), 1):
-    order2_skid = order2['name'][i]
+    order2_skid = order2[i]
     order2_skid = pymaid.get_skids_by_annotation(order2_skid)
     order2_skids.append(order2_skid)
 
 order3_skids = []
 for i in np.arange(0, len(order3), 1):
-    order3_skid = order3['name'][i]
+    order3_skid = order3[i]
     order3_skid = pymaid.get_skids_by_annotation(order3_skid)
     order3_skids.append(order3_skid)
 
 order4_skids = []
 for i in np.arange(0, len(order4), 1):
-    order4_skid = order4['name'][i]
+    order4_skid = order4[i]
     order4_skid = pymaid.get_skids_by_annotation(order4_skid)
     order4_skids.append(order4_skid)
+    
 # %%
 def membership(list1, list2):
     set1 = set(list1)
@@ -114,5 +117,70 @@ fig, ax = plt.subplots(1,1,figsize=(8,4))
 order4_dict = dict(AN=order4_skids[0], MN = order4_skids[1], ORN = order4_skids[2], photo = order4_skids[6], vtd = order4_skids[4], thermo = order4_skids[3], A00c = order4_skids[5])
 plot(from_contents(order4_dict), sort_by = 'cardinality', sort_categories_by = None)
 plt.savefig('identify_neuron_classes/plots/input4.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# number of LNs, PNs, descending each layer
+
+# import different PNs
+order2PN = pymaid.get_annotated('mw brain inputs 2nd_order PN')
+order3PN = pymaid.get_annotated('mw brain inputs 3rd_order PN')
+# order4PN
+
+order2PN = order2PN['name'].sort_values()
+order3PN = order3PN['name'].sort_values()
+
+order2PN.index = np.arange(0, len(order2PN), 1) # reset indices
+order3PN.index = np.arange(0, len(order3PN), 1) # reset indices
+
+order2PN_skids = []
+for i in np.arange(0, len(order2PN), 1):
+    order2PN_skid = order2PN[i]
+    order2PN_skid = pymaid.get_skids_by_annotation(order2PN_skid)
+    order2PN_skids.append(order2PN_skid)
+
+order3PN_skids = []
+for i in np.arange(0, len(order3PN), 1):
+    order3PN_skid = order3PN[i]
+    order3PN_skid = pymaid.get_skids_by_annotation(order3PN_skid)
+    order3PN_skids.append(order3PN_skid)
+
+# import different LNs
+ORN2LN = pymaid.get_skids_by_annotation('mw ORN 2nd_order LN')
+MN2LN = pymaid.get_skids_by_annotation('mw MN 2nd_order LN')
+photo2LN = pymaid.get_skids_by_annotation('mw photo 2nd_order LN')
+
+ORN3LN = pymaid.get_skids_by_annotation('mw ORN 3rd_order LN')
+AN3LN = pymaid.get_skids_by_annotation('mw AN 3rd_order LN')
+thermo3LN = pymaid.get_skids_by_annotation('mw thermo 3rd_order LN')
+
+# import output types
+oVNC = pymaid.get_skids_by_annotation('mw dVNC')
+oSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+oRG = pymaid.get_skids_by_annotation('mw RG')
+# %%
+
+A00c2 = len(order2_skids[0])
+LN_A00c2 = 0
+oVNC_A00c2 = len(np.intersect1d(oVNC, order2_skids[0]))
+oSEZ_A00c2 = len(np.intersect1d(oSEZ, order2_skids[0]))
+oRG_A00c2 = len(np.intersect1d(oRG, order2_skids[0]))
+
+A00c2_counts = [A00c2, LN_A00c2, oVNC_A00c2, oSEZ_A00c2, oRG_A00c2]
+
+A00c3 = len(order3_skids[0])
+LN_A00c3 = 0
+oVNC_A00c3 = len(np.intersect1d(oVNC, order3_skids[0]))
+oSEZ_A00c3 = len(np.intersect1d(oSEZ, order3_skids[0]))
+oRG_A00c3 = len(np.intersect1d(oRG, order3_skids[0]))
+
+A00c3_counts = [A00c3, LN_A00c3, oVNC_A00c3, oSEZ_A00c3, oRG_A00c3]
+
+A00c4 = len(order4_skids[0])
+LN_A00c4 = 0 #TBD
+oVNC_A00c4 = len(np.intersect1d(oVNC, order4_skids[0]))
+oSEZ_A00c4 = len(np.intersect1d(oSEZ, order4_skids[0]))
+oRG_A00c4 = len(np.intersect1d(oRG, order4_skids[0]))
+
+A00c4_counts = [A00c4, LN_A00c4, oVNC_A00c4, oSEZ_A00c4, oRG_A00c4]
 
 # %%

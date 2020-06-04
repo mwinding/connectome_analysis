@@ -50,48 +50,47 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 sensories = pymaid.get_annotated('mw brain inputs')
 
 # %%
-def summed_input(group_skids, matrix, pairList):
-    submatrix = matrix.loc[group_skids, :]
-    submatrix = submatrix.sum(axis = 0)
-    submatrix.index = pd.to_numeric(submatrix.index)
 
-    cols = ['leftid', 'rightid', 'leftid_input', 'rightid_input', 'average_input']
-    summed_paired = []
+testinput = pymaid.get_skids_by_annotation("mw ORN 2nd_order PN")
 
-    for i in range(0, len(pairList['leftid'])):
-        if(pairList['leftid'][i] in submatrix.index):
-            left_identifier = pairList['leftid'][i]
-            left_sum = submatrix.loc[left_identifier]
-        
-            right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
-            right_sum = submatrix.loc[right_identifier]
-                
-            summed_paired.append([left_identifier, right_identifier, left_sum, right_sum, (left_sum + right_sum)/2])
+# identify pairs in a-d graph
 
-    summed_paired = pd.DataFrame(summed_paired, columns= cols)
-    return(summed_paired)
+def get_paired_skids(skid, pairList):
+# returns paired skids in array [left, right]; can input either left or right skid of a pair to identify
 
-sens_skids = []
-for i in np.arange(0, len(sensories), 1):
-    sens = sensories['name'][i]
-    sens = pymaid.get_skids_by_annotation(sens)
-    sens_skids.append(sens)
+    if(skid in pairList["leftid"].values):
+        pair_right = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
+        pair_left = skid
 
-sum_ORN = summed_input(sens_skids[0], matrix_ad, pairs)
-sum_thermo = summed_input(sens_skids[1], matrix_ad, pairs)
-sum_photo = summed_input(sens_skids[2], matrix_ad, pairs)
-sum_AN = summed_input(sens_skids[3], matrix_ad, pairs)
-sum_MN = summed_input(sens_skids[4], matrix_ad, pairs)
-sum_vtd = summed_input(sens_skids[5], matrix_ad, pairs)
-sum_A00c = summed_input(sens_skids[6], matrix_ad, pairs)
+    if(skid in pairList["rightid"].values):
+        pair_left = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
+        pair_right = skid
+
+    if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
+        print("skid %i is not in paired list" % (skid))
+        return(0)
+
+    return([pair_left, pair_right])
+    
+def extract_pairs_from_list(skids, pairList):
+    pairs = []
+    for i in skids:
+        if(int(i) in pairList["leftid"].values):
+            pair = get_paired_skids(int(i), pairList)
+            pairs.append({'leftid': pair[0], 'rightid': pair[1]})
+
+    pairs = pd.DataFrame(pairs)
+    return(pairs)
+
+testpairs = extract_pairs_from_list(testinput, pairs)
 
 
-data = [sum_AN['leftid'], sum_AN['rightid'], sum_AN['average_input'],
-                                                sum_MN['average_input'],
-                                                sum_ORN['average_input'],
-                                                sum_thermo['average_input'],
-                                                sum_vtd['average_input'],
-                                                sum_A00c['average_input'],
-                                                sum_photo['average_input']]
-headers = ["leftid", "rightid", "AN", "MN", "ORN", "thermo", "vtd", "A00c", "photo"]
-input_all = pd.concat(data, axis=1, keys=headers)
+# look for downstream pairs in a-d graph
+
+
+# identify LNs and descending in downstream pairs
+
+
+# repeat
+
+# %%
