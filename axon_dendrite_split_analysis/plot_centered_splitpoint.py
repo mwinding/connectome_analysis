@@ -48,8 +48,10 @@ for i in tqdm(range(len(connectors_unsplittable))):
 #%%
 fig, ax = plt.subplots(1,1,figsize=(8,4))
 
-sns.distplot(splittable_inputs, color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
-sns.distplot(splittable_outputs, color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
+#sns.distplot(splittable_inputs, color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
+#sns.distplot(splittable_outputs, color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
+sns.distplot(splittable_inputs, ax = ax)
+sns.distplot(splittable_outputs, ax = ax)
 
 ax.set(xlim = (-125000, 200000))
 plt.axvline(x=0, color = 'gray')
@@ -58,7 +60,7 @@ ax.set_xticklabels([-150, -100, -50, 0, 50, 100, 150, 200])
 ax.set_ylabel('Synapse Density')
 ax.set_xlabel('Distance (in um)')    
 
-plt.savefig('axon_dendrite_split_analysis/plots/splittable.eps', format='eps')
+#plt.savefig('axon_dendrite_split_analysis/plots/splittable.eps', format='eps')
 
 # %%
 fig, ax = plt.subplots(1,1,figsize=(8,4))

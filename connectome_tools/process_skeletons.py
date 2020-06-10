@@ -13,20 +13,19 @@ def skid_as_networkx_graph(skeleton):
 
     # adding nodes from child-parent structure of skeleton to networkx object
     # x,y,z attributes are spatial coordinates in nm
-    # identifies rootnode, whose parent id is an empty cell or '' (due to import style)
+    # identifies rootnode, whose parent id is None (empty cell)
     for i in range(0, len(skeleton['treenode_id'])):
-        if(skeleton['parent_treenode_id'].iloc[i]==''):
+        if (type(skeleton['parent_node_id'].iloc[i]) is not int):
             G.add_node(skeleton['treenode_id'].iloc[i], x = skeleton['x'].iloc[i], y = skeleton['y'].iloc[i], z = skeleton['z'].iloc[i], root = True)
 
-        if not(skeleton['parent_treenode_id'].iloc[i]==''):
+        if (type(skeleton['parent_node_id'].iloc[i]) is int):
             G.add_node(skeleton['treenode_id'].iloc[i], x = skeleton['x'].iloc[i], y = skeleton['y'].iloc[i], z = skeleton['z'].iloc[i], root = False)
             
-
     # adding edges from child-parent structure of skeleton to networkx object
-    # also identifies the rootnode, whose parent id is an empty cell or '' (due to import style)
+    # also identifies the rootnode, whose parent id is None (empty cell)
     for i in range(0, len(skeleton['treenode_id'])):
-        if not(skeleton['parent_treenode_id'].iloc[i]==''):
-            G.add_edge(int(skeleton['treenode_id'].iloc[i]), int(skeleton['parent_treenode_id'].iloc[i]))
+        if (type(skeleton['parent_node_id'].iloc[i]) is int):
+            G.add_edge(int(skeleton['treenode_id'].iloc[i]), int(skeleton['parent_node_id'].iloc[i]))
 
     return(G)
 
@@ -89,7 +88,7 @@ def connector_dists_centered(G, connectors, root, split):
 
         path = nx.bidirectional_shortest_path(G, connectors['treenode_id'].iloc[i], root)
 
-        if(connectors['relation_id'].iloc[i]=="presynaptic_to"):
+        if(connectors['relation'].iloc[i]=="presynaptic_to"):
             if(np.isin(split, path)):
                 dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
                 connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance': dist})
@@ -97,7 +96,7 @@ def connector_dists_centered(G, connectors, root, split):
                 dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
                 connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'presynaptic', 'distance': -dist})
 
-        if(connectors['relation_id'].iloc[i]=="postsynaptic_to"):
+        if(connectors['relation'].iloc[i]=="postsynaptic_to"):
             if(np.isin(split, path)):
                 dist = calculate_dist_2nodes(G, connectors['treenode_id'].iloc[i], root)
                 connector_dist.append({'skeletonid': connectors['skeleton_id'].iloc[i], 'nodeid': connectors['treenode_id'].iloc[i], 'type': 'postsynaptic', 'distance': dist})
