@@ -5,6 +5,7 @@ import numpy as np
 import math
 from tqdm import tqdm
 import csv
+import pymaid
 
 # import skeleton CSV (of single skeleton) in CATMAID export skeleton format
 def skid_as_networkx_graph(skeleton):
@@ -189,3 +190,72 @@ def write_connectordists(path, connectdists_list):
                 typ = connectdists_list[i][j]['type']
                 distance_root = connectdists_list[i][j]['distance']
                 csv_writer.writerow([skeletonid, nodeid, typ, distance_root])
+
+def dist_from_split(skids, split_tag):
+
+    skeletons = pymaid.get_treenode_table(skids)
+
+    # identifying split points with tag "mw axon split"
+    tags = skeletons['tags']
+
+    split_nodes = []
+    for i in np.arange(0, len(tags), 1):
+        if(type(tags[i]) == list):
+            if(split_tag in tags[i]):
+                split_nodes.append(i)
+            
+    splitnode_data = skeletons.iloc[split_nodes]
+
+    # check if all skeletons have the split tag
+    def membership(list1, list2):
+        set1 = set(list1)
+        return [item in set1 for item in list2]
+
+    member_index = membership(splitnode_data['skeleton_id'], skeletons['skeleton_id'])
+    skeletons = skeletons[member_index]
+
+    # load connectors of skids with split tag
+    skids = np.unique(skeletons['skeleton_id'])
+    neurons = pymaid.get_neurons(skids)
+    connectors = pymaid.get_connector_links(neurons)
+
+    list_skeletons = split_skeleton_lists(skeletons)
+    list_connectors = split_skeleton_lists(connectors)
+
+    # convert each skeleton morphology CSV into networkx graph
+    skeleton_graphs = []
+    for i in tqdm(range(len(list_skeletons))):
+        skeleton_graph = skid_as_networkx_graph(list_skeletons[i])
+        skeleton_graphs.append(skeleton_graph)
+
+    # identify roots of each networkx graph
+    roots = []
+    for i in tqdm(range(len(skeleton_graphs))):
+        root = identify_root(skeleton_graphs[i])
+        roots.append(root)
+
+    # order split points like skeleton ids
+    split_ids = []
+    for i in tqdm(range(len(list_skeletons))):
+        for j in range(len(splitnode_data)):
+            if(int(splitnode_data['skeleton_id'].iloc[j])==int(list_skeletons[i]['skeleton_id'].iloc[0])):
+                split_ids.append(splitnode_data['treenode_id'].iloc[j])
+                break # !! ignores multiple axon/dendrite splits (temporary)
+
+    # order connector list like skeleton ids
+    ordered_list_connectors = []
+    for i in tqdm(range(len(list_skeletons))):
+        for j in (range(len(list_connectors))):
+            if(list_connectors[j]['skeleton_id'].iloc[0]==int(list_skeletons[i]['skeleton_id'].iloc[0])):
+                ordered_list_connectors.append(list_connectors[j])
+
+    # calculate distances of each connector to split for each separate graph
+    connectdists_list = []
+    for i in tqdm(range(len(skeleton_graphs))):
+
+        # find shortest path to root
+        # if path contains split point, the origin is in the axon
+        connectdists = connector_dists_centered(skeleton_graphs[i], ordered_list_connectors[i], roots[i], split_ids[i])
+        connectdists_list.append(pd.DataFrame(connectdists))
+
+    return(connectdists_list)
