@@ -24,6 +24,7 @@ from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
 
+# %%
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 skids = pymaid.get_skids_by_annotation('mw brain neurons')
@@ -67,7 +68,8 @@ ax.set_xlabel('Distance (in um)')
 plt.savefig('axon_dendrite_split_analysis/plots/all_splittables_brain_hists.pdf', format='pdf', bbox_inches = 'tight')
 
 # %%
-# plotting as raster plot
+# preparing data for plotting
+# normalizing and sorting by individual neuron
 import matplotlib as ml
 
 inputs_array = []
@@ -123,7 +125,7 @@ lineoffsets = np.arange(0, len(inputs_array), 1)
 fig, ax = plt.subplots(1,1,figsize=(5,10))
 ax.set(xlim = (-1, 1))
 ax.eventplot(inputs_norm_array, lineoffsets = lineoffsets, alpha = 0.5)
-ax.eventplot(outputs_norm_array, lineoffsets = lineoffsets, color = 'orange', alpha = 0.5)
+ax.eventplot(outputs_norm_array, lineoffsets = lineoffsets, color = sns.color_palette()[1], alpha = 0.5)
 
 plt.savefig('axon_dendrite_split_analysis/plots/all_splittables_brain_rasterPlot.pdf', format='pdf', bbox_inches = 'tight')
 
@@ -172,8 +174,39 @@ size_sorted, outputs_array_sorted = zip(*sort_output)
 # plot synapse raster plot
 fig, ax = plt.subplots(1,1,figsize=(5,10))
 ax.eventplot(inputs_array_sorted, lineoffsets = lineoffsets, alpha = 0.5)
-ax.eventplot(outputs_array_sorted, lineoffsets = lineoffsets, color = 'orange', alpha = 0.5)
+ax.eventplot(outputs_array_sorted, lineoffsets = lineoffsets, color = sns.color_palette()[1], alpha = 0.5)
 
 plt.savefig('axon_dendrite_split_analysis/plots/all_splittables_brain_rasterPlot_sorted.pdf', format='pdf', bbox_inches = 'tight')
+
+# %%
+# plotting as normalized histogram distribution
+
+all_inputs_norm = np.concatenate(inputs_norm_array)
+all_outputs_norm = np.concatenate(outputs_norm_array)
+
+fig, ax = plt.subplots(1,1,figsize=(1,.75))
+
+# parameters like font, axis width, etc
+ax.set(xticks=[-1, 0, 1])
+ax.xaxis.set_tick_params(width=0.5)
+ax.yaxis.set_tick_params(width=0.5)
+ax.tick_params(labelsize=6)
+ax.set_ylabel('Density', fontname="Arial", fontsize = 6)
+ax.set_xlabel('Distance from Split Point', fontname="Arial", fontsize = 6)
+
+ax.set(xlim = (-1, 1))
+
+for axis in ['top','bottom','left','right']:
+  ax.spines[axis].set_linewidth(0.5)
+
+for tick in ax.get_xticklabels():
+    tick.set_fontname("Arial")
+for tick in ax.get_yticklabels():
+    tick.set_fontname("Arial")
+
+sns.distplot(all_inputs_norm, ax = ax, hist = False, kde = True, kde_kws=dict(linewidth=0.5, shade = True), norm_hist=True)
+sns.distplot(all_outputs_norm, ax = ax, hist = False, kde = True, kde_kws=dict(linewidth=0.5, shade = True), norm_hist=True)
+
+plt.savefig('axon_dendrite_split_analysis/plots/all_splittables_brain_hist_norm.pdf', format='pdf', bbox_inches = 'tight')
 
 # %%
