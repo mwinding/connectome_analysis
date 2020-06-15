@@ -40,14 +40,14 @@ plt.rcParams['ps.fonttype'] = 42
 
 fig, ax = plt.subplots(1,1,figsize=(2.75, 1.4))
 
-sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = sns.color_palette()[0], markers=True, linewidth = 1, s = marker_size, alpha = 0.5, edgecolor="none")
-sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = sns.color_palette()[0], linewidth = 1, alpha = 0.3)
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = 'gray', markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = 'gray', linewidth = 1, alpha = 0.5)
 
-sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[4], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
-sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[4], linewidth = 1, alpha = 0.5)
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[1], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[1], linewidth = 1, alpha = 0.5)
 
-sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[2], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
-sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[2], linewidth = 1, alpha = 0.5)
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[0], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[0], linewidth = 1, alpha = 0.5)
 
 ax.set(xticks=[1, 5, 10, 15, 20])
 
