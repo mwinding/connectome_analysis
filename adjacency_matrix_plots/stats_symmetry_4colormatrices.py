@@ -28,10 +28,48 @@ threshold_aa = pd.read_csv('data/threshold_sweep_csvs/threshold-synapses-Gaa-min
 threshold_ad = pd.read_csv('data/threshold_sweep_csvs/threshold-synapses-Gad-min-dend0-rem-pdiffTrue-subsetFalse.csv', header = 0, index_col = 0)
 threshold_dd = pd.read_csv('data/threshold_sweep_csvs/threshold-synapses-Gdd-min-dend0-rem-pdiffTrue-subsetFalse.csv', header = 0, index_col = 0)
 threshold_da = pd.read_csv('data/threshold_sweep_csvs/threshold-synapses-Gda-min-dend0-rem-pdiffTrue-subsetFalse.csv', header = 0, index_col = 0)
-
-
+threshold_G = pd.read_csv('data/threshold_sweep_csvs/threshold-synapses-G-min-dend0-rem-pdiffTrue-subsetFalse.csv', header = 0, index_col = 0)
 
 # %%
+# symmetry between paired edges and % edges / synapses left for each threshold
+marker_size = 5
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+fig, ax = plt.subplots(1,1,figsize=(2.75, 1.4))
+
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = sns.color_palette()[0], markers=True, linewidth = 1, s = marker_size, alpha = 0.5, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. edges left'], ax = ax, color = sns.color_palette()[0], linewidth = 1, alpha = 0.3)
+
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[4], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. synapses left'], ax = ax, color = sns.color_palette()[4], linewidth = 1, alpha = 0.5)
+
+sns.scatterplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[2], markers=True, linewidth = 1, s = marker_size, alpha = 0.8, edgecolor="none")
+sns.lineplot(x = threshold_G.index+1 , y = threshold_G['Prop. paired edges symmetric'], ax = ax, color = sns.color_palette()[2], linewidth = 1, alpha = 0.5)
+
+ax.set(xticks=[1, 5, 10, 15, 20])
+
+ax.xaxis.set_tick_params(width=0.5)
+ax.yaxis.set_tick_params(width=0.5)
+ax.tick_params(labelsize=6)
+ax.set_ylabel('', fontname="Arial", fontsize = 6)
+ax.set_xlabel('Synapse Threshold', fontname="Arial", fontsize = 6)
+
+for axis in ['top','bottom','left','right']:
+  ax.spines[axis].set_linewidth(0.5)
+
+for tick in ax.get_xticklabels():
+    tick.set_fontname("Arial")
+for tick in ax.get_yticklabels():
+    tick.set_fontname("Arial")
+
+
+plt.savefig('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/adjacency_matrix_plots/plots/symmetric_edges_summedgraph.pdf', format='pdf', bbox_inches='tight')
+# %%
+# symmetry between pairs by 4-color graphs
+
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -49,6 +87,7 @@ sns.lineplot(x = threshold_ad.index+1 , y = threshold_ad['Prop. paired edges sym
 #plt.axvline(x= np.where(threshold_da['Prop. paired edges symmetric']>= 0.9)[0][0], color = sns.color_palette()[3], linewidth = 0.5)
 
 ax.set(xticks=[1, 5, 10, 15, 20])
+
 ax.xaxis.set_tick_params(width=0.5)
 ax.yaxis.set_tick_params(width=0.5)
 ax.tick_params(labelsize=6)
@@ -64,7 +103,6 @@ for tick in ax.get_yticklabels():
     tick.set_fontname("Arial")
 
 plt.savefig('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/adjacency_matrix_plots/plots/symmetric_edges.pdf', format='pdf', bbox_inches='tight')
-
 # %%
 # cumulative distribution of connections by number of synapses
 fig, ax = plt.subplots(1,1,figsize=(1,1))
