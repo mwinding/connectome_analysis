@@ -17,7 +17,7 @@ from pymaid_creds import url, name, password, token
 
 #rm = pymaid.CatmaidInstance(url, name, password, token)
 
-pairs = pd.read_csv('data/bp-pairs-2020-01-28.csv', header = 0)
+pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 morph_stats = pd.read_csv('data/brain_skeleton_measurements.csv', header = 0)
 morph_stats_pub = pd.read_csv('data/published_skeleton_measurements.csv', header = 0)
 
