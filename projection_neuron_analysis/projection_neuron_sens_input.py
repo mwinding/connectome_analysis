@@ -83,7 +83,7 @@ sum_MN = summed_input(sens_skids[4], matrix_ad, pairs, 'MN')
 sum_vtd = summed_input(sens_skids[5], matrix_ad, pairs, 'vtd')
 sum_A00c = summed_input(sens_skids[6], matrix_ad, pairs, 'A00c')
 
-sensory_sum = pd.concat([sum_ORN, sum_AN.iloc[:,2:4], sum_MN.iloc[:,2:4], sum_thermo.iloc[:,2:4], sum_visual.iloc[:,2:4], sum_PaN.iloc[:,2:4], sum_vtd.iloc[:,2:4], sum_A00c.iloc[:,2:4]], axis=1)
+sensory_sum = pd.concat([sum_ORN, sum_AN.iloc[:,2:4], sum_MN.iloc[:,2:4], sum_thermo.iloc[:,2:4], sum_visual.iloc[:,2:4], sum_vtd.iloc[:,2:4], sum_A00c.iloc[:,2:4]], axis=1)
 
 sum_ORN_combined = sum_ORN.iloc[:, 2:4].sum(axis = 1)/2
 sum_thermo_combined = sum_thermo.iloc[:, 2:4].sum(axis = 1)/2

@@ -98,22 +98,22 @@ import itertools
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 
-fig, ax = plt.subplots(1,1,figsize=(8,4))
+#fig, ax = plt.subplots(1,1,figsize=(8,4))
 input_dict = dict(AN=input_skids[0], MN = input_skids[1], ORN = input_skids[2], photo = input_skids[6], vtd = input_skids[4], thermo = input_skids[3], A00c = input_skids[5])
 plot(from_contents(input_dict), sort_by = 'cardinality', sort_categories_by = None)
 plt.savefig('identify_neuron_classes/plots/input.pdf', format='pdf', bbox_inches='tight')
 
-fig, ax = plt.subplots(1,1,figsize=(8,4))
+#fig, ax = plt.subplots(1,1,figsize=(8,4))
 order2_dict = dict(AN=order2_skids[0], MN = order2_skids[1], ORN = order2_skids[2], photo = order2_skids[6], vtd = order2_skids[4], thermo = order2_skids[3], A00c = order2_skids[5])
 plot(from_contents(order2_dict), sort_by = 'cardinality', sort_categories_by = None)
 plt.savefig('identify_neuron_classes/plots/input2.pdf', format='pdf', bbox_inches='tight')
 
-fig, ax = plt.subplots(1,1,figsize=(8,4))
+#fig, ax = plt.subplots(1,1,figsize=(8,4))
 order3_dict = dict(AN=order3_skids[0], MN = order3_skids[1], ORN = order3_skids[2], photo = order3_skids[6], vtd = order3_skids[4], thermo = order3_skids[3], A00c = order3_skids[5])
 plot(from_contents(order3_dict), sort_by = 'cardinality', sort_categories_by = None)
 plt.savefig('identify_neuron_classes/plots/input3.pdf', format='pdf', bbox_inches='tight')
 
-fig, ax = plt.subplots(1,1,figsize=(8,4))
+#fig, ax = plt.subplots(1,1,figsize=(8,4))
 order4_dict = dict(AN=order4_skids[0], MN = order4_skids[1], ORN = order4_skids[2], photo = order4_skids[6], vtd = order4_skids[4], thermo = order4_skids[3], A00c = order4_skids[5])
 plot(from_contents(order4_dict), sort_by = 'cardinality', sort_categories_by = None)
 plt.savefig('identify_neuron_classes/plots/input4.pdf', format='pdf', bbox_inches='tight')
@@ -153,6 +153,12 @@ ORN3LN = pymaid.get_skids_by_annotation('mw ORN 3rd_order LN')
 AN3LN = pymaid.get_skids_by_annotation('mw AN 3rd_order LN')
 thermo3LN = pymaid.get_skids_by_annotation('mw thermo 3rd_order LN')
 
+A00c4LN = pymaid.get_skids_by_annotation('mw A00c 4th_order LN')
+AN4LN = pymaid.get_skids_by_annotation('mw AN 4th_order LN')
+MN4LN = pymaid.get_skids_by_annotation('mw MN 4th_order LN')
+ORN4LN = pymaid.get_skids_by_annotation('mw ORN 4th_order LN')
+thermo4LN = pymaid.get_skids_by_annotation('mw thermo 4th_order LN')
+
 # import output types
 oVNC = pymaid.get_skids_by_annotation('mw dVNC')
 oSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
@@ -176,11 +182,10 @@ oRG_A00c3 = len(np.intersect1d(oRG, order3_skids[0]))
 A00c3_counts = [A00c3, LN_A00c3, oVNC_A00c3, oSEZ_A00c3, oRG_A00c3]
 
 A00c4 = len(order4_skids[0])
-LN_A00c4 = 0 #TBD
+LN_A00c4 = len(A00c4LN)
 oVNC_A00c4 = len(np.intersect1d(oVNC, order4_skids[0]))
 oSEZ_A00c4 = len(np.intersect1d(oSEZ, order4_skids[0]))
 oRG_A00c4 = len(np.intersect1d(oRG, order4_skids[0]))
 
 A00c4_counts = [A00c4, LN_A00c4, oVNC_A00c4, oSEZ_A00c4, oRG_A00c4]
-
 # %%
