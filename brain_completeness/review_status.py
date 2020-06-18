@@ -98,25 +98,43 @@ ad = pd.read_csv('brain_completeness/data/2020_6_16/axon-dendrite.csv', header =
 dd = pd.read_csv('brain_completeness/data/2020_6_16/dendrite-dendrite.csv', header = 0, index_col = 0)
 da = pd.read_csv('brain_completeness/data/2020_6_16/dendrite-axon.csv', header = 0, index_col = 0)
 all_all = aa + ad + dd + da
+all_all.columns = list(map(int, all_all.columns))
+all_all = all_all.sort_index(axis = 0)
+all_all = all_all.sort_index(axis = 1)
 
 aa2 = pd.read_csv('brain_completeness/data/2020_6_16_2reviewed/axon-axon.csv', header = 0, index_col = 0)
 ad2 = pd.read_csv('brain_completeness/data/2020_6_16_2reviewed/axon-dendrite.csv', header = 0, index_col = 0)
 dd2 = pd.read_csv('brain_completeness/data/2020_6_16_2reviewed/dendrite-dendrite.csv', header = 0, index_col = 0)
 da2 = pd.read_csv('brain_completeness/data/2020_6_16_2reviewed/dendrite-axon.csv', header = 0, index_col = 0)
 all_all2 = aa2 + ad2 + dd2 + da2
+all_all2.columns = list(map(int, all_all2.columns))
+all_all2 = all_all2.sort_index(axis = 0)
+all_all2 = all_all2.sort_index(axis = 1)
 
+test_before_pre = all_all.loc[skids, :]
+test_after_pre = all_all2.loc[skids, :]
 
-# need to incorporate pair information!!
-test_before = all_all.loc[skids, :]
-test_after = all_all2.loc[skids, :]
+test_before_post = all_all.loc[:, skids]
+test_after_post = all_all2.loc[:, skids]
 
-test_before = np.concatenate((np.array(test_before.iloc[0, :]), np.array(test_before.iloc[1, :])))
-test_after = np.concatenate((np.array(test_after.iloc[0, :]), np.array(test_after.iloc[1, :])))
+test_before_pre = np.concatenate((np.array(test_before_pre.iloc[0, :]), np.array(test_before_pre.iloc[1, :])))
+test_after_pre = np.concatenate((np.array(test_after_pre.iloc[0, :]), np.array(test_after_pre.iloc[1, :])))
+
+test_before_post = np.concatenate((np.array(test_before_post.iloc[:, 0]), np.array(test_before_post.iloc[:, 1])))
+test_after_post = np.concatenate((np.array(test_after_post.iloc[:, 0]), np.array(test_after_post.iloc[:, 1])))
 
 # %%
 fig, ax = plt.subplots(1,1,figsize=(4, 4))
 
-sns.scatterplot(x = test_after, y = test_before)
+rand_x = np.random.random(size = len(test_before_post))/4
+rand_y = np.random.random(size = len(test_before_post))/4
+
+ax.set(xlim = [0, 10], ylim = [0, 10])
+sns.scatterplot(x = test_before_post + rand_x, y = test_after_post + rand_y, alpha = 1, edgecolor="none", s = 4)
+# %%
+fig, ax = plt.subplots(1,1,figsize=(4, 4))
+
+ax.set(xlim = [0, 10], ylim = [0, 10])
+sns.scatterplot(x = test_before_pre + rand_x, y = test_after_pre + rand_y, alpha = 1, edgecolor="none", s = 4)
 
 # %%
-sum(test_before) - sum(test_after)
