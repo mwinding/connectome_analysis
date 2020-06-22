@@ -52,7 +52,7 @@ from src.traverse import Cascade, to_transmission_matrix
 
 p = 0.05
 transition_probs = to_transmission_matrix(adj, p)
-casc = Cascade(transition_probs, max_hops = 20)
+casc = Cascade(transition_probs, max_hops = 20, allow_loops=False)
 
 np.random.seed(0)
 casc.start(ORN_index)
