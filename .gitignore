@@ -3,6 +3,7 @@ connectome_tools_venv
 data
 data2
 plots
+interhemisphere_plots
 outputs
 neuron_groups_data
 axon_dendrite_data
