@@ -77,8 +77,29 @@ dVNC_indices_left, dVNC_indices_right, dVNC_left, dVNC_right = split_hemilateral
 dSEZ_indices_left, dSEZ_indices_right, dSEZ_left, dSEZ_right = split_hemilateral_to_indices(dSEZ_skids, left, right, mg)
 
 input_indices_left, input_indices_right, input_left, input_right = split_hemilateral_to_indices(input_skids, left, right, mg)
-
 output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
+
+# add A00c left to inputs right and A00c right to inputs left
+    # this is because A00cs are ascending contralateral inputs
+
+# identify appropriate indices for A00c neurons
+input_indices_left_A00c_index = np.where([x in A00c_indices_left for x in input_indices_left])[0]
+input_indices_right_A00c_index = np.where([x in A00c_indices_right for x in input_indices_right])[0]
+input_left_A00c_index = np.where([x in A00c_left for x in input_left])[0]
+input_right_A00c_index = np.where([x in A00c_right for x in input_right])[0]
+
+# delete A00c skids/indices from each np.array
+input_indices_left = np.delete(input_indices_left, input_indices_left_A00c_index)
+input_indices_right = np.delete(input_indices_right, input_indices_right_A00c_index)
+input_left = np.delete(input_left, input_left_A00c_index)
+input_right = np.delete(input_right, input_right_A00c_index)
+
+# add appropriate A00c skids/indices
+input_indices_left = np.append(input_indices_left, A00c_indices_right)
+input_indices_right = np.append(input_indices_right, A00c_indices_left)
+input_left = np.append(input_left, A00c_right)
+input_right = np.append(input_right, A00c_left)
+
 
 #%%
 '''
@@ -153,108 +174,6 @@ contra_indices_left = np.concatenate((A00c_indices_left,
 
 contra_indices_right = np.concatenate((A00c_indices_right,
                                     contra_indices_right), axis = 0)
-# %%
-# visits in ipsi or contra neurons per hop
-fig, axs = plt.subplots(
-    1, 1, figsize=(8, 8)
-)
-ipsi_contra_flow = pd.DataFrame([ORN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            ORN_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            ORN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            ORN_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            AN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            AN_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            AN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            AN_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            MN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            MN_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            MN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            MN_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            A00c_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            A00c_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            A00c_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            A00c_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            vtd_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            vtd_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            vtd_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            vtd_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            thermo_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            thermo_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            thermo_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            thermo_hit_hist_left[contra_indices_right].sum(axis = 0),
-                            photo_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
-                            photo_hit_hist_left[contra_indices_left].sum(axis = 0),
-                            photo_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
-                            photo_hit_hist_left[contra_indices_right].sum(axis = 0)], 
-                            index = ['ORN_left -> ipsi_indices_left', 'ORN_left -> contra_indices_left', 
-                                    'ORN_left -> ipsi_indices_right', 'ORN_left -> contra_indices_right',
-                                    'AN_left -> ipsi_indices_left', 'AN_left -> contra_indices_left', 
-                                    'AN_left -> ipsi_indices_right', 'AN_left -> contra_indices_right',
-                                    'MN_left -> ipsi_indices_left', 'MN_left -> contra_indices_left', 
-                                    'MN_left -> ipsi_indices_right', 'MN_left -> contra_indices_right',
-                                    'A00c_left -> ipsi_indices_left', 'A00c_left -> contra_indices_left', 
-                                    'A00c_left -> ipsi_indices_right', 'A00c_left -> contra_indices_right',
-                                    'vtd_left -> ipsi_indices_left', 'vtd_left -> contra_indices_left', 
-                                    'vtd_left -> ipsi_indices_right', 'vtd_left -> contra_indices_right',
-                                    'thermo_left -> ipsi_indices_left', 'thermo_left -> contra_indices_left', 
-                                    'thermo_left -> ipsi_indices_right', 'thermo_left -> contra_indices_right',
-                                    'photo_left -> ipsi_indices_left', 'photo_left -> contra_indices_left', 
-                                    'photo_left -> ipsi_indices_right', 'photo_left -> contra_indices_right'])
-
-sns.heatmap(ipsi_contra_flow, ax = axs, rasterized = True)
-
-# %%
-# number of ipsi or contra neurons visited >50 per hop
-fig, axs = plt.subplots(
-    1, 1, figsize=(8, 8)
-)
-threshold = 50
-
-ipsi_contra_flow_num_neurons = pd.DataFrame([(ORN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (ORN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (ORN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (ORN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (AN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (AN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (AN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (AN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (MN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (MN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (MN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (MN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (A00c_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (A00c_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (A00c_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (A00c_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (vtd_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (vtd_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (vtd_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (vtd_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (thermo_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (thermo_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (thermo_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (thermo_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
-                            (photo_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
-                            (photo_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
-                            (photo_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
-                            (photo_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0)], 
-                            index = ['ORN_left -> ipsi_indices_left', 'ORN_left -> contra_indices_left', 
-                                    'ORN_left -> ipsi_indices_right', 'ORN_left -> contra_indices_right',
-                                    'AN_left -> ipsi_indices_left', 'AN_left -> contra_indices_left', 
-                                    'AN_left -> ipsi_indices_right', 'AN_left -> contra_indices_right',
-                                    'MN_left -> ipsi_indices_left', 'MN_left -> contra_indices_left', 
-                                    'MN_left -> ipsi_indices_right', 'MN_left -> contra_indices_right',
-                                    'A00c_left -> ipsi_indices_left', 'A00c_left -> contra_indices_left', 
-                                    'A00c_left -> ipsi_indices_right', 'A00c_left -> contra_indices_right',
-                                    'vtd_left -> ipsi_indices_left', 'vtd_left -> contra_indices_left', 
-                                    'vtd_left -> ipsi_indices_right', 'vtd_left -> contra_indices_right',
-                                    'thermo_left -> ipsi_indices_left', 'thermo_left -> contra_indices_left', 
-                                    'thermo_left -> ipsi_indices_right', 'thermo_left -> contra_indices_right',
-                                    'photo_left -> ipsi_indices_left', 'photo_left -> contra_indices_left', 
-                                    'photo_left -> ipsi_indices_right', 'photo_left -> contra_indices_right'])
-
-sns.heatmap(ipsi_contra_flow_num_neurons, ax = axs, rasterized = True)
-
 # %%
 # number of ipsi or contra neurons visited per hop
 # shows nicely the flow of information through two hemispheres
@@ -429,6 +348,304 @@ sns.heatmap(all_inputs_intersect_matrix.iloc[:, 0:5], ax = ax, rasterized = True
 ax.set_xlabel('Hops')
 
 plt.savefig('cascades/interhemisphere_plots/simulated_all_left-right_signals.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# correlation between visit numbers between pairs and across nodes
+
+correlate_nodes = []
+
+for j in range(0, len(all_inputs_hit_hist_left[0, :])):
+    for i in range(0, len(all_inputs_hit_hist_left)):
+        correlate_nodes.append([mg.meta.index[i], j, 
+                                all_inputs_hit_hist_left[i, j], all_inputs_hit_hist_right[i, j],
+                                ORN_hit_hist_left[i, j], ORN_hit_hist_right[i, j],
+                                AN_hit_hist_left[i, j], AN_hit_hist_right[i, j],
+                                MN_hit_hist_left[i, j], MN_hit_hist_right[i, j],
+                                A00c_hit_hist_left[i, j], A00c_hit_hist_right[i, j],
+                                vtd_hit_hist_left[i, j], vtd_hit_hist_right[i, j],
+                                thermo_hit_hist_left[i, j], thermo_hit_hist_right[i, j],
+                                photo_hit_hist_left[i, j], photo_hit_hist_right[i, j]])
+
+correlate_nodes = pd.DataFrame(correlate_nodes, columns = ['skid', 'hop', 
+                                                            'all_left_visits', 'all_right_visits',
+                                                            'ORN_left_visits', 'ORN_right_visits',
+                                                            'AN_left_visits', 'AN_right_visits',
+                                                            'MN_left_visits', 'MN_right_visits',
+                                                            'A00c_left_visits', 'A00c_right_visits',
+                                                            'vtd_left_visits', 'vtd_right_visits',
+                                                            'thermo_left_visits', 'thermo_right_visits',
+                                                            'photo_left_visits', 'photo_right_visits'])
+
+threshold = 0
+cor_index = (correlate_nodes['right_visits']>threshold) | (correlate_nodes['left_visits']>threshold)
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][cor_index],
+    y = correlate_nodes['left_visits'][cor_index]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>50) | (correlate_nodes['left_visits']>50)) & (correlate_nodes.hop!=0)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>50) | (correlate_nodes['left_visits']>50)) & (correlate_nodes.hop!=0)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory.pdf', format='pdf', bbox_inches='tight')
+
+#sns.jointplot(x = correlate_nodes['right_visits'][cor_index], y = correlate_nodes['left_visits'][cor_index], 
+#            kind = 'hex', joint_kws={'gridsize':40, 'bins':'log'})
+
+# %%
+# correlation between left and right visits per hop
+# nice supplemental figure
+hops = 0
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop0.pdf', format='pdf', bbox_inches='tight')
+
+
+# hop 1
+hops = 1
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop1.pdf', format='pdf', bbox_inches='tight')
+
+# hop 2
+ax = axs[2, 0]
+hops = 2
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop2.pdf', format='pdf', bbox_inches='tight')
+
+# hop 3
+hops = 3
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop3.pdf', format='pdf', bbox_inches='tight')
+
+# hop 4
+hops = 4
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop4.pdf', format='pdf', bbox_inches='tight')
+
+# hop 5
+hops = 5
+p = sns.JointGrid(
+    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    )
+
+p = p.plot_joint(
+    plt.hexbin, cmap = 'Blues', bins = 'log', gridsize = 40,
+    )
+
+p.set_axis_labels('Signal from Right', 'Signal from Left')
+
+p.ax_marg_x.hist(
+    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    bins = 40,
+    alpha = 0.5
+    )
+
+p.ax_marg_y.hist(
+    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    orientation = 'horizontal',
+    bins = 40,
+    alpha = 0.5,
+    )
+
+p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop5.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# identify group of integrator neurons that receive from both left and right signals
+# compare between all sensory and individual sensory modalities
+
+integrators = correlate_nodes[(correlate_nodes.all_right_visits>50) & (correlate_nodes.all_left_visits>50)]
+
+# how many for each hop?
+sum_per_hop = []
+for i in range(0, max(integrators.hop)):
+    sum_per_hop.append(sum(integrators.hop==i))
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(6, 6)
+)
+
+ax = axs
+ax.set_xlabel = 'Hops from Sensory'
+ax.set_ylabel = 'Number of Integrator Neurons'
+
+sns.barplot(x = list(range(0, max(integrators.hop))), y = sum_per_hop, color = 'blue', alpha = 0.5, ax = ax)
+
+fig.savefig('cascades/interhemisphere_plots/num_integrators_per_hop.pdf', format='pdf', bbox_inches='tight')
+
+# identify integrators for each modality
+def membership(list1, list2):
+    set1 = set(list1)
+    return [item in set1 for item in list2]
+
+integrators_ORN = correlate_nodes[(correlate_nodes.ORN_right_visits>50) & (correlate_nodes.ORN_left_visits>50)]
+integrators_AN = correlate_nodes[(correlate_nodes.AN_right_visits>50) & (correlate_nodes.AN_left_visits>50)]
+integrators_MN = correlate_nodes[(correlate_nodes.MN_right_visits>50) & (correlate_nodes.MN_left_visits>50)]
+integrators_A00c = correlate_nodes[(correlate_nodes.A00c_right_visits>50) & (correlate_nodes.A00c_left_visits>50)]
+integrators_vtd = correlate_nodes[(correlate_nodes.vtd_right_visits>50) & (correlate_nodes.vtd_left_visits>50)]
+integrators_thermo = correlate_nodes[(correlate_nodes.thermo_right_visits>50) & (correlate_nodes.thermo_left_visits>50)]
+integrators_photo = correlate_nodes[(correlate_nodes.photo_right_visits>50) & (correlate_nodes.photo_left_visits>50)]
+
+integrator_list = [integrators, integrators_ORN, integrators_AN, integrators_MN, integrators_A00c, integrators_thermo, integrators_photo]
+
+fraction_same = np.zeros([len(integrator_list), len(integrator_list)])
+for i in range(0, len(integrator_list)):
+    for j in range(0, len(integrator_list)):
+        ij_mem = membership(integrator_list[i].skid, integrator_list[j].skid)
+        if((len(integrator_list[i].skid) + len(integrator_list[j].skid) - sum(ij_mem))>0):
+            ij_mem = sum(ij_mem)/(len(integrator_list[i].skid) + len(integrator_list[j].skid) - sum(ij_mem))
+            fraction_same[i, j] = ij_mem
+
+fraction_same = pd.DataFrame(fraction_same, columns = ['all inputs', 'ORN', 'AN', 'MN', 'A00c', 'thermo', 'photo'], 
+                                            index = ['all inputs', 'ORN', 'AN', 'MN', 'A00c', 'thermo', 'photo'])
+
+import cmasher as cmr
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(4, 4)
+)
+
+ax = axs
+sns.heatmap(fraction_same.iloc[1:len(fraction_same), 1:len(fraction_same)], ax = ax, cmap = cmr.amber, 
+            cbar_kws = dict(use_gridspec=False,location="top", 
+                        label = 'Similarity between Integration Centers'),
+            square = True)
+
+fig.savefig('cascades/interhemisphere_plots/similarity_between_integration_centers.pdf', format='pdf', bbox_inches='tight', rasterized = True)
 
 # %%
 # number of ipsi or contra neurons visited per hop
@@ -875,3 +1092,108 @@ ax.set_xlabel('Number of Visits\nfrom Sensory Signal')
 #ax.axis("off")
 
 plt.savefig('cascades/plots/sensory_integration_per_hop.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# visits in ipsi or contra neurons per hop
+# initial exploratory chunk
+fig, axs = plt.subplots(
+    1, 1, figsize=(8, 8)
+)
+ipsi_contra_flow = pd.DataFrame([ORN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            ORN_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            ORN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            ORN_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            AN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            AN_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            AN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            AN_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            MN_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            MN_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            MN_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            MN_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            A00c_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            A00c_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            A00c_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            A00c_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            vtd_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            vtd_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            vtd_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            vtd_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            thermo_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            thermo_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            thermo_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            thermo_hit_hist_left[contra_indices_right].sum(axis = 0),
+                            photo_hit_hist_left[ipsi_indices_left].sum(axis = 0), 
+                            photo_hit_hist_left[contra_indices_left].sum(axis = 0),
+                            photo_hit_hist_left[ipsi_indices_right].sum(axis = 0), 
+                            photo_hit_hist_left[contra_indices_right].sum(axis = 0)], 
+                            index = ['ORN_left -> ipsi_indices_left', 'ORN_left -> contra_indices_left', 
+                                    'ORN_left -> ipsi_indices_right', 'ORN_left -> contra_indices_right',
+                                    'AN_left -> ipsi_indices_left', 'AN_left -> contra_indices_left', 
+                                    'AN_left -> ipsi_indices_right', 'AN_left -> contra_indices_right',
+                                    'MN_left -> ipsi_indices_left', 'MN_left -> contra_indices_left', 
+                                    'MN_left -> ipsi_indices_right', 'MN_left -> contra_indices_right',
+                                    'A00c_left -> ipsi_indices_left', 'A00c_left -> contra_indices_left', 
+                                    'A00c_left -> ipsi_indices_right', 'A00c_left -> contra_indices_right',
+                                    'vtd_left -> ipsi_indices_left', 'vtd_left -> contra_indices_left', 
+                                    'vtd_left -> ipsi_indices_right', 'vtd_left -> contra_indices_right',
+                                    'thermo_left -> ipsi_indices_left', 'thermo_left -> contra_indices_left', 
+                                    'thermo_left -> ipsi_indices_right', 'thermo_left -> contra_indices_right',
+                                    'photo_left -> ipsi_indices_left', 'photo_left -> contra_indices_left', 
+                                    'photo_left -> ipsi_indices_right', 'photo_left -> contra_indices_right'])
+
+sns.heatmap(ipsi_contra_flow, ax = axs, rasterized = True)
+
+# %%
+# number of ipsi or contra neurons visited >50 per hop
+# initial exploratory chunk
+fig, axs = plt.subplots(
+    1, 1, figsize=(8, 8)
+)
+threshold = 50
+
+ipsi_contra_flow_num_neurons = pd.DataFrame([(ORN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (ORN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (ORN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (ORN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (AN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (AN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (AN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (AN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (MN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (MN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (MN_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (MN_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (A00c_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (A00c_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (A00c_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (A00c_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (vtd_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (vtd_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (vtd_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (vtd_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (thermo_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (thermo_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (thermo_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (thermo_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0),
+                            (photo_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
+                            (photo_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
+                            (photo_hit_hist_left[ipsi_indices_right]>threshold).sum(axis = 0), 
+                            (photo_hit_hist_left[contra_indices_right]>threshold).sum(axis = 0)], 
+                            index = ['ORN_left -> ipsi_indices_left', 'ORN_left -> contra_indices_left', 
+                                    'ORN_left -> ipsi_indices_right', 'ORN_left -> contra_indices_right',
+                                    'AN_left -> ipsi_indices_left', 'AN_left -> contra_indices_left', 
+                                    'AN_left -> ipsi_indices_right', 'AN_left -> contra_indices_right',
+                                    'MN_left -> ipsi_indices_left', 'MN_left -> contra_indices_left', 
+                                    'MN_left -> ipsi_indices_right', 'MN_left -> contra_indices_right',
+                                    'A00c_left -> ipsi_indices_left', 'A00c_left -> contra_indices_left', 
+                                    'A00c_left -> ipsi_indices_right', 'A00c_left -> contra_indices_right',
+                                    'vtd_left -> ipsi_indices_left', 'vtd_left -> contra_indices_left', 
+                                    'vtd_left -> ipsi_indices_right', 'vtd_left -> contra_indices_right',
+                                    'thermo_left -> ipsi_indices_left', 'thermo_left -> contra_indices_left', 
+                                    'thermo_left -> ipsi_indices_right', 'thermo_left -> contra_indices_right',
+                                    'photo_left -> ipsi_indices_left', 'photo_left -> contra_indices_left', 
+                                    'photo_left -> ipsi_indices_right', 'photo_left -> contra_indices_right'])
+
+sns.heatmap(ipsi_contra_flow_num_neurons, ax = axs, rasterized = True)
+
