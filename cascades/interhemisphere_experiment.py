@@ -177,6 +177,7 @@ contra_indices_right = np.concatenate((A00c_indices_right,
 # %%
 # number of ipsi or contra neurons visited per hop
 # shows nicely the flow of information through two hemispheres
+# folds left and right ipsilateral and left and right contralateral together
 fig, axs = plt.subplots(
     6, 1, figsize=(8, 20)
 )
