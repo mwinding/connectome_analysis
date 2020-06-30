@@ -4,6 +4,7 @@ data
 data2
 plots
 interhemisphere_plots
+cluster_plots
 outputs
 neuron_groups_data
 axon_dendrite_data
