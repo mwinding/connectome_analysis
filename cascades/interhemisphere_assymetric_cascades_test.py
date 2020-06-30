@@ -44,10 +44,6 @@ photo_skids = pymaid.get_skids_by_annotation('mw photoreceptors')
 left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
 
-#RG_skids = pymaid.get_skids_by_annotation('mw RG')
-#dVNC_skids = pymaid.get_skids_by_annotation('mw dVNC')
-#dSEZ_skids = pymaid.get_skids_by_annotation('mw dSEZ')
-
 output_skids = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
 output_skids = [val for sublist in output_skids for val in sublist]
 
@@ -70,10 +66,6 @@ A00c_indices_left, A00c_indices_right, A00c_left, A00c_right = split_hemilateral
 vtd_indices_left, vtd_indices_right, vtd_left, vtd_right = split_hemilateral_to_indices(vtd_skids, left, right, mg)
 thermo_indices_left, thermo_indices_right, thermo_left, thermo_right = split_hemilateral_to_indices(thermo_skids, left, right, mg)
 photo_indices_left, photo_indices_right, photo_left, photo_right = split_hemilateral_to_indices(photo_skids, left, right, mg)
-
-#RG_indices_left, RG_indices_right, RG_left, RG_right = split_hemilateral_to_indices(RG_skids, left, right, mg)
-#dVNC_indices_left, dVNC_indices_right, dVNC_left, dVNC_right = split_hemilateral_to_indices(dVNC_skids, left, right, mg)
-#dSEZ_indices_left, dSEZ_indices_right, dSEZ_left, dSEZ_right = split_hemilateral_to_indices(dSEZ_skids, left, right, mg)
 
 input_indices_left, input_indices_right, input_left, input_right = split_hemilateral_to_indices(input_skids, left, right, mg)
 output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
@@ -140,19 +132,19 @@ cdispatch = TraverseDispatcher(
 input_indices_left = ORN_indices_left
 its = 1000
 
-full_left = int(np.round(len(input_indices_left)))
-three_quarter_left = int(np.round(len(input_indices_left)*3/4))
-half_left = int(np.round(len(input_indices_left)/2))
-quarter_left = int(np.round(len(input_indices_left)/4))
-tenth_left = int(np.round(len(input_indices_left)/10))
-twentieth_left = int(np.round(len(input_indices_left)/20))
+num_full_left = int(np.round(len(input_indices_left)))
+num_three_quarter_left = int(np.round(len(input_indices_left)*3/4))
+num_half_left = int(np.round(len(input_indices_left)/2))
+num_quarter_left = int(np.round(len(input_indices_left)/4))
+num_tenth_left = int(np.round(len(input_indices_left)/10))
+num_twentieth_left = int(np.round(len(input_indices_left)/20))
 
-input_full_left_hist, input_full_random_indices_left = random_subset_cascade(input_indices_left, full_left, its, cdispatch)
-input_3quarter_left_hist, input_3quarter_random_indices_left = random_subset_cascade(input_indices_left, three_quarter_left, its, cdispatch)
-input_half_left_hist, input_half_random_indices_left = random_subset_cascade(input_indices_left, half_left, its, cdispatch)
-input_quarter_left_hist, input_quarter_random_indices_left = random_subset_cascade(input_indices_left, quarter_left, its, cdispatch)
-input_tenth_left_hist, input_tenth_random_indices_left = random_subset_cascade(input_indices_left, tenth_left, its, cdispatch)
-input_twentieth_left_hist, input_twentieth_random_indices_left = random_subset_cascade(input_indices_left, twentieth_left, its, cdispatch)
+input_full_left_hist, input_full_random_indices_left = random_subset_cascade(input_indices_left, num_full_left, its, cdispatch)
+input_3quarter_left_hist, input_3quarter_random_indices_left = random_subset_cascade(input_indices_left, num_three_quarter_left, its, cdispatch)
+input_half_left_hist, input_half_random_indices_left = random_subset_cascade(input_indices_left, num_half_left, its, cdispatch)
+input_quarter_left_hist, input_quarter_random_indices_left = random_subset_cascade(input_indices_left, num_quarter_left, its, cdispatch)
+input_tenth_left_hist, input_tenth_random_indices_left = random_subset_cascade(input_indices_left, num_tenth_left, its, cdispatch)
+input_twentieth_left_hist, input_twentieth_random_indices_left = random_subset_cascade(input_indices_left, num_twentieth_left, its, cdispatch)
 
 import os
 os.system('say "code executed"')
@@ -385,3 +377,35 @@ sns.lineplot(x = np.arange(0, 1000, 1), y = np.arange(0, 1000, 1), dashes = ([2,
 fig.savefig('cascades/interhemisphere_plots/assymetric_input_test_pernode.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# distributions of visits per hop
+
+df = pd.DataFrame(input_full_left_hist, columns = ['hop0', 'hop1', 'hop2', 'hop3', 'hop4', 'hop5', 'hop6', 'hop7', 'hop8', 'hop9'])
+
+df = pd.DataFrame(columns = ['visits', 'hops'])
+
+data_full = []
+data_10 = []
+data_5 = []
+
+for i in np.arange(0, len(input_full_left_hist)):
+    for j in np.arange(0, len(input_full_left_hist[i,])):
+        data_full.append([input_full_left_hist[i, j], j])
+        data_10.append([input_tenth_left_hist[i, j], j])
+        data_5.append([input_twentieth_left_hist[i, j], j])
+
+df_full = pd.DataFrame(data_full , columns = ['visits', 'hops'])
+df_10 = pd.DataFrame(data_10 , columns = ['visits', 'hops'])
+df_5 = pd.DataFrame(data_5 , columns = ['visits', 'hops'])
+
+sns.violinplot(data = df_full[df_full.visits>0], x = 'hops', y = 'visits')
+sns.violinplot(data = df_10[df_10.visits>0], x = 'hops', y = 'visits')
+sns.violinplot(data = df_5[df_5.visits>0], x = 'hops', y = 'visits')
+
+#df_full[df_full.visits>0].groupby('hops').mean()
+#df_full[df_full.visits>0].groupby('hops').median()
+
+#df_5[df_5.visits>0].groupby('hops').mean()
+#df_5[df_5.visits>0].groupby('hops').median()
+
+
+        
