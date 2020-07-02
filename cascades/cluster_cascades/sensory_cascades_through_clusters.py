@@ -27,7 +27,6 @@ from src.visualization import CLASS_COLOR_DICT, adjplot
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-#mg = load_metagraph("G", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 mg.calculate_degrees(inplace=True)
 
 adj = mg.adj  # adjacency matrix from the "mg" object
