@@ -20,9 +20,8 @@ from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
 
-projectome = pd.read_csv('data/projectome.csv')
+projectome = pd.read_csv('data/projectome_2_7_2020.csv')
 rm = pymaid.CatmaidInstance(url, name, password, token)
-
 
 # %%
 # format into adjacency matrix
@@ -36,53 +35,48 @@ meshes = meshes[16:20] + meshes[20:26] + meshes[0:16]
 zero_data = np.zeros(shape=(len(meshes) + len(unique_skids),len(meshes) + len(unique_skids)))
 project_mat = pd.DataFrame(zero_data, columns=(unique_skids + meshes), index = (unique_skids + meshes))
 
-non_mesh_inputs = 0
-non_mesh_outputs = 0
+no_mesh_inputs = 0
+no_mesh_outputs = 0
+multi_mesh_inputs = 0
+multi_mesh_outputs = 0
 
+# add num outputs here?
+# currently just sums up presynaptic sites
 for skeleton in tqdm(unique_skids):
-    skel_projectome = projectome.loc[projectome['skeleton'] == skeleton, :]
+    skel_projectome = projectome.loc[projectome.skeleton == skeleton, :]
     skel_projectome = skel_projectome.reset_index()
     #print(skeleton)
-    for i in np.arange(0, len(skel_projectome.index)):
+    for i in range(0, len(skel_projectome.index)):
         location = skel_projectome.loc[i, meshes]
-        #print(i)
-        if(skel_projectome['is_input'][i]==0):
+        if(skel_projectome.is_input[i]==0):
+            if(sum(location) == 1): # outputs to only one mesh
+                # how many outputs from connector?
+                skel_projectome.iloc[i, :].connector 
+                mesh = location[location==1].index.tolist()[0]
+                project_mat.loc[skeleton, mesh] = project_mat.loc[skeleton, mesh] + 1
 
-            # make sure that connector is in a mesh
-            if(np.where(location == 1)[0].tolist() != []): 
-                mesh = location[np.where(location == 1)[0]].index.tolist()[0]
-                project_mat[skeleton][mesh] = project_mat[skeleton][mesh] + 1
+            if(sum(location) > 1):
+                #print('>1 meshes for output connector %i from skeleton %i' %(skel_projectome.connector[i], skeleton))
+                multi_mesh_outputs = multi_mesh_outputs + 1
 
-            if(np.where(location == 1)[0].tolist() == []): 
-                #print('Connector %i is not in any mesh' %skel_projectome['connector'][i])
-                non_mesh_outputs = non_mesh_outputs + 1
+            if(sum(location) == 0):
+                #print('0 meshes for output connector %i from skeleton %i' %(skel_projectome.connector[i], skeleton))
+                no_mesh_outputs = no_mesh_outputs + 1
 
         if(projectome['is_input'][i]==1):
+            if(sum(location) == 1): # inputs from only one mesh
+                mesh = location[location==1].index.tolist()[0]
+                project_mat.loc[mesh, skeleton] = project_mat.loc[mesh, skeleton] + 1
 
-            # make sure that connector is in a mesh 
-            if(np.where(location == 1)[0].tolist() != []): 
-                mesh = location[np.where(location == 1)[0]].index.tolist()[0]
-                project_mat[mesh][skeleton] = project_mat[mesh][skeleton] + 1
+            if(sum(location) > 1):
+                #print('>1 meshes for input connector %i from skeleton %i' %(skel_projectome.connector[i], skeleton))
+                multi_mesh_inputs = multi_mesh_inputs + 1
 
-            if(np.where(location == 1)[0].tolist() == []): 
-                #print('Connector %i is not in any mesh' %skel_projectome['connector'][i])
-                non_mesh_inputs = non_mesh_inputs + 1
-
-
-
+            if(sum(location) == 0):
+                #print('0 meshes for input connector %i from skeleton %i' %(skel_projectome.connector[i], skeleton))
+                no_mesh_inputs = no_mesh_inputs + 1
 # %%
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list
-def identify_pair(skid, pairList):
-
-    pair_skid = []
-    
-    if(skid in pairList["leftid"].values):
-        pair_skid = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
-
-    if(skid in pairList["rightid"].values):
-        pair_skid = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
-
-    return(pair_skid)
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
