@@ -100,6 +100,6 @@ from scipy.cluster.hierarchy import fcluster
 cluster_skids = dVNC_projectome_pairs.index[cluster.dendrogram_row.reordered_ind]
 cluster_dendrogram = cluster.dendrogram_row.dendrogram 
 
-assignments = fcluster(linkage(cluster_dendrogram.Z, method='complete'),4,'distance')
+#assignments = fcluster(linkage(cluster_dendrogram.Z, method='complete'),4,'distance')
 
 # %%
