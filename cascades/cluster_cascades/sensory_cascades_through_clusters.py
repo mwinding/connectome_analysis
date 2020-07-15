@@ -140,27 +140,19 @@ for input_hit_hist in input_hit_hist_lvl7:
     sensory_sum_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
     summed_hist_lvl7.append(sensory_sum_hist)
 
+# number of neurons per cluster group over threshold (hops remain intact)
+threshold = 50
 
-# level 7 clusters
-lvl7 = clusters.groupby('lvl7_labels')
+num_hist_lvl7 = []
+for input_hit_hist in input_hit_hist_lvl7:
+    sensory_num_hist = []
+    for i, cluster in enumerate(input_hit_hist):
+        num_cluster = (cluster>threshold).sum(axis = 0) 
+        sensory_num_hist.append(num_cluster)
 
-# for cascade from all sensories simultaneously
-all_sensory_clustered_hist = []
-for key in lvl7.groups.keys():
-        skids = lvl7.groups[key]
-        indices = np.where([x in skids for x in mg.meta.index])[0]
-        cluster_hist = all_input_hit_hist[indices]
-
-        all_sensory_clustered_hist.append(cluster_hist)
-    
-all_sensory_sum_hist = []
-for i, cluster in enumerate(all_sensory_clustered_hist):
-    sum_cluster = cluster.sum(axis = 0)/(cluster_lvl7.iloc[i].num_cluster) # normalize by number of neurons in cluster
-    all_sensory_sum_hist.append(sum_cluster)
-
-all_sensory_sum_hist = pd.DataFrame(all_sensory_sum_hist) # column names will be hop number
-all_sensory_sum_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
-
+    sensory_num_hist = pd.DataFrame(sensory_num_hist) # column names will be hop number
+    sensory_num_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
+    num_hist_lvl7.append(sensory_num_hist)
 # %%
 # plot signal of all sensories through clusters
 # main figure
@@ -179,10 +171,23 @@ ax.set_xlabel('Hops from sensory neuron signal')
 
 plt.savefig('cascades/cluster_plots/all_sensory_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
+# plotting number of neurons downstream of each sensory modality (with threshold)
+fig, axs = plt.subplots(
+    1, 1, figsize=(5, 5)
+)
+
+
+ax = axs
+sns.heatmap(sum(num_hist_lvl7).loc[order, 0:7], ax = ax, rasterized=True, cbar_kws={'label': 'Number of Neurons Downstream'})
+ax.set_ylabel('Individual Clusters')
+ax.set_yticks([])
+ax.set_xlabel('Hops from sensory neuron signal')
+
+
 #%%
 #
 # checking where inputs, outputs, etc are located in these reordered clusters
-# probably supplemental figure
+# maybe supplemental figure
 
 cluster_membership = []
 for cluster_key in order:
@@ -251,7 +256,7 @@ for i in range(0, len(input_names_format_reordered)):
     if(i>=4):
         ax = axs[i-4,1]
     
-    sns.heatmap(summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax)
+    sns.heatmap(summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
     ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
 
@@ -265,3 +270,37 @@ caption = f"Figure: Hop histogram of individual level 7 clusters\nCascades start
 ax.text(0, 1, caption, va="top")
 
 plt.savefig('cascades/cluster_plots/sensory_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
+
+#%%
+# plot number of neurons downstream each sensory modality with threshold
+
+fig, axs = plt.subplots(
+    4, 2, figsize=(10, 10)
+)
+
+fig.tight_layout(pad=2.0)
+vmax = 20
+
+for i in range(0, len(input_names_format_reordered)):
+    if(i<4):
+        ax = axs[i, 0]
+    if(i>=4):
+        ax = axs[i-4,1]
+    
+    sns.heatmap(num_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Number of Neurons'})
+    ax.set_ylabel('Individual Clusters')
+    ax.set_yticks([])
+
+    ax.set_xlabel('Hops from %s signal' %input_names_format_reordered[i])
+
+    #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
+
+ax = axs[3, 1]
+ax.axis("off")
+caption = f"Figure: Hop histogram of individual level 7 clusters\nCascades starting at each sensory modality\nending at brain output neurons"
+ax.text(0, 1, caption, va="top")
+
+plt.savefig('cascades/cluster_plots/sensory_through_clusters_lvl7_num_neurons.pdf', format='pdf', bbox_inches='tight')
+
+
+# %%
