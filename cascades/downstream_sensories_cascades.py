@@ -674,6 +674,9 @@ plt.savefig('cascades/plots/sensory_integration_per_hop_parallel_coords_plot.pdf
 
 # %%
 # how close are descending neurons to sensory?
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
 dVNC_ORN_hit = ORN_hit_hist[dVNC_indices, :]
 dVNC_AN_hit = AN_hit_hist[dVNC_indices, :]
@@ -733,7 +736,7 @@ RG_matrix = pd.DataFrame(([RG_ORN_hit.sum(axis = 0),
 import cmasher as cmr
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(8, 8)
+    3, 1, figsize=(4, 8)
 )
 
 fig.tight_layout(pad=3.0)
@@ -744,25 +747,25 @@ cmap = cmr.heat
 ax = axs[0]
 ax.set_title('Signal to VNC Descending Neurons')
 sns.heatmap(dVNC_matrix, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
-ax.set(xlim = (0, 13))
+ax.set(xlim = (0, 9))
 
 ax = axs[1]
 ax.set_title('Signal to SEZ Descending Neurons')
 sns.heatmap(dSEZ_matrix, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
-ax.set(xlim = (0, 13))
+ax.set(xlim = (0, 9))
 
 ax = axs[2]
 ax.set_title('Signal to Ring Gland Neurons')
 sns.heatmap(RG_matrix, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
 ax.set_xlabel('Hops from sensory')
-ax.set(xlim = (0, 13))
+ax.set(xlim = (0, 9))
 
 plt.savefig('cascades/plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # num of descendings at each level
 
-threshold = 25
+threshold = 50
 num_dVNC_dsSens = pd.DataFrame(([np.array(dVNC_ORN_hit>threshold).sum(axis = 0),
                                 np.array(dVNC_AN_hit>threshold).sum(axis = 0),
                                 np.array(dVNC_MN_hit>threshold).sum(axis = 0),
@@ -795,21 +798,22 @@ fig, axs = plt.subplots(
 )
 
 fig.tight_layout(pad=3.0)
-vmax = 100
+vmax = 50
+cmap = cmr.heat
 
 ax = axs[0]
 ax.set_title('Number of VNC Descending Neurons downstream of Sensory Signal')
-sns.heatmap(num_dVNC_dsSens, ax = ax, vmax = vmax, rasterized=True)
+sns.heatmap(num_dVNC_dsSens, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
 ax.set(xlim = (0, 13))
 
 ax = axs[1]
 ax.set_title('Number of SEZ Descending Neurons downstream of Sensory Signal')
-sns.heatmap(num_dSEZ_dsSens, ax = ax, vmax = vmax, rasterized=True)
+sns.heatmap(num_dSEZ_dsSens, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
 ax.set(xlim = (0, 13))
 
 ax = axs[2]
 ax.set_title('Number of Ring Gland Neurons downstream of Sensory Signal')
-sns.heatmap(num_RG_dsSens, ax = ax, vmax = vmax, rasterized=True)
+sns.heatmap(num_RG_dsSens, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
 ax.set_xlabel('Hops from sensory')
 ax.set(xlim = (0, 13))
 
