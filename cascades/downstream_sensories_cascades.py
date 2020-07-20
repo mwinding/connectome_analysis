@@ -95,6 +95,11 @@ photo_hit_hist = cdispatch.multistart(start_nodes = photo_indices)
 
 # %%
 # plot
+
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 fig, axs = plt.subplots(
     7, 1, figsize=(10, 20)
 )
@@ -763,7 +768,97 @@ ax.set(xlim = (0, 9))
 plt.savefig('cascades/plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# difference in descending neurons per modality
+# sum visits across all hops, threshold
+# not very impressive analysis
+
+threshold = 50
+
+dVNC_sens = [
+[dVNC_indices[i] for i, x in enumerate(dVNC_ORN_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_AN_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_MN_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_thermo_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_photo_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_A00c_hit.sum(axis = 1)>threshold) if x==True],
+[dVNC_indices[i] for i, x in enumerate(dVNC_vtd_hit.sum(axis = 1)>threshold) if x==True]
+]
+
+# determine intersection over union for descending skids
+dVNC_mat_iou = []
+for i in range(0, len(dVNC_sens)):
+    column = []
+    for j in range(0, len(dVNC_sens)):
+        set1 = np.array(dVNC_sens[i])
+        set2 = np.array(dVNC_sens[j])
+        if(len(np.union1d(set1, set2))>0):
+            iou = len(np.intersect1d(set1, set2))/len(np.union1d(set1, set2))
+        if(len(np.union1d(set1, set2))==0):
+            iou = 0
+        column.append(iou)
+    
+    dVNC_mat_iou.append(column)
+
+
+
+dSEZ_sens = [
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_ORN_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_AN_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_MN_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_thermo_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_photo_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_A00c_hit.sum(axis = 1)>threshold) if x==True],
+[dSEZ_indices[i] for i, x in enumerate(dSEZ_vtd_hit.sum(axis = 1)>threshold) if x==True]
+]
+
+# determine intersection over union for descending skids
+dSEZ_mat_iou = []
+for i in range(0, len(dSEZ_sens)):
+    column = []
+    for j in range(0, len(dSEZ_sens)):
+        set1 = np.array(dSEZ_sens[i])
+        set2 = np.array(dSEZ_sens[j])
+        if(len(np.union1d(set1, set2))>0):
+            iou = len(np.intersect1d(set1, set2))/len(np.union1d(set1, set2))
+        if(len(np.union1d(set1, set2))==0):
+            iou = 0
+        column.append(iou)
+    
+    dSEZ_mat_iou.append(column)
+
+RG_sens = [
+[RG_indices[i] for i, x in enumerate(RG_ORN_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_AN_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_MN_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_thermo_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_photo_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_A00c_hit.sum(axis = 1)>threshold) if x==True],
+[RG_indices[i] for i, x in enumerate(RG_vtd_hit.sum(axis = 1)>threshold) if x==True]
+]
+
+# determine intersection over union for descending skids
+RG_mat_iou = []
+for i in range(0, len(RG_sens)):
+    column = []
+    for j in range(0, len(RG_sens)):
+        set1 = np.array(RG_sens[i])
+        set2 = np.array(RG_sens[j])
+        if(len(np.union1d(set1, set2))>0):
+            iou = len(np.intersect1d(set1, set2))/len(np.union1d(set1, set2))
+        if(len(np.union1d(set1, set2))==0):
+            iou = 0
+        column.append(iou)
+    
+    RG_mat_iou.append(column)
+
+sns.heatmap(dVNC_mat_iou, vmax = 1.0, vmin = 0)
+sns.heatmap(dSEZ_mat_iou, vmax = 1.0, vmin = 0)
+sns.heatmap(RG_mat_iou, vmax = 1.0, vmin = 0)
+
+
+# %%
 # num of descendings at each level
+# this assumes that thresholding per node is useful; it might not be
 
 threshold = 50
 num_dVNC_dsSens = pd.DataFrame(([np.array(dVNC_ORN_hit>threshold).sum(axis = 0),
@@ -825,33 +920,33 @@ dVNC_hits = pd.DataFrame(([ dVNC_skids,
                             dVNC_ORN_hit.sum(axis = 1),
                             dVNC_AN_hit.sum(axis = 1),
                             dVNC_MN_hit.sum(axis = 1),
-                            dVNC_A00c_hit.sum(axis = 1),
-                            dVNC_vtd_hit.sum(axis = 1),
                             dVNC_thermo_hit.sum(axis = 1),
-                            dVNC_photo_hit.sum(axis = 1)]),
-                            index = ['dVNC_skid', 'ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
+                            dVNC_photo_hit.sum(axis = 1),
+                            dVNC_A00c_hit.sum(axis = 1),
+                            dVNC_vtd_hit.sum(axis = 1)]),
+                            index = ['dVNC_skid', 'ORN', 'AN', 'MN', 'thermo', 'photo', 'A00c', 'vtd'])
 dVNC_hits = dVNC_hits.T
 
 dSEZ_hits = pd.DataFrame(([ dSEZ_skids, 
                             dSEZ_ORN_hit.sum(axis = 1),
                             dSEZ_AN_hit.sum(axis = 1),
                             dSEZ_MN_hit.sum(axis = 1),
-                            dSEZ_A00c_hit.sum(axis = 1),
-                            dSEZ_vtd_hit.sum(axis = 1),
                             dSEZ_thermo_hit.sum(axis = 1),
-                            dSEZ_photo_hit.sum(axis = 1)]),
-                            index = ['dSEZ_skid', 'ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
+                            dSEZ_photo_hit.sum(axis = 1),
+                            dSEZ_A00c_hit.sum(axis = 1),
+                            dSEZ_vtd_hit.sum(axis = 1)]),
+                            index = ['dSEZ_skid', 'ORN', 'AN', 'MN', 'thermo', 'photo', 'A00c', 'vtd'])
 dSEZ_hits = dSEZ_hits.T
 
 RG_hits = pd.DataFrame(([ RG_skids, 
                             RG_ORN_hit.sum(axis = 1),
                             RG_AN_hit.sum(axis = 1),
                             RG_MN_hit.sum(axis = 1),
-                            RG_A00c_hit.sum(axis = 1),
-                            RG_vtd_hit.sum(axis = 1),
                             RG_thermo_hit.sum(axis = 1),
-                            RG_photo_hit.sum(axis = 1)]),
-                            index = ['RG_skid', 'ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
+                            RG_photo_hit.sum(axis = 1),
+                            RG_A00c_hit.sum(axis = 1),
+                            RG_vtd_hit.sum(axis = 1)]),
+                            index = ['RG_skid', 'ORN', 'AN', 'MN', 'thermo', 'photo', 'A00c', 'vtd'])
 RG_hits = RG_hits.T
 
 # %%
@@ -880,114 +975,23 @@ sns.heatmap(RG_hits.iloc[:, 1:len(RG_hits)].sort_values(['ORN', 'thermo', 'photo
 
 plt.savefig('cascades/plots/signal_to_individual_outputs.pdf', format='pdf', bbox_inches='tight')
 
-# %%
-# multisensory elements of each layer of each sensory modality
-# multisensory elements were summed for all hops, doesn't work that well
-'''
-threshold = 0
+#%%
+# alternative clustermap plot of descending neurons
 
-ORN0_indices = np.where(ORN_hit_hist[:, 0]>threshold)[0]
-ORN1_indices = np.where(ORN_hit_hist[:, 1]>threshold)[0]
-ORN2_indices = np.where(ORN_hit_hist[:, 2]>threshold)[0]
-ORN3_indices = np.where(ORN_hit_hist[:, 3]>threshold)[0]
-ORN4_indices = np.where(ORN_hit_hist[:, 4]>threshold)[0]
-ORN5_indices = np.where(ORN_hit_hist[:, 5]>threshold)[0]
+fig = sns.clustermap(dVNC_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+ax = fig.ax_heatmap
+ax.set_xlabel('Individual dVNCs')
+ax.set_xticks([])
+fig.savefig('cascades/plots/signal_to_individual_dVNCs.pdf')
 
-ORN_profile = pd.DataFrame([np.array(sensory_profile.iloc[ORN0_indices, :].sum(axis=0)/len(ORN0_indices)), 
-                    np.array(sensory_profile.iloc[ORN1_indices, :].sum(axis=0)/len(ORN1_indices)),
-                    np.array(sensory_profile.iloc[ORN2_indices, :].sum(axis=0)/len(ORN2_indices)),
-                    np.array(sensory_profile.iloc[ORN3_indices, :].sum(axis=0)/len(ORN3_indices)), 
-                    np.array(sensory_profile.iloc[ORN4_indices, :].sum(axis=0)/len(ORN4_indices)), 
-                    np.array(sensory_profile.iloc[ORN5_indices, :].sum(axis=0)/len(ORN5_indices))],
-                    index = ['ORN0', 'ORN1', 'ORN2', 'ORN3', 'ORN4', 'ORN5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
+fig = sns.clustermap(dSEZ_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+ax = fig.ax_heatmap
+ax.set_xlabel('Individual dSEZs')
+ax.set_xticks([])
+fig.savefig('cascades/plots/signal_to_individual_dSEZs.pdf')
 
-AN0_indices = np.where(AN_hit_hist[:, 0]>threshold)[0]
-AN1_indices = np.where(AN_hit_hist[:, 1]>threshold)[0]
-AN2_indices = np.where(AN_hit_hist[:, 2]>threshold)[0]
-AN3_indices = np.where(AN_hit_hist[:, 3]>threshold)[0]
-AN4_indices = np.where(AN_hit_hist[:, 4]>threshold)[0]
-AN5_indices = np.where(AN_hit_hist[:, 5]>threshold)[0]
-
-AN_profile = pd.DataFrame([np.array(sensory_profile.iloc[AN0_indices, :].sum(axis=0)/len(AN0_indices)), 
-                    np.array(sensory_profile.iloc[AN1_indices, :].sum(axis=0)/len(AN1_indices)),
-                    np.array(sensory_profile.iloc[AN2_indices, :].sum(axis=0)/len(AN2_indices)),
-                    np.array(sensory_profile.iloc[AN3_indices, :].sum(axis=0)/len(AN3_indices)), 
-                    np.array(sensory_profile.iloc[AN4_indices, :].sum(axis=0)/len(AN4_indices)), 
-                    np.array(sensory_profile.iloc[AN5_indices, :].sum(axis=0)/len(AN5_indices))],
-                    index = ['AN0', 'AN1', 'AN2', 'AN3', 'AN4', 'AN5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-
-MN0_indices = np.where(MN_hit_hist[:, 0]>threshold)[0]
-MN1_indices = np.where(MN_hit_hist[:, 1]>threshold)[0]
-MN2_indices = np.where(MN_hit_hist[:, 2]>threshold)[0]
-MN3_indices = np.where(MN_hit_hist[:, 3]>threshold)[0]
-MN4_indices = np.where(MN_hit_hist[:, 4]>threshold)[0]
-MN5_indices = np.where(MN_hit_hist[:, 5]>threshold)[0]
-
-MN_profile = pd.DataFrame([np.array(sensory_profile.iloc[MN0_indices, :].sum(axis=0)/len(MN0_indices)), 
-                    np.array(sensory_profile.iloc[MN1_indices, :].sum(axis=0)/len(MN1_indices)),
-                    np.array(sensory_profile.iloc[MN2_indices, :].sum(axis=0)/len(MN2_indices)),
-                    np.array(sensory_profile.iloc[MN3_indices, :].sum(axis=0)/len(MN3_indices)), 
-                    np.array(sensory_profile.iloc[MN4_indices, :].sum(axis=0)/len(MN4_indices)), 
-                    np.array(sensory_profile.iloc[MN5_indices, :].sum(axis=0)/len(MN5_indices))],
-                    index = ['MN0', 'MN1', 'MN2', 'MN3', 'MN4', 'MN5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-
-A00c0_indices = np.where(A00c_hit_hist[:, 0]>threshold)[0]
-A00c1_indices = np.where(A00c_hit_hist[:, 1]>threshold)[0]
-A00c2_indices = np.where(A00c_hit_hist[:, 2]>threshold)[0]
-A00c3_indices = np.where(A00c_hit_hist[:, 3]>threshold)[0]
-A00c4_indices = np.where(A00c_hit_hist[:, 4]>threshold)[0]
-A00c5_indices = np.where(A00c_hit_hist[:, 5]>threshold)[0]
-
-A00c_profile = pd.DataFrame([np.array(sensory_profile.iloc[A00c0_indices, :].sum(axis=0)/len(A00c0_indices)), 
-                    np.array(sensory_profile.iloc[A00c1_indices, :].sum(axis=0)/len(A00c1_indices)),
-                    np.array(sensory_profile.iloc[A00c2_indices, :].sum(axis=0)/len(A00c2_indices)),
-                    np.array(sensory_profile.iloc[A00c3_indices, :].sum(axis=0)/len(A00c3_indices)), 
-                    np.array(sensory_profile.iloc[A00c4_indices, :].sum(axis=0)/len(A00c4_indices)), 
-                    np.array(sensory_profile.iloc[A00c5_indices, :].sum(axis=0)/len(A00c5_indices))],
-                    index = ['A00c0', 'A00c1', 'A00c2', 'A00c3', 'A00c4', 'A00c5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-
-vtd0_indices = np.where(vtd_hit_hist[:, 0]>threshold)[0]
-vtd1_indices = np.where(vtd_hit_hist[:, 1]>threshold)[0]
-vtd2_indices = np.where(vtd_hit_hist[:, 2]>threshold)[0]
-vtd3_indices = np.where(vtd_hit_hist[:, 3]>threshold)[0]
-vtd4_indices = np.where(vtd_hit_hist[:, 4]>threshold)[0]
-vtd5_indices = np.where(vtd_hit_hist[:, 5]>threshold)[0]
-
-vtd_profile = pd.DataFrame([np.array(sensory_profile.iloc[vtd0_indices, :].sum(axis=0)/len(vtd0_indices)), 
-                    np.array(sensory_profile.iloc[vtd1_indices, :].sum(axis=0)/len(vtd1_indices)),
-                    np.array(sensory_profile.iloc[vtd2_indices, :].sum(axis=0)/len(vtd2_indices)),
-                    np.array(sensory_profile.iloc[vtd3_indices, :].sum(axis=0)/len(vtd3_indices)), 
-                    np.array(sensory_profile.iloc[vtd4_indices, :].sum(axis=0)/len(vtd4_indices)), 
-                    np.array(sensory_profile.iloc[vtd5_indices, :].sum(axis=0)/len(vtd5_indices))],
-                    index = ['vtd0', 'vtd1', 'vtd2', 'vtd3', 'vtd4', 'vtd5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-
-thermo0_indices = np.where(thermo_hit_hist[:, 0]>threshold)[0]
-thermo1_indices = np.where(thermo_hit_hist[:, 1]>threshold)[0]
-thermo2_indices = np.where(thermo_hit_hist[:, 2]>threshold)[0]
-thermo3_indices = np.where(thermo_hit_hist[:, 3]>threshold)[0]
-thermo4_indices = np.where(thermo_hit_hist[:, 4]>threshold)[0]
-thermo5_indices = np.where(thermo_hit_hist[:, 5]>threshold)[0]
-
-thermo_profile = pd.DataFrame([np.array(sensory_profile.iloc[thermo0_indices, :].sum(axis=0)/len(thermo0_indices)), 
-                    np.array(sensory_profile.iloc[thermo1_indices, :].sum(axis=0)/len(thermo1_indices)),
-                    np.array(sensory_profile.iloc[thermo2_indices, :].sum(axis=0)/len(thermo2_indices)),
-                    np.array(sensory_profile.iloc[thermo3_indices, :].sum(axis=0)/len(thermo3_indices)), 
-                    np.array(sensory_profile.iloc[thermo4_indices, :].sum(axis=0)/len(thermo4_indices)), 
-                    np.array(sensory_profile.iloc[thermo5_indices, :].sum(axis=0)/len(thermo5_indices))],
-                    index = ['thermo0', 'thermo1', 'thermo2', 'thermo3', 'thermo4', 'thermo5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-
-photo0_indices = np.where(photo_hit_hist[:, 0]>threshold)[0]
-photo1_indices = np.where(photo_hit_hist[:, 1]>threshold)[0]
-photo2_indices = np.where(photo_hit_hist[:, 2]>threshold)[0]
-photo3_indices = np.where(photo_hit_hist[:, 3]>threshold)[0]
-photo4_indices = np.where(photo_hit_hist[:, 4]>threshold)[0]
-photo5_indices = np.where(photo_hit_hist[:, 5]>threshold)[0]
-
-photo_profile = pd.DataFrame([np.array(sensory_profile.iloc[photo0_indices, :].sum(axis=0)/len(photo0_indices)), 
-                    np.array(sensory_profile.iloc[photo1_indices, :].sum(axis=0)/len(photo1_indices)),
-                    np.array(sensory_profile.iloc[photo2_indices, :].sum(axis=0)/len(photo2_indices)),
-                    np.array(sensory_profile.iloc[photo3_indices, :].sum(axis=0)/len(photo3_indices)), 
-                    np.array(sensory_profile.iloc[photo4_indices, :].sum(axis=0)/len(photo4_indices)), 
-                    np.array(sensory_profile.iloc[photo5_indices, :].sum(axis=0)/len(photo5_indices))],
-                    index = ['photo0', 'photo1', 'photo2', 'photo3', 'photo4', 'photo5'], columns = ['ORN', 'AN', 'MN', 'A00c', 'vtd', 'thermo', 'photo'])
-'''
+fig = sns.clustermap(RG_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+ax = fig.ax_heatmap
+ax.set_xlabel('Individual RG neurons')
+ax.set_xticks([])
+fig.savefig('cascades/plots/signal_to_individual_RGs.pdf')
