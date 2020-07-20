@@ -59,7 +59,7 @@ def bilateral(skid, projectome, pairs):
         output_right = sum(projectome.loc[projectome['skeleton']==skid]['Brain Hemisphere right'])
 
         if((output_left + output_right)>0):
-            contralateralness = 1-output_right/(output_right + output_left)
+            contralateralness = output_right/(output_right + output_left)
             return(skid, hemisphere, output_left, output_right, contralateralness)
 
 
@@ -69,7 +69,7 @@ def bilateral(skid, projectome, pairs):
         output_right = sum(projectome.loc[projectome['skeleton']==skid]['Brain Hemisphere right'])
 
         if((output_left + output_right)>0):
-            contralateralness = 1-output_left/(output_right + output_left)
+            contralateralness = output_left/(output_right + output_left)
             return(skid, hemisphere, output_left, output_right, contralateralness)
 
 
@@ -84,6 +84,8 @@ bilateral_neurons = pd.DataFrame(data = rows, columns = ['skids', 'hemisphere', 
 fig, ax = plt.subplots(1,1,figsize=(4,4))
 sns.distplot(bilateral_neurons[bilateral_neurons['hemisphere']=='left']['contralateral percent'])
 sns.distplot(bilateral_neurons[bilateral_neurons['hemisphere']=='right']['contralateral percent'])
+ax.set_xlabel('Contralateral Character per Neuron')
+ax.yaxis.set_visible(False)
 plt.savefig('left_right_hemisphere_data/plots/bilateral_neurons.pdf', bbox_inches='tight', transparent = True)
 # %%
 
