@@ -995,3 +995,5 @@ ax = fig.ax_heatmap
 ax.set_xlabel('Individual RG neurons')
 ax.set_xticks([])
 fig.savefig('cascades/plots/signal_to_individual_RGs.pdf')
+
+# add axis that says whether descendings are putative turn, putative forward crawl, etc.

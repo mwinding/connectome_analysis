@@ -164,17 +164,21 @@ all_sensory_sum_hist.index = cluster_lvl7.key # uses cluster name for index of e
 # %%
 # plot signal of all sensories through clusters
 
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 fig, axs = plt.subplots(
-    1, 1, figsize=(5, 5)
+    1, 1, figsize=(3, 5)
 )
 
 vmax = 300
 
 ax = axs
-sns.heatmap(sum(summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
+sns.heatmap(sum(summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal', 'orientation': 'horizontal'})
 ax.set_ylabel('Individual Clusters')
 ax.set_yticks([])
-ax.set_xlabel('Hops from sensory neuron signal')
+ax.set_xlabel('Hops from sensory signal')
 
 plt.savefig('cascades/cluster_plots/all_sensory_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
