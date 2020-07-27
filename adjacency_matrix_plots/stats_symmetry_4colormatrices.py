@@ -73,6 +73,7 @@ plt.savefig('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/adjacenc
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['font.size'] = 6
 
 fig, ax = plt.subplots(1,1,figsize=(1,1.25))
 
