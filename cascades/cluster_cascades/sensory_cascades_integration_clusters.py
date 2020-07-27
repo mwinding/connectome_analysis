@@ -24,6 +24,11 @@ from graspy.utils import binarize, pass_to_ranks
 from src.data import load_metagraph
 from src.visualization import CLASS_COLOR_DICT, adjplot
 
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+plt.rcParams.update({'font.size': 6})
+
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
@@ -318,7 +323,7 @@ sort = sorted(range(len(length_permut_members)), reverse = True, key = lambda k:
 #sort = sorted(range(len(length_permut_members2)), reverse = True, key = lambda k: length_permut_members2[k])
 
 #subset = [permut_members[x] for x in [0, 1, 95, 111, 63, 15, 3, 123, 125, 126, 119]] # sort[0:8] + all sensory-specific
-subset = [permut_members[x] for x in sort[0:16]]
+subset = [permut_members[x] for x in sort[0:17]]
 subset = [item for sublist in subset for item in sublist]
 
 subset_upset = summed_sensory_hits_all.loc[subset]
@@ -383,7 +388,7 @@ sns.violinplot(data = all_hops, x = 'integration', y = 'all_hops', ax = ax, line
 ax.set_ylabel('Hops from Sensory', fontsize = 6)
 ax.set_xlabel('')
 ax.set_yticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
-ax.set_xticklabels( ('Integrative\nN=%i' %len(mean_hops_integrative), 'Labelled Line\nN=%i' %len(mean_hops_nonintegrative)) )
+ax.set_xticklabels( ('Integrative\nN=%i' %len(mean_hops_integrative), 'Labelled Line\nN=%i' %len(all_hops_nonintegrative)) )
 fig.savefig('cascades/cluster_plots/Integrative_LabelledLine_plot.pdf', format='pdf', bbox_inches='tight')
 plt.rcParams["font.family"] = "Arial"
 
@@ -413,10 +418,10 @@ fig.tight_layout(pad = 2.0)
 ax = axs
 
 vplt = sns.violinplot(data = all_hops_integrative_first_vs_other, x = 'integration', y = 'all_hops', 
-                hue='step', split = True, ax = ax, linewidth = 0.5, legend_out=True)
+                hue='step', split = True, ax = ax, linewidth = 0.5, legend_out=True, hue_order = ['First', 'Additional'])
 ax.set_ylabel('Hops from Sensory', fontsize = 6)
 ax.set_xlabel('')
-ax.set_xticklabels( ('Integrative\nN=%i' %len(mean_hops_integrative), 'Labelled Line\nN=%i' %len(mean_hops_nonintegrative)) )
+ax.set_xticklabels( ('Integrative\nN=%i' %len(mean_hops_integrative), 'Labelled Line\nN=%i' %len(all_hops_nonintegrative)) )
 fig.savefig('cascades/cluster_plots/Integrative_detail_plot.pdf', format='pdf')
 plt.rcParams["font.family"] = "Arial"
 
@@ -438,7 +443,7 @@ permut_names = np.array(permut_names)
 
 # identifying indices to be used in permut_members
 nonintegrative_indices = [i for i, x in enumerate(permut7) if sum(x)==1]
-integrative_indices = [x for x in sort[0:16] if (x not in nonintegrative_indices)]
+integrative_indices = [x for x in sort[0:17] if (x not in nonintegrative_indices)]
 
 permut_col = []
 for skid in all_hops_integrative_first_vs_other.skid:
@@ -453,18 +458,34 @@ all_hops_integrative_first_vs_other['permut_name'] = permut_names[permut_col.per
 all_hops_integrative_first_vs_other.index = permut_col.permut_index.values
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (6,1.75)
+    1, 1, figsize = (3.75,1.25)
 )
 fig.tight_layout(pad = 2.0)
 ax = axs
 sns.violinplot(data = all_hops_integrative_first_vs_other.loc[integrative_indices], 
                 x = 'permut_name', y = 'all_hops', scale = 'width', hue = 'step', split=True, 
-                ax = ax, linewidth = 0.5)
+                hue_order=['First','Additional'], ax = ax, linewidth = 0.5)
 ax.set_ylabel('Hops from Sensory', fontsize = 6)
 ax.set_xlabel('')
+plt.xticks(rotation=45, ha = 'right')
 ax.set(ylim = (0, 8))
 ax.set_yticks(np.arange(0, 9, 1))
-plt.savefig('cascades/cluster_plots/Integrative_hop_violinplots.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('cascades/cluster_plots/Integrative_hop_violinplots_labels.pdf', format='pdf', bbox_inches='tight')
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (3.75,1.25)
+)
+fig.tight_layout(pad = 2.0)
+ax = axs
+sns.violinplot(data = all_hops_integrative_first_vs_other.loc[integrative_indices], 
+                x = 'permut_name', y = 'all_hops', scale = 'width', hue = 'step', split=True, 
+                hue_order=['First','Additional'], ax = ax, linewidth = 0.5)
+ax.set_ylabel('Hops from Sensory', fontsize = 6)
+ax.set_xlabel('')
+plt.xticks([])
+ax.set(ylim = (0, 8))
+ax.set_yticks(np.arange(0, 9, 1))
+plt.savefig('cascades/cluster_plots/Integrative_hop_violinplots_nolabels.pdf', format='pdf', bbox_inches='tight')
 
 #%%
 # same but with nonintegrative
@@ -496,7 +517,7 @@ all_hops_nonintegrative['permut_name'] = permut_names[permut_col_nonintegrative.
 all_hops_nonintegrative.index = permut_col_nonintegrative.permut_index.values
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (6,1.75)
+    1, 1, figsize = (3.75,1.25)
 )
 fig.tight_layout(pad = 2.0)
 ax = axs
@@ -507,60 +528,113 @@ ax.set_xlabel('')
 ax.set(ylim = (0, 8))
 ax.set_yticks(np.arange(0, 9, 1))
 plt.savefig('cascades/cluster_plots/Labelled_line_hop_violinplots.pdf', format='pdf', bbox_inches='tight')
+
 # %%
-# plot when signal occurs per cluster
-# sensory-specific_vs_integrative_hops.pdf like plot
+# how many outputs associated with each type?
+
+labelledline_descendings = []
+for i in nonintegrative_indices:
+    skids = np.unique(all_hops_nonintegrative.loc[i].skid)
+    labelledline_descendings.append([i, sum(mg.meta.loc[skids].dVNC), sum(mg.meta.loc[skids].dSEZ), sum(mg.meta.loc[skids].RG)])
+
+labelledline_descendings = pd.DataFrame(labelledline_descendings, columns = ['permut_number', 'dVNCs', 'dSEZs', 'RG'])
+labelledline_descendings.index = labelledline_descendings.permut_number
+labelledline_descendings['permut_name'] = permut_names[nonintegrative_indices]
+
+integrative_descendings = []
+for i in integrative_indices:
+    skids = np.unique(all_hops_integrative_first_vs_other.loc[i].skid)
+    integrative_descendings.append([i, 
+                                    sum(mg.meta.loc[skids].dVNC), sum(mg.meta.loc[skids].dSEZ), sum(mg.meta.loc[skids].RG)])
+
+integrative_descendings = pd.DataFrame(integrative_descendings, columns = ['permut_number', 'dVNCs', 'dSEZs', 'RG'])
+integrative_descendings.index = integrative_descendings.permut_number
+integrative_descendings['permut_name'] = permut_names[integrative_indices]
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(3.75,.4)
+)
+ax = axs
+sns.heatmap(labelledline_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Oranges')
+fig.savefig('cascades/cluster_plots/Labelled_line_hop_violinplots_bottom.pdf', format='pdf', bbox_inches='tight')
+
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(3.75,.4)
+)
+ax = axs
+#ax.set_xticklables(integrative_descendings.permut_name.values)
+sns.heatmap(integrative_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Blues')
+fig.savefig('cascades/cluster_plots/Integrative_hop_violinplots_bottom.pdf', format='pdf', bbox_inches='tight')
+
+# %%
 
 #Questions
-# how many neurons participate in labelled-line and how many in multi-modal integration
 # which clusters contain these neuron types?
 # which clusters display which types of sensory input and how much?
-# descendings associated with each cluster of multi-modal types
-# which neurons receive no sensory input?
 
 # %%
-# plotting integrative vs non-integrative per cluster
+# plotting sensory integration make-up per cluster
 
 # level 7 clusters
 lvl7 = clusters.groupby('lvl7_labels')
 
-# cluster order and number of neurons per cluster
+# integration types per cluster
 cluster_lvl7 = []
 for key in lvl7.groups.keys():
-    for row in permut_members.iterrows():
-        if(row[1].name in lvl7.groups[key].values):
-            row[1]
+    for i, permut in enumerate(permut_members):
+        for permut_skid in permut:
+            if((permut_skid in lvl7.groups[key].values) & (i in nonintegrative_indices)):
+                cluster_lvl7.append([key, permut_skid, i, permut_names[i], 'labelled_line'])
+            if((permut_skid in lvl7.groups[key].values) & (i not in nonintegrative_indices)):
+                cluster_lvl7.append([key, permut_skid, i, permut_names[i], 'integrative'])
+
+cluster_lvl7 = pd.DataFrame(cluster_lvl7, columns = ['key', 'skid', 'permut_index', 'permut_name', 'integration'])
 
 
-cluster_lvl7 = pd.DataFrame(cluster_lvl7, columns = ['key', 'num_cluster'])
+cluster_lvl7_groups = cluster_lvl7.groupby('key')
 
+percent_integrative = [sum(x[1].integration == 'integrative')/len(x[1].integration) for x in list(cluster_lvl7_groups)]
+percent_labelled_line = [sum(x[1].integration == 'labelled_line')/len(x[1].integration) for x in list(cluster_lvl7_groups)]    
 
-# breaking signal cascades into cluster groups
-input_hit_hist_lvl7 = []
-for hit_hist in input_hit_hist_list:
-    sensory_clustered_hist = []
+percent_labelled_line_subtypes = []
+for index in nonintegrative_indices:
+    percent_labelled_line_subtypes.append(
+        [sum(x[1].permut_index == index)/len(x[1].permut_index) for x in list(cluster_lvl7_groups)]
+    )
 
-    for key in lvl7.groups.keys():
-        skids = lvl7.groups[key]
-        indices = np.where([x in skids for x in mg.meta.index])[0]
-        cluster_hist = hit_hist[indices]
-        cluster_hist = pd.DataFrame(cluster_hist, index = skids)
+percent_integrative_subtypes = []
+for index in integrative_indices:
+    percent_integrative_subtypes.append(
+        [sum(x[1].permut_index == index)/len(x[1].permut_index) for x in list(cluster_lvl7_groups)]
+    )
 
-        sensory_clustered_hist.append(cluster_hist)
-    
-    input_hit_hist_lvl7.append(sensory_clustered_hist)
+cluster_character = pd.DataFrame([percent_integrative, percent_labelled_line], columns = lvl7.groups.keys(), index = ['integrative', 'labelled_line']).T
+cluster_character_sub_labelled_line = pd.DataFrame(percent_labelled_line_subtypes, columns = lvl7.groups.keys(), 
+                                    index = [permut_names[x] for x in nonintegrative_indices]).T
+cluster_character_sub_integrative = pd.DataFrame(percent_integrative_subtypes, columns = lvl7.groups.keys(), 
+                                    index = integrative_indices).T
 
-# summed signal cascades per cluster group (hops remain intact)
-summed_hist_lvl7 = []
-for input_hit_hist in input_hit_hist_lvl7:
-    sensory_sum_hist = []
-    for i, cluster in enumerate(input_hit_hist):
-        sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
-        sensory_sum_hist.append(sum_cluster)
+sns.heatmap(cluster_character.loc[order], cmap = 'Greens', rasterized = True)
 
-    sensory_sum_hist = pd.DataFrame(sensory_sum_hist) # column names will be hop number
-    sensory_sum_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
-    summed_hist_lvl7.append(sensory_sum_hist)
+fig, axs = plt.subplots(
+    1, 1, figsize = (5, 5)
+)
+ax = axs
+ax.set_ylabel('Individual Clusters')
+ax.set_yticks([]);
+ax.set_xticks([]);
+sns.heatmap(cluster_character_sub_labelled_line.loc[order], cmap = 'Greens', rasterized = True, ax = ax)
+fig.savefig('cascades/cluster_plots/Clusters_labelled_line_character.pdf', format='pdf', bbox_inches='tight')
 
+fig, axs = plt.subplots(
+    1, 1, figsize = (5, 5)
+)
+ax = axs
+ax.set_ylabel('Individual Clusters')
+ax.set_yticks([]);
+ax.set_xticks([]);
+sns.heatmap(cluster_character_sub_integrative.loc[order], cmap = 'Greens', rasterized = True, ax = ax)
+fig.savefig('cascades/cluster_plots/Clusters_integrative_character.pdf', format='pdf', bbox_inches='tight')
 
 # %%
