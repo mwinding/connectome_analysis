@@ -680,8 +680,13 @@ plt.savefig('cascades/plots/sensory_integration_per_hop_parallel_coords_plot.pdf
 # %%
 # how close are descending neurons to sensory?
 # allows text to be editable in Illustrator
+
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
+                               AutoMinorLocator)
+
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['font.size'] = 6
 
 dVNC_ORN_hit = ORN_hit_hist[dVNC_indices, :]
 dVNC_AN_hit = AN_hit_hist[dVNC_indices, :]
@@ -711,6 +716,57 @@ max_dVNC_hits = len(dVNC_indices)*n_init
 max_dSEZ_hits = len(dSEZ_indices)*n_init
 max_RG_hits = len(RG_indices)*n_init
 
+all_sens_output_matrix = pd.DataFrame(
+                                    ([
+                                        dVNC_ORN_hit.sum(axis = 0), dSEZ_ORN_hit.sum(axis = 0), RG_ORN_hit.sum(axis = 0),
+                                        dVNC_AN_hit.sum(axis = 0), dSEZ_AN_hit.sum(axis = 0), RG_AN_hit.sum(axis = 0),
+                                        dVNC_MN_hit.sum(axis = 0), dSEZ_MN_hit.sum(axis = 0), RG_MN_hit.sum(axis = 0),
+                                        dVNC_thermo_hit.sum(axis = 0), dSEZ_thermo_hit.sum(axis = 0), RG_thermo_hit.sum(axis = 0),
+                                        dVNC_photo_hit.sum(axis = 0), dSEZ_photo_hit.sum(axis = 0), RG_photo_hit.sum(axis = 0),
+                                        dVNC_A00c_hit.sum(axis = 0), dSEZ_A00c_hit.sum(axis = 0), RG_A00c_hit.sum(axis = 0),
+                                        dVNC_vtd_hit.sum(axis = 0), dSEZ_vtd_hit.sum(axis = 0), RG_vtd_hit.sum(axis = 0)
+                                    ]), 
+                                    index = ['ORN_dVNC', 'ORN_dSEZ', 'ORN_RG', 
+                                    'AN_dVNC', 'AN_dSEZ', 'AN_RG',
+                                    'MN_dVNC', 'MN_dSEZ', 'MN_RG', 
+                                    'thermo_dVNC', 'thermo_dSEZ', 'thermo_RG',
+                                    'photo_dVNC', 'photo_dSEZ', 'photo_RG', 
+                                    'A00c_dVNC', 'A00c_dSEZ', 'A00c_RG',
+                                    'vtd_dVNC', 'vtd_dSEZ', 'vtd_RG'])
+
+import cmasher as cmr
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2.5)
+)
+
+fig.tight_layout(pad=3.0)
+
+vmax = 6000
+cmap = cmr.heat
+
+ax = axs
+ax.set_title('Signal to brain outputs', fontname="Arial", fontsize = 6)
+sns.heatmap(all_sens_output_matrix, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
+ax.set(xlim = (0, 9))
+plt.savefig('cascades/plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
+
+def counts_to_list(count_list):
+    expanded_counts = []
+    for i, count in enumerate(count_list):
+        expanded = np.repeat(i, count)
+        expanded_counts.append(expanded)
+    
+    return([x for sublist in expanded_counts for x in sublist])
+
+all_sens_output_dist = []
+for row in all_sens_output_matrix.iterrows():
+    list_hits = counts_to_list(row[1])
+    all_sens_output_dist.append([row[0], np.mean(list_hits), np.median(list_hits)])
+
+all_sens_output_dist = pd.DataFrame(all_sens_output_dist, columns = ['type', 'mean_hop', 'median_hop'])
+
+'''
 dVNC_matrix = pd.DataFrame(([dVNC_ORN_hit.sum(axis = 0), 
                             dVNC_AN_hit.sum(axis = 0), 
                             dVNC_MN_hit.sum(axis = 0), 
@@ -764,8 +820,8 @@ ax.set_title('Signal to Ring Gland Neurons')
 sns.heatmap(RG_matrix, ax = ax, vmax = vmax, rasterized=True, cmap = cmap)
 ax.set_xlabel('Hops from sensory')
 ax.set(xlim = (0, 9))
-
 plt.savefig('cascades/plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
+'''
 
 # %%
 # difference in descending neurons per modality
