@@ -555,7 +555,7 @@ fig, axs = plt.subplots(
     1, 1, figsize=(3.75,.4)
 )
 ax = axs
-sns.heatmap(labelledline_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Oranges')
+sns.heatmap(labelledline_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Blues')
 fig.savefig('cascades/cluster_plots/Labelled_line_hop_violinplots_bottom.pdf', format='pdf', bbox_inches='tight')
 
 
@@ -564,8 +564,17 @@ fig, axs = plt.subplots(
 )
 ax = axs
 #ax.set_xticklables(integrative_descendings.permut_name.values)
-sns.heatmap(integrative_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Blues')
+sns.heatmap(integrative_descendings.iloc[:, 1:4].T, ax = ax, annot=True, cmap = 'Oranges')
 fig.savefig('cascades/cluster_plots/Integrative_hop_violinplots_bottom.pdf', format='pdf', bbox_inches='tight')
+
+# order in main figure
+# 31, 79, 15, 47, 13, 3, 7, 1, 0
+fig, axs = plt.subplots(
+    1, 1, figsize=(3.75,.4)
+)
+ax = axs
+sns.heatmap(integrative_descendings.loc[[31, 79, 15, 47, 13, 3, 7, 1, 0], ['dVNCs', 'dSEZs', 'RG']].T, ax = ax, annot=True, cmap = 'Oranges')
+fig.savefig('cascades/cluster_plots/Integrative_hop_violinplots_bottom_alt.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 
@@ -615,7 +624,27 @@ cluster_character_sub_labelled_line = pd.DataFrame(percent_labelled_line_subtype
 cluster_character_sub_integrative = pd.DataFrame(percent_integrative_subtypes, columns = lvl7.groups.keys(), 
                                     index = integrative_indices).T
 
-sns.heatmap(cluster_character.loc[order], cmap = 'Greens', rasterized = True)
+import cmasher as cmr
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (1.5, 2)
+)
+ax = axs
+ax.set_ylabel('Individual Clusters')
+ax.set_yticks([]);
+ax.set_xticks([]);
+sns.heatmap(cluster_character.loc[order, ['labelled_line', 'integrative']], cmap = 'Greens', rasterized = True)
+fig.savefig('cascades/cluster_plots/Clusters_ll_vs_integrative.pdf', format='pdf', bbox_inches='tight')
+
+ind = np.arange(0, len(cluster_character.index))
+data1 = cluster_character.loc[order, ['labelled_line']].values
+data1 = [x for sublist in data1 for x in sublist]
+data2 = cluster_character.loc[order, ['integrative']].values
+data2 = [x for sublist in data2 for x in sublist]
+#data2 =  np.array(data1) + np.array(data2)
+
+plt.bar(ind, data1, color = 'orange', alpha = 0.5)
+plt.bar(ind, data2, bottom = data1, color = 'blue', alpha = 0.5)
 
 fig, axs = plt.subplots(
     1, 1, figsize = (5, 5)
@@ -636,5 +665,34 @@ ax.set_yticks([]);
 ax.set_xticks([]);
 sns.heatmap(cluster_character_sub_integrative.loc[order], cmap = 'Greens', rasterized = True, ax = ax)
 fig.savefig('cascades/cluster_plots/Clusters_integrative_character.pdf', format='pdf', bbox_inches='tight')
+
+# stacked bar plot for all types of integrative and non integrative
+ORN_frac = cluster_character_sub_labelled_line.loc[order,'ORN'].values
+AN_frac = cluster_character_sub_labelled_line.loc[order,'AN'].values
+MN_frac = cluster_character_sub_labelled_line.loc[order,'MN'].values
+thermo_frac = cluster_character_sub_labelled_line.loc[order,'thermo'].values
+photo_frac = cluster_character_sub_labelled_line.loc[order,'photo'].values
+A00c_frac = cluster_character_sub_labelled_line.loc[order,'A00c'].values
+vtd_frac = cluster_character_sub_labelled_line.loc[order,'vtd'].values
+labelledline_frac = ORN_frac + AN_frac + MN_frac + thermo_frac + photo_frac + A00c_frac + vtd_frac
+
+all_integrative_frac = cluster_character_sub_integrative.loc[order, 0].values
+most_integrative_frac = cluster_character_sub_integrative.loc[order, 1].values
+OR_AN_MN_integrative_frac = cluster_character_sub_integrative.loc[order, 15].values
+rest_integrative_frac = cluster_character_sub_integrative.loc[order, :].sum(axis = 1) - all_integrative_frac - most_integrative_frac - OR_AN_MN_integrative_frac
+
+plt.bar(ind, ORN_frac, color = 'blue')
+plt.bar(ind, AN_frac, bottom = ORN_frac, color = 'tab:blue')
+plt.bar(ind, MN_frac, bottom = ORN_frac + AN_frac, color = 'tab:cyan')
+plt.bar(ind, thermo_frac, bottom = ORN_frac + AN_frac + MN_frac, color = 'purple')
+plt.bar(ind, photo_frac, bottom = ORN_frac + AN_frac + MN_frac + thermo_frac, color = 'tab:purple')
+plt.bar(ind, A00c_frac, bottom = ORN_frac + AN_frac + MN_frac + thermo_frac + photo_frac, color = 'mediumorchid')
+plt.bar(ind, vtd_frac, bottom = ORN_frac + AN_frac + MN_frac + thermo_frac + photo_frac + A00c_frac, color = 'plum')
+
+plt.bar(ind, all_integrative_frac, bottom = labelledline_frac, color = 'maroon')
+plt.bar(ind, most_integrative_frac, bottom = labelledline_frac + all_integrative_frac, color = 'firebrick')
+plt.bar(ind, OR_AN_MN_integrative_frac, bottom = labelledline_frac + all_integrative_frac + most_integrative_frac, color = 'salmon')
+plt.bar(ind, rest_integrative_frac, bottom = labelledline_frac + all_integrative_frac + most_integrative_frac + OR_AN_MN_integrative_frac, color = 'lightsalmon')
+plt.savefig('cascades/cluster_plots/Clusters_multisensory_character.pdf', format='pdf', bbox_inches='tight')
 
 # %%

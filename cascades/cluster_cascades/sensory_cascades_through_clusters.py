@@ -312,13 +312,20 @@ plt.savefig('cascades/cluster_plots/sensory_through_clusters_lvl7_num_neurons.pd
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 
+plt.rcParams['font.size'] = 6
+
 collapsed_hops_lvl7_list = []
 for hist in summed_hist_lvl7:
     collapsed_hops_lvl7_list.append(hist.sum(axis = 1))
 
 collapsed_hops_lvl7 = pd.DataFrame(collapsed_hops_lvl7_list, index = input_names_format_reordered).T
 
-fg = sns.clustermap(collapsed_hops_lvl7.loc[order], col_cluster = False, yticklabels=False, rasterized = True)
+fg = sns.clustermap(collapsed_hops_lvl7.loc[order], col_cluster = False, yticklabels=False, 
+                    rasterized = True, figsize = (1.75, 2.5))
 ax = fg.ax_heatmap
 ax.set_ylabel('Individual Clusters')
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, horizontalalignment='right');
 fg.savefig('cascades/cluster_plots/multimodal_nature_of_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
+
+
+# %%
