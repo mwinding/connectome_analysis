@@ -33,6 +33,15 @@ mg.calculate_degrees(inplace=True)
 
 adj = mg.adj  # adjacency matrix from the "mg" object
 
+clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
+order = pd.read_csv('cascades/data/signal_flow_order_lvl7.csv').values
+
+# make array from list of lists
+order_delisted = []
+for sublist in order:
+    order_delisted.append(sublist[0])
+
+order = np.array(order_delisted)
 #%%
 # pull ORN skids and then divide into left and right hemisphere
 ORN_skids = pymaid.get_skids_by_annotation('mw ORN')
@@ -304,11 +313,12 @@ all_inputs_intersect, all_inputs_total, all_inputs_percent = intersect_stats(all
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['font.size'] = 6
 
 import cmasher as cmr
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(6, 10), sharey = True
+    3, 1, figsize=(3, 5), sharey = True
 )
 threshold = 50
 fig.tight_layout(pad=2.5)
@@ -336,19 +346,44 @@ all_inputs_intersect_matrix = pd.DataFrame([all_inputs_intersect.T[ipsi_indices_
                                     'Contralateral right', 'Ipsilateral right'])
 
 ax = axs[0]
-ax.set_title('Number of Neurons downstream of left sensory signals')
+ax.set_title('Neurons downstream of left sensory signals')
 sns.heatmap(all_inputs_ic_left.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt="d", cbar = False)
 
 ax = axs[1]
-ax.set_title('Number of Neurons downstream of right sensory signals')
+ax.set_title('Neurons downstream of right sensory signals')
 sns.heatmap(all_inputs_ic_right.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt="d", cbar = False)
 
 ax = axs[2]
-ax.set_title('Fraction of neurons receiving both left and right signals')
+ax.set_title('Fraction of neurons receiving both signals')
 sns.heatmap(all_inputs_intersect_matrix.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt="f", cbar = False, cmap = cmr.lavender)
 ax.set_xlabel('Hops')
 
 plt.savefig('cascades/interhemisphere_plots/simulated_all_left-right_signals.pdf', format='pdf', bbox_inches='tight')
+
+
+fig, axs = plt.subplots(
+    3, 1, figsize=(2, 2.5), sharey = True, sharex = True
+)
+threshold = 50
+fig.tight_layout(pad=1)
+
+ax = axs[0]
+ax.get_xaxis().set_visible(False)
+#ax.set_title('Neurons downstream of left sensory signals', fontsize = 6)
+sns.heatmap(all_inputs_ic_left.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt="d", cbar = False)
+
+ax = axs[1]
+ax.get_xaxis().set_visible(False)
+#ax.set_title('Neurons downstream of right sensory signals', fontsize = 6)
+sns.heatmap(all_inputs_ic_right.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt="d", cbar = False)
+
+ax = axs[2]
+#ax.set_title('Fraction of neurons receiving both signals', fontsize = 6)
+sns.heatmap(all_inputs_intersect_matrix.iloc[:, 0:5], ax = ax, rasterized = True, annot=True, fmt=".0%", cbar = False, cmap = cmr.lavender)
+ax.set_xlabel('Hops')
+ax.set_yticklabels(['Ipsi (L)', 'Contra (L)', 'Contra (R)', 'Ipsi (R)'])
+
+plt.savefig('cascades/interhemisphere_plots/simulated_all_left-right_signals_formatted.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # correlation between visit numbers between pairs and across nodes
@@ -378,15 +413,15 @@ correlate_nodes = pd.DataFrame(correlate_nodes, columns = ['skid', 'hop',
                                                             'photo_left_visits', 'photo_right_visits'])
 
 threshold = 0
-cor_index = (correlate_nodes['right_visits']>threshold) | (correlate_nodes['left_visits']>threshold)
+cor_index = (correlate_nodes['all_right_visits']>threshold) | (correlate_nodes['all_left_visits']>threshold)
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][cor_index],
-    y = correlate_nodes['left_visits'][cor_index]
+    x = correlate_nodes['all_right_visits'][cor_index],
+    y = correlate_nodes['all_left_visits'][cor_index]
     )
 
 p = p.plot_joint(
@@ -396,13 +431,13 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>50) | (correlate_nodes['left_visits']>50)) & (correlate_nodes.hop!=0)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>50) | (correlate_nodes['all_left_visits']>50)) & (correlate_nodes.hop!=0)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>50) | (correlate_nodes['left_visits']>50)) & (correlate_nodes.hop!=0)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>50) | (correlate_nodes['all_left_visits']>50)) & (correlate_nodes.hop!=0)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
@@ -410,7 +445,7 @@ p.ax_marg_y.hist(
 
 p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory.pdf', format='pdf', bbox_inches='tight')
 
-#sns.jointplot(x = correlate_nodes['right_visits'][cor_index], y = correlate_nodes['left_visits'][cor_index], 
+#sns.jointplot(x = correlate_nodes['all_right_visits'][cor_index], y = correlate_nodes['all_left_visits'][cor_index], 
 #            kind = 'hex', joint_kws={'gridsize':40, 'bins':'log'})
 
 # %%
@@ -418,8 +453,8 @@ p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory.pdf', 
 # nice supplemental figure
 hops = 0
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)],
     )
 
 p = p.plot_joint(
@@ -429,26 +464,26 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop0.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop0.pdf', format='pdf', bbox_inches='tight')
 
 
 # hop 1
 hops = 1
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
     )
 
 p = p.plot_joint(
@@ -458,26 +493,25 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop1.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop1.pdf', format='pdf', bbox_inches='tight')
 
 # hop 2
-ax = axs[2, 0]
 hops = 2
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
     )
 
 p = p.plot_joint(
@@ -487,25 +521,25 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop2.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop2.pdf', format='pdf', bbox_inches='tight')
 
 # hop 3
 hops = 3
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
     )
 
 p = p.plot_joint(
@@ -515,25 +549,25 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop3.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop3.pdf', format='pdf', bbox_inches='tight')
 
 # hop 4
 hops = 4
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
     )
 
 p = p.plot_joint(
@@ -543,25 +577,25 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop4.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop4.pdf', format='pdf', bbox_inches='tight')
 
 # hop 5
 hops = 5
 p = sns.JointGrid(
-    x = correlate_nodes['right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
-    y = correlate_nodes['left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
+    x = correlate_nodes['all_right_visits'][(cor_index) & (correlate_nodes.hop==hops)],
+    y = correlate_nodes['all_left_visits'][(cor_index) & (correlate_nodes.hop==hops)]
     )
 
 p = p.plot_joint(
@@ -571,19 +605,19 @@ p = p.plot_joint(
 p.set_axis_labels('Signal from Right', 'Signal from Left')
 
 p.ax_marg_x.hist(
-    correlate_nodes['right_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_right_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     bins = 40,
     alpha = 0.5
     )
 
 p.ax_marg_y.hist(
-    correlate_nodes['left_visits'][((correlate_nodes['right_visits']>25) | (correlate_nodes['left_visits']>25)) & (correlate_nodes.hop==hops)],
+    correlate_nodes['all_left_visits'][((correlate_nodes['all_right_visits']>25) | (correlate_nodes['all_left_visits']>25)) & (correlate_nodes.hop==hops)],
     orientation = 'horizontal',
     bins = 40,
     alpha = 0.5,
     )
 
-p.savefig('cascades/interhemisphere_plots/left_vs_right_visits_allsensory_hop5.pdf', format='pdf', bbox_inches='tight')
+p.savefig('cascades/interhemisphere_plots/left_vs_all_right_visits_allsensory_hop5.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # identify group of integrator neurons that receive from both left and right signals
@@ -613,13 +647,15 @@ def membership(list1, list2):
     set1 = set(list1)
     return [item in set1 for item in list2]
 
-integrators_ORN = correlate_nodes[(correlate_nodes.ORN_right_visits>50) & (correlate_nodes.ORN_left_visits>50)]
-integrators_AN = correlate_nodes[(correlate_nodes.AN_right_visits>50) & (correlate_nodes.AN_left_visits>50)]
-integrators_MN = correlate_nodes[(correlate_nodes.MN_right_visits>50) & (correlate_nodes.MN_left_visits>50)]
-integrators_A00c = correlate_nodes[(correlate_nodes.A00c_right_visits>50) & (correlate_nodes.A00c_left_visits>50)]
-integrators_vtd = correlate_nodes[(correlate_nodes.vtd_right_visits>50) & (correlate_nodes.vtd_left_visits>50)]
-integrators_thermo = correlate_nodes[(correlate_nodes.thermo_right_visits>50) & (correlate_nodes.thermo_left_visits>50)]
-integrators_photo = correlate_nodes[(correlate_nodes.photo_right_visits>50) & (correlate_nodes.photo_left_visits>50)]
+threshold = n_init/2
+
+integrators_ORN = correlate_nodes[(correlate_nodes.ORN_right_visits>threshold) & (correlate_nodes.ORN_left_visits>threshold)]
+integrators_AN = correlate_nodes[(correlate_nodes.AN_right_visits>threshold) & (correlate_nodes.AN_left_visits>threshold)]
+integrators_MN = correlate_nodes[(correlate_nodes.MN_right_visits>threshold) & (correlate_nodes.MN_left_visits>threshold)]
+integrators_A00c = correlate_nodes[(correlate_nodes.A00c_right_visits>threshold) & (correlate_nodes.A00c_left_visits>threshold)]
+integrators_vtd = correlate_nodes[(correlate_nodes.vtd_right_visits>threshold) & (correlate_nodes.vtd_left_visits>threshold)]
+integrators_thermo = correlate_nodes[(correlate_nodes.thermo_right_visits>threshold) & (correlate_nodes.thermo_left_visits>threshold)]
+integrators_photo = correlate_nodes[(correlate_nodes.photo_right_visits>threshold) & (correlate_nodes.photo_left_visits>threshold)]
 
 integrator_list = [integrators, integrators_ORN, integrators_AN, integrators_MN, integrators_A00c, integrators_thermo, integrators_photo]
 
@@ -647,6 +683,30 @@ sns.heatmap(fraction_same.iloc[1:len(fraction_same), 1:len(fraction_same)], ax =
             square = True)
 
 fig.savefig('cascades/interhemisphere_plots/similarity_between_integration_centers.pdf', format='pdf', bbox_inches='tight', rasterized = True)
+
+# %%
+# location of integration centers per modality
+threshold = n_init/2
+
+# level 7 clusters
+lvl7 = clusters.groupby('lvl7_labels')
+
+integrator_neurons = pd.concat([integrators_ORN, integrators_AN, integrators_MN, integrators_A00c, integrators_thermo, integrators_photo])
+
+# integration types per cluster
+cluster_lvl7 = []
+for key in lvl7.groups.keys():
+    for i, permut in enumerate(permut_members):
+        for permut_skid in permut:
+            if((permut_skid in lvl7.groups[key].values) & (i in nonintegrative_indices)):
+                cluster_lvl7.append([key, permut_skid, i, permut_names[i], 'labelled_line'])
+            if((permut_skid in lvl7.groups[key].values) & (i not in nonintegrative_indices)):
+                cluster_lvl7.append([key, permut_skid, i, permut_names[i], 'integrative'])
+
+cluster_lvl7 = pd.DataFrame(cluster_lvl7, columns = ['key', 'skid', 'permut_index', 'permut_name', 'integration'])
+
+cluster_lvl7_groups = cluster_lvl7.groupby('key')
+
 
 # %%
 # number of ipsi or contra neurons visited per hop
@@ -1151,7 +1211,7 @@ sns.heatmap(ipsi_contra_flow, ax = axs, rasterized = True)
 fig, axs = plt.subplots(
     1, 1, figsize=(8, 8)
 )
-threshold = 50
+threshold = n_init/2
 
 ipsi_contra_flow_num_neurons = pd.DataFrame([(ORN_hit_hist_left[ipsi_indices_left]>threshold).sum(axis = 0), 
                             (ORN_hit_hist_left[contra_indices_left]>threshold).sum(axis = 0),
