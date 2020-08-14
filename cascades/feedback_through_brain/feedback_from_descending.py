@@ -60,6 +60,9 @@ output_skids = [val for sublist in output_skids_list for val in sublist]
 output_names_reordered = [output_names[i] for i in output_order]
 output_skids_list_reordered = [output_skids_list[i] for i in output_order]
 
+pre_output_names = list(pymaid.get_annotated('mw pre-brain outputs').name)
+pre_output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw pre-brain outputs').name))
+
 #%%
 # cascades from each output type, ending at brain inputs 
 # maybe should switch to senosry second-order?
@@ -72,6 +75,11 @@ output_indices_list = []
 for skids in output_skids_list_reordered:
     indices = np.where([x in skids for x in mg.meta.index])[0]
     output_indices_list.append(indices)
+
+pre_output_indices_list = []
+for skids in pre_output_skids_list:
+    indices = np.where([x in skids for x in mg.meta.index])[0]
+    pre_output_indices_list.append(indices)
 
 all_input_indices = np.where([x in input_skids for x in mg.meta.index])[0]
 all_output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
@@ -97,6 +105,10 @@ for indices in output_indices_list:
     hit_hist = cdispatch.multistart(start_nodes = indices)
     output_hit_hist_list.append(hit_hist)
 
+pre_output_hit_hist_list = []
+for indices in pre_output_indices_list:
+    hit_hist = cdispatch.multistart(start_nodes = indices)
+    pre_output_hit_hist_list.append(hit_hist)
 
 # %%
 # grouping cascade indices by cluster type
@@ -111,32 +123,45 @@ for key in lvl7.groups.keys():
 
 cluster_lvl7 = pd.DataFrame(cluster_lvl7, columns = ['key', 'num_cluster'])
 
-# breaking signal cascades into cluster groups
-output_hit_hist_lvl7 = []
-for hit_hist in output_hit_hist_list:
-    sensory_clustered_hist = []
+def hit_hist_to_clusters(hit_hist_list, lvl7):
+    # breaking signal cascades into cluster groups
+    output_hit_hist_lvl7 = []
+    for hit_hist in hit_hist_list:
+        clustered_hist = []
 
-    for key in lvl7.groups.keys():
-        skids = lvl7.groups[key]
-        indices = np.where([x in skids for x in mg.meta.index])[0]
-        cluster_hist = hit_hist[indices]
-        cluster_hist = pd.DataFrame(cluster_hist, index = indices)
+        for key in lvl7.groups.keys():
+            skids = lvl7.groups[key]
+            indices = np.where([x in skids for x in mg.meta.index])[0]
+            cluster_hist = hit_hist[indices]
+            cluster_hist = pd.DataFrame(cluster_hist, index = indices)
 
-        sensory_clustered_hist.append(cluster_hist)
+            clustered_hist.append(cluster_hist)
+        
+        output_hit_hist_lvl7.append(clustered_hist)
     
-    output_hit_hist_lvl7.append(sensory_clustered_hist)
+    return(output_hit_hist_lvl7)
 
-# summed signal cascades per cluster group (hops remain intact)
-summed_hist_lvl7 = []
-for hit_hist in output_hit_hist_lvl7:
-    sum_hist = []
-    for i, cluster in enumerate(hit_hist):
-        sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
-        sum_hist.append(sum_cluster)
+def sum_cluster_hit_hist(hit_hist_cluster):
+    # summed signal cascades per cluster group (hops remain intact)
+    summed_hist = []
+    for hit_hist in hit_hist_cluster:
+        sum_hist = []
+        for i, cluster in enumerate(hit_hist):
+            sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
+            sum_hist.append(sum_cluster)
 
-    sum_hist = pd.DataFrame(sum_hist) # column names will be hop number
-    sum_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
-    summed_hist_lvl7.append(sum_hist)
+        sum_hist = pd.DataFrame(sum_hist) # column names will be hop number
+        sum_hist.index = cluster_lvl7.key # uses cluster name for index of each summed cluster row
+        summed_hist.append(sum_hist)
+
+    return(summed_hist)
+
+output_hit_hist_lvl7 = hit_hist_to_clusters(output_hit_hist_list, lvl7)
+pre_output_hit_hist_lvl7 = hit_hist_to_clusters(pre_output_hit_hist_list, lvl7)
+
+output_summed_hist_lvl7 = sum_cluster_hit_hist(output_hit_hist_lvl7)
+pre_output_summed_hist_lvl7= sum_cluster_hit_hist(pre_output_hit_hist_lvl7)
+
 
 # number of neurons per cluster group over threshold (hops remain intact)
 threshold = 50
@@ -161,12 +186,26 @@ fig, axs = plt.subplots(
 vmax = 300
 
 ax = axs
-sns.heatmap(sum(summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
+sns.heatmap(sum(output_summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
 ax.set_ylabel('Individual Clusters')
 ax.set_yticks([])
-ax.set_xlabel('Hops from sensory neuron signal')
+ax.set_xlabel('Hops from output signal')
 
 plt.savefig('cascades/feedback_through_brain/plots/summed_output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(5, 5)
+)
+
+vmax = 300
+
+ax = axs
+sns.heatmap(sum(pre_output_summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
+ax.set_ylabel('Individual Clusters')
+ax.set_yticks([])
+ax.set_xlabel('Hops from pre-output signal')
+
+plt.savefig('cascades/feedback_through_brain/plots/summed_pre-output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 # plotting number of neurons downstream of each sensory modality (with threshold)
 fig, axs = plt.subplots(
@@ -177,10 +216,9 @@ ax = axs
 sns.heatmap(sum(num_hist_lvl7).loc[order, 0:7], ax = ax, rasterized=True, cbar_kws={'label': 'Number of Neurons Downstream'})
 ax.set_ylabel('Individual Clusters')
 ax.set_yticks([])
-ax.set_xlabel('Hops from sensory neuron signal')
+ax.set_xlabel('Hops from output signal')
 
 plt.savefig('cascades/feedback_through_brain/plots/summed_output_feedback_through_clusters_lvl7_num.pdf', format='pdf', bbox_inches='tight')
-# %%
 # %%
 # plot signal of each output type through clusters
 
@@ -189,11 +227,11 @@ fig, axs = plt.subplots(
 )
 
 fig.tight_layout(pad=2.0)
-vmax = n_init/2
+vmax = n_init
 
 for i in range(0, len(output_names_reordered)):
     ax = axs[i]
-    sns.heatmap(summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
+    sns.heatmap(output_summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
     ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
 
@@ -203,5 +241,23 @@ for i in range(0, len(output_names_reordered)):
 
 plt.savefig('cascades/feedback_through_brain/plots/output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
+fig, axs = plt.subplots(
+    3, 1, figsize=(10, 10)
+)
+
+fig.tight_layout(pad=2.0)
+vmax = n_init
+
+for i in range(0, len(pre_output_names)):
+    ax = axs[i]
+    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
+    ax.set_ylabel('Individual Clusters')
+    ax.set_yticks([])
+
+    ax.set_xlabel('Hops from %s signal' %pre_output_names[i])
+
+    #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
+
+plt.savefig('cascades/feedback_through_brain/plots/preoutput_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 # %%
