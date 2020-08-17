@@ -37,14 +37,22 @@ mg.calculate_degrees(inplace=True)
 adj = mg.adj  # adjacency matrix from the "mg" object
 
 clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
-order = pd.read_csv('cascades/data/signal_flow_order_lvl7.csv').values
+lvl7 = clusters.groupby('lvl7_labels')
 
-# make array from list of lists
-order_delisted = []
-for sublist in order:
-    order_delisted.append(sublist[0])
+# separate meta file with median_node_visits from sensory for each node
+# determined using iterative random walks
+meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
 
-order = np.array(order_delisted)
+order_df = []
+for key in lvl7.groups:
+    skids = lvl7.groups[key]
+    node_visits = meta_with_order.loc[skids, :].median_node_visits
+    order_df.append([key, np.nanmean(node_visits)])
+
+order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
+order_df = order_df.sort_values(by = 'node_visit_order')
+
+order = list(order_df.cluster)
 
 #%%
 # pull sensory annotations and then pull associated skids

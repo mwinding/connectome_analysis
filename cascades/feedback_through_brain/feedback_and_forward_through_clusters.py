@@ -37,14 +37,22 @@ mg.calculate_degrees(inplace=True)
 adj = mg.adj  # adjacency matrix from the "mg" object
 
 clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
-order = pd.read_csv('cascades/data/signal_flow_order_lvl7.csv').values
+lvl7 = clusters.groupby('lvl7_labels')
 
-# make array from list of lists
-order_delisted = []
-for sublist in order:
-    order_delisted.append(sublist[0])
+# separate meta file with median_node_visits from sensory for each node
+# determined using iterative random walks
+meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
 
-order = np.array(order_delisted)
+order_df = []
+for key in lvl7.groups:
+    skids = lvl7.groups[key]
+    node_visits = meta_with_order.loc[skids, :].median_node_visits
+    order_df.append([key, np.nanmean(node_visits)])
+
+order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
+order_df = order_df.sort_values(by = 'node_visit_order')
+
+order = list(order_df.cluster)
 
 # %%
 # pull sensory annotations and then pull associated skids
@@ -61,15 +69,22 @@ output_names_reordered = [output_names[i] for i in output_order]
 output_skids_list_reordered = [output_skids_list[i] for i in output_order]
 
 # level 7 clusters
+clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
 lvl7 = clusters.groupby('lvl7_labels')
-order = pd.read_csv('cascades/data/signal_flow_order_lvl7.csv').values
 
-# make array from list of lists
-order_delisted = []
-for sublist in order:
-    order_delisted.append(sublist[0])
+meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
 
-order = np.array(order_delisted)
+# ordering by mean node visit from sensory
+order_df = []
+for key in lvl7.groups:
+    skids = lvl7.groups[key]
+    node_visits = meta_with_order.loc[skids, :].median_node_visits
+    order_df.append([key, np.nanmean(node_visits)])
+
+order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
+order_df = order_df.sort_values(by = 'node_visit_order')
+
+order = list(order_df.cluster)
 
 # getting skids of each cluster
 cluster_lvl7 = []
@@ -154,16 +169,59 @@ for input_hit_hist in cluster_hit_hist_lvl7:
     sum_hist.index = order # uses cluster name for index of each summed cluster row
     summed_hops_hist_lvl7.append(sum_hist)
 
-# summed cluster cascades per cluster group (hops lost)
-summed_hist_lvl7 = []
-for input_hit_hist in cluster_hit_hist_lvl7:
-    sum_hist = []
-    for i, cluster in enumerate(input_hit_hist):
-        sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
-        sum_hist.append(sum(sum_cluster))
+alt_summed_hops_hist_lvl7 = []
+for hop in summed_hops_hist_lvl7[0].columns:
+    summed_hist_lvl7 = []
+    for hit_hist in summed_hops_hist_lvl7:
+        summed_hist_lvl7.append(hit_hist.iloc[:, hop])
 
-    #sum_hist = pd.DataFrame(sum_hist) # column names will be hop number
-    #sum_hist.index = order # uses cluster name for index of each summed cluster row
-    summed_hist_lvl7.append(sum_hist)
+    summed_hist_lvl7 = pd.DataFrame(summed_hist_lvl7, index = summed_hops_hist_lvl7[0].index).T
+    alt_summed_hops_hist_lvl7.append(summed_hist_lvl7)
+
+'''
+summed_hist_lvl7 = []
+for hit_hist in summed_hops_hist_lvl7:
+    summed_hist_lvl7.append(hit_hist.iloc[:, 0:3].sum(axis = 1))
+
+summed_hist_lvl7 = pd.DataFrame(summed_hist_lvl7, index = summed_hops_hist_lvl7[0].index)
+'''
+# %%
+# plot visits to different groups, normalized to group size
+
+# plot only first 3 hops
+fig, axs = plt.subplots(
+    1, 1, figsize = (8, 7)
+)
+ax = axs
+
+sns.heatmap(alt_summed_hops_hist_lvl7[0] + alt_summed_hops_hist_lvl7[1] + alt_summed_hops_hist_lvl7[2], ax = ax, rasterized = True, square=True)
+ax.set_ylabel('Individual Clusters')
+ax.set_xlabel('Individual Clusters')
+ax.set_yticks([]);
+ax.set_xticks([]);
+
+fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_3hops.pdf', bbox_inches='tight')
+
+# %%
+# plot visits to different groups, normalized to group size, displaying all hops
+
+# plot only first 3 hops
+panel_width = 10
+panel_height = 9
+fig, axs = plt.subplots(
+    panel_width, panel_height, figsize = (30, 30), sharey = True
+)
+
+for x in range(len(summed_hops_hist_lvl7)):
+    for j in range(panel_height):
+        for i in range(panel_width):
+            ax = axs[i, j]
+            sns.heatmap(summed_hops_hist_lvl7[x], ax = ax, rasterized = True, cbar = False)
+            ax.set_xlabel('Hops from source')
+            ax.set_ylabel('Individual Clusters')
+            ax.set_yticks([]);
+
+fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_allhops.pdf', bbox_inches='tight')
+
 
 # %%
