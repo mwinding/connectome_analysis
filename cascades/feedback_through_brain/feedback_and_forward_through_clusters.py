@@ -31,11 +31,10 @@ plt.rcParams.update({'font.size': 6})
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
-mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg.calculate_degrees(inplace=True)
-adj = mg.adj  # adjacency matrix from the "mg" object
+mg_ad = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
+mg_ad.calculate_degrees(inplace=True)
+adj_ad = mg.adj  # adjacency matrix from the "mg" object
 
-# repeat for other connection types
 mg_aa = load_metagraph("Gaa", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 mg_aa.calculate_degrees(inplace=True)
 adj_aa = mg_aa.adj
@@ -117,6 +116,8 @@ def skid_to_index(skid, mg):
 from src.traverse import Cascade, to_transmission_matrix
 from src.traverse import TraverseDispatcher
 from src.visualization import matrixplot
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 # convert cluster skids to indices
 cluster_lvl7_indices_list = []
@@ -130,80 +131,37 @@ for skids in cluster_lvl7:
 #all_input_indices = np.where([x in input_skids for x in mg.meta.index])[0]
 #all_output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
 
+def run_cascade(i, cdispatch):
+    return(cdispatch.multistart(start_nodes = i))
+
+def run_cascades_parallel(indices_list, adj, p, max_hops, n_init, simultaneous):
+
+    transition_probs = to_transmission_matrix(adj, p)
+
+    cdispatch = TraverseDispatcher(
+        Cascade,
+        transition_probs,
+        stop_nodes = [],
+        max_hops=max_hops,
+        allow_loops = False,
+        n_init=n_init,
+        simultaneous=simultaneous,
+    )
+
+    job = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in indices_list)
+    return(job)
+
 p = 0.05
 max_hops = 10
 n_init = 100
 simultaneous = True
-transition_probs = to_transmission_matrix(adj, p)
 
-cdispatch = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = [],
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-cluster_hit_hist_list = []
-for indices in cluster_lvl7_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    cluster_hit_hist_list.append(hit_hist)
-
-# aa
-transition_probs = to_transmission_matrix(adj_aa, p)
-
-cdispatch = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = [],
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-cluster_hit_hist_list_aa = []
-for indices in cluster_lvl7_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    cluster_hit_hist_list_aa.append(hit_hist)
-
-# dd
-transition_probs = to_transmission_matrix(adj_dd, p)
-
-cdispatch = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = [],
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-cluster_hit_hist_list_dd = []
-for indices in cluster_lvl7_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    cluster_hit_hist_list_dd.append(hit_hist)
-
-# da
-transition_probs = to_transmission_matrix(adj_da, p)
-
-cdispatch = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = [],
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-cluster_hit_hist_list_da = []
-for indices in cluster_lvl7_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    cluster_hit_hist_list_da.append(hit_hist)
+cluster_hit_hist_list_ad = run_cascades_parallel(cluster_lvl7_indices_list, adj_ad, p, max_hops, n_init, simultaneous)
+print('finished ad cascades')
+cluster_hit_hist_list_aa = run_cascades_parallel(cluster_lvl7_indices_list, adj_ad, p, max_hops, n_init, simultaneous)
+print('finished aa cascades')
+#cluster_hit_hist_list_dd = run_cascades_parallel(cluster_lvl7_indices_list, adj_dd, p, max_hops, n_init, simultaneous)
+#cluster_hit_hist_list_da = run_cascades_parallel(cluster_lvl7_indices_list, adj_da, p, max_hops, n_init, simultaneous)
 
 # %%
 # categorize neurons in each cluster cascade by cluster
@@ -254,9 +212,9 @@ def alt_sum_cluster(summed_hops_hist_lvl7):
     
     return(alt_summed_hops_hist_lvl7)
 
-cluster_hit_hist_lvl7 = hit_hist_to_clusters(cluster_hit_hist_list, lvl7, order)
-summed_hops_hist_lvl7 = sum_cluster_hit_hist(cluster_hit_hist_lvl7, order)
-alt_summed_hops_hist_lvl7 = alt_sum_cluster(summed_hops_hist_lvl7)
+cluster_hit_hist_lvl7_ad = hit_hist_to_clusters(cluster_hit_hist_list_ad, lvl7, order)
+summed_hops_hist_lvl7_ad = sum_cluster_hit_hist(cluster_hit_hist_lvl7_ad, order)
+alt_summed_hops_hist_lvl7_ad = alt_sum_cluster(summed_hops_hist_lvl7_ad)
 
 cluster_hit_hist_lvl7_aa = hit_hist_to_clusters(cluster_hit_hist_list_aa, lvl7, order)
 summed_hops_hist_lvl7_aa = sum_cluster_hit_hist(cluster_hit_hist_lvl7_aa, order)
@@ -278,7 +236,7 @@ fig, axs = plt.subplots(
 )
 ax = axs
 
-sns.heatmap(alt_summed_hops_hist_lvl7[0] + alt_summed_hops_hist_lvl7[1] + alt_summed_hops_hist_lvl7[2], ax = ax, rasterized = True, square=True)
+sns.heatmap(alt_summed_hops_hist_lvl7_ad[0] + alt_summed_hops_hist_lvl7_ad[1] + alt_summed_hops_hist_lvl7_ad[2], ax = ax, rasterized = True, square=True)
 ax.set_ylabel('Individual Clusters')
 ax.set_xlabel('Individual Clusters')
 ax.set_yticks([]);
@@ -340,11 +298,11 @@ fig, axs = plt.subplots(
     panel_width, panel_height, figsize = (30, 30), sharey = True
 )
 
-for x in range(len(summed_hops_hist_lvl7)):
+for x in range(len(summed_hops_hist_lvl7_ad)):
     for j in range(panel_height):
         for i in range(panel_width):
             ax = axs[i, j]
-            sns.heatmap(summed_hops_hist_lvl7[x], ax = ax, rasterized = True, cbar = False)
+            sns.heatmap(summed_hops_hist_lvl7_ad[x], ax = ax, rasterized = True, cbar = False)
             ax.set_xlabel('Hops from source')
             ax.set_ylabel('Individual Clusters')
             ax.set_yticks([]);
@@ -358,25 +316,25 @@ fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clust
 fig, axs = plt.subplots(
     1, 1, figsize = (5, 5)
 )
-sns.heatmap(summed_hops_hist_lvl7[0], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[0], rasterized = True, ax = axs)
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster0.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
     1, 1, figsize = (5, 5)
 )
-sns.heatmap(summed_hops_hist_lvl7[40], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[40], rasterized = True, ax = axs)
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster40.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
     1, 1, figsize = (5, 5)
 )
-sns.heatmap(summed_hops_hist_lvl7[50], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[50], rasterized = True, ax = axs)
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster50.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
     1, 1, figsize = (5, 5)
 )
-sns.heatmap(summed_hops_hist_lvl7[86], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[86], rasterized = True, ax = axs)
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster86.pdf', bbox_inches='tight')
 
 # %%
