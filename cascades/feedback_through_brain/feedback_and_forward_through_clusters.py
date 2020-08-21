@@ -33,7 +33,7 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 
 mg_ad = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 mg_ad.calculate_degrees(inplace=True)
-adj_ad = mg.adj  # adjacency matrix from the "mg" object
+adj_ad = mg_ad.adj  # adjacency matrix from the "mg" object
 
 mg_aa = load_metagraph("Gaa", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 mg_aa.calculate_degrees(inplace=True)
@@ -124,7 +124,7 @@ cluster_lvl7_indices_list = []
 for skids in cluster_lvl7:
     indices = []
     for skid in skids:
-        index = skid_to_index(skid, mg)
+        index = skid_to_index(skid, mg_ad)
         indices.append(index)
     cluster_lvl7_indices_list.append(indices)
 
@@ -158,7 +158,7 @@ simultaneous = True
 
 cluster_hit_hist_list_ad = run_cascades_parallel(cluster_lvl7_indices_list, adj_ad, p, max_hops, n_init, simultaneous)
 print('finished ad cascades')
-cluster_hit_hist_list_aa = run_cascades_parallel(cluster_lvl7_indices_list, adj_ad, p, max_hops, n_init, simultaneous)
+cluster_hit_hist_list_aa = run_cascades_parallel(cluster_lvl7_indices_list, adj_aa, p, max_hops, n_init, simultaneous)
 print('finished aa cascades')
 #cluster_hit_hist_list_dd = run_cascades_parallel(cluster_lvl7_indices_list, adj_dd, p, max_hops, n_init, simultaneous)
 #cluster_hit_hist_list_da = run_cascades_parallel(cluster_lvl7_indices_list, adj_da, p, max_hops, n_init, simultaneous)
@@ -174,7 +174,7 @@ def hit_hist_to_clusters(hit_hist_list, lvl7, order):
 
         for key in order:
             skids = lvl7.groups[key]
-            indices = np.where([x in skids for x in mg.meta.index])[0]
+            indices = np.where([x in skids for x in mg_ad.meta.index])[0]
             cluster_hist = hit_hist[indices]
             cluster_hist = pd.DataFrame(cluster_hist, index = indices)
 
@@ -184,13 +184,16 @@ def hit_hist_to_clusters(hit_hist_list, lvl7, order):
     
     return(output_hit_hist_lvl7)
 
-def sum_cluster_hit_hist(hit_hist_cluster, order):
+def sum_cluster_hit_hist(hit_hist_cluster, order, normalized = True):
     # summed signal cascades per cluster group (hops remain intact)
     summed_hist = []
     for hit_hist in hit_hist_cluster:
         sum_hist = []
         for i, cluster in enumerate(hit_hist):
-            sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
+            if(normalized==True):
+                sum_cluster = cluster.sum(axis = 0)/(len(cluster.index)) # normalize by number of neurons in cluster
+            if(normalized==False):
+                sum_cluster = cluster.sum(axis = 0)
             sum_hist.append(sum_cluster)
 
         sum_hist = pd.DataFrame(sum_hist) # column names will be hop number
@@ -219,7 +222,7 @@ alt_summed_hops_hist_lvl7_ad = alt_sum_cluster(summed_hops_hist_lvl7_ad)
 cluster_hit_hist_lvl7_aa = hit_hist_to_clusters(cluster_hit_hist_list_aa, lvl7, order)
 summed_hops_hist_lvl7_aa = sum_cluster_hit_hist(cluster_hit_hist_lvl7_aa, order)
 alt_summed_hops_hist_lvl7_aa = alt_sum_cluster(summed_hops_hist_lvl7_aa)
-
+'''
 cluster_hit_hist_lvl7_dd = hit_hist_to_clusters(cluster_hit_hist_list_dd, lvl7, order)
 summed_hops_hist_lvl7_dd = sum_cluster_hit_hist(cluster_hit_hist_lvl7_dd, order)
 alt_summed_hops_hist_lvl7_dd = alt_sum_cluster(summed_hops_hist_lvl7_dd)
@@ -227,66 +230,45 @@ alt_summed_hops_hist_lvl7_dd = alt_sum_cluster(summed_hops_hist_lvl7_dd)
 cluster_hit_hist_lvl7_da = hit_hist_to_clusters(cluster_hit_hist_list_da, lvl7, order)
 summed_hops_hist_lvl7_da = sum_cluster_hit_hist(cluster_hit_hist_lvl7_da, order)
 alt_summed_hops_hist_lvl7_da = alt_sum_cluster(summed_hops_hist_lvl7_da)
+'''
 # %%
 # plot visits to different groups, normalized to group size
 
-# plot only first 3 hops
-fig, axs = plt.subplots(
-    1, 1, figsize = (8, 7)
-)
-ax = axs
+def plot_graphs(alt_summed_hops_hist_lvl7, connection_type):
+    # activity in each cluster, based on hop number
+    for i in range(10):
+        fig, axs = plt.subplots(
+        1, 1, figsize = (8, 7)
+        )
+        ax = axs
 
-sns.heatmap(alt_summed_hops_hist_lvl7_ad[0] + alt_summed_hops_hist_lvl7_ad[1] + alt_summed_hops_hist_lvl7_ad[2], ax = ax, rasterized = True, square=True)
-ax.set_ylabel('Individual Clusters')
-ax.set_xlabel('Individual Clusters')
-ax.set_yticks([]);
-ax.set_xticks([]);
+        sns.heatmap(alt_summed_hops_hist_lvl7[0] + alt_summed_hops_hist_lvl7[i], ax = ax, rasterized = True, square=True)
+        ax.set_title('Hop %i' %i, fontsize = 10)
+        ax.set_ylabel('Individual Clusters', fontsize = 10)
+        ax.set_xlabel('Individual Clusters', fontsize = 10)
+        ax.set_yticks([]);
+        ax.set_xticks([]);
 
-fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_3hops_ad.pdf', bbox_inches='tight')
+        fig.savefig('cascades/feedback_through_brain/plots/cluster_cascades_png/%s_feedback_vs_feedforward_clusters_hop%i.png' %(connection_type, i), bbox_inches='tight')
 
+    # summed data with varying hop end point
+    for i in range(10):
+        fig, axs = plt.subplots(
+        1, 1, figsize = (8, 7)
+        )
+        ax = axs
 
-# plot only first 3 hops
-fig, axs = plt.subplots(
-    1, 1, figsize = (8, 7)
-)
-ax = axs
+        sns.heatmap(sum(alt_summed_hops_hist_lvl7[0:(i+1)]), ax = ax, rasterized = True, square=True)
+        ax.set_title('Summed to Hop %i' %i, fontsize = 10)
+        ax.set_ylabel('Individual Clusters', fontsize = 10)
+        ax.set_xlabel('Individual Clusters', fontsize = 10)
+        ax.set_yticks([]);
+        ax.set_xticks([]);
 
-sns.heatmap(alt_summed_hops_hist_lvl7_aa[0] + alt_summed_hops_hist_lvl7_aa[1] + alt_summed_hops_hist_lvl7_aa[2], ax = ax, rasterized = True, square=True)
-ax.set_ylabel('Individual Clusters')
-ax.set_xlabel('Individual Clusters')
-ax.set_yticks([]);
-ax.set_xticks([]);
+        fig.savefig('cascades/feedback_through_brain/plots/%s_feedback_vs_feedforward_clusters_%ihops_summed.pdf' %(connection_type, i+1), bbox_inches='tight')
 
-fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_3hops_aa.pdf', bbox_inches='tight')
-
-
-# plot only first 3 hops
-fig, axs = plt.subplots(
-    1, 1, figsize = (8, 7)
-)
-ax = axs
-
-sns.heatmap(alt_summed_hops_hist_lvl7_dd[0] + alt_summed_hops_hist_lvl7_dd[1] + alt_summed_hops_hist_lvl7_dd[2], vmax = 20, ax = ax, rasterized = True, square=True)
-ax.set_ylabel('Individual Clusters')
-ax.set_xlabel('Individual Clusters')
-ax.set_yticks([]);
-ax.set_xticks([]);
-
-fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_3hops_dd.pdf', bbox_inches='tight')
-
-
-# plot only first 3 hops
-fig, axs = plt.subplots(
-    1, 1, figsize = (8, 7)
-)
-ax = axs
-sns.heatmap(alt_summed_hops_hist_lvl7_da[0] + alt_summed_hops_hist_lvl7_da[1] + alt_summed_hops_hist_lvl7_da[2], vmax = 20, ax = ax, rasterized = True, square=True)
-ax.set_ylabel('Individual Clusters')
-ax.set_xlabel('Individual Clusters')
-ax.set_yticks([]);
-ax.set_xticks([]);
-
-fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clusters_3hops_da.pdf', bbox_inches='tight')
+plot_graphs(alt_summed_hops_hist_lvl7_ad, 'ad')
+plot_graphs(alt_summed_hops_hist_lvl7_aa, 'aa')
 
 # %%
 # plot visits to different groups, normalized to group size, displaying all hops

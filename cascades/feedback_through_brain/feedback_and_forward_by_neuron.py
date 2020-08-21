@@ -274,3 +274,83 @@ plt.imshow(neuron_hit_hist_hop_summed, cmap=cmr.ember, interpolation='none')
 plt.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_neurons_4hops_ad.pdf', bbox_inches='tight')
 
 # %%
+# compare rw to cascades
+from src.traverse import to_markov_matrix, RandomWalk
+
+def run_cascades_from_node(i, cdispatch):
+    return(cdispatch.multistart(start_nodes = index))
+
+# cascade
+p = 0.05
+max_hops = 10
+n_init = 100
+simultaneous = True
+transition_probs = to_transmission_matrix(adj, p)
+
+cdispatch = TraverseDispatcher(
+    Cascade,
+    transition_probs,
+    stop_nodes = [],
+    max_hops=max_hops,
+    allow_loops = False,
+    n_init=n_init,
+    simultaneous=simultaneous,
+)
+
+test = cdispatch.multistart(start_nodes = [skid_to_index(3827211, mg)])
+
+# cascade, non simultaneous
+p = 0.05
+max_hops = 10
+n_init = 100
+simultaneous = False
+transition_probs = to_transmission_matrix(adj, p)
+
+cdispatch = TraverseDispatcher(
+    Cascade,
+    transition_probs,
+    stop_nodes = [],
+    max_hops=max_hops,
+    allow_loops = False,
+    n_init=n_init,
+    simultaneous=simultaneous,
+)
+
+test_sim_false = cdispatch.multistart(start_nodes = [skid_to_index(3827211, mg)])
+
+# randomwalk
+max_hops = 10
+n_init = 100
+simultaneous = False
+transition_probs = to_markov_matrix(adj)
+
+cdispatch = TraverseDispatcher(
+    RandomWalk,
+    transition_probs,
+    stop_nodes = [],
+    max_hops=max_hops,
+    allow_loops = False,
+    n_init=n_init,
+    simultaneous=simultaneous,
+)
+
+test_rw = cdispatch.multistart(start_nodes = [skid_to_index(3827211, mg)])
+
+fig, axs = plt.subplots(
+    2, 1, figsize=(5, 5)
+)
+vmax = 100
+
+fig.tight_layout(pad=2.0)
+
+ax = axs[0]
+sns.heatmap(test, ax = ax, rasterized = True, vmax = vmax)
+ax.set_title('Cascade')
+
+ax = axs[1]
+sns.heatmap(test_rw, ax = ax, rasterized = True, vmax = 20)
+ax.set_title('Cascade, Simultaneous=False')
+
+#plt.savefig('cascades/feedback_through_brain/plots/test_cascade_vs_rw_84_1.pdf', bbox_inches='tight')
+
+# %%
