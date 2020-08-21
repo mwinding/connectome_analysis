@@ -75,8 +75,13 @@ pre_output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_anno
 # cascades from each output type, ending at brain inputs 
 # maybe should switch to senosry second-order?
 from src.traverse import Cascade, to_transmission_matrix
+from src.traverse import to_markov_matrix, RandomWalk
 from src.traverse import TraverseDispatcher
 from src.visualization import matrixplot
+from joblib import Parallel, delayed
+
+def run_cascade(i, cdispatch):
+    return(cdispatch.multistart(start_nodes = i))
 
 # convert skids to indices
 output_indices_list = []
@@ -108,6 +113,10 @@ cdispatch = TraverseDispatcher(
     simultaneous=simultaneous,
 )
 
+output_hit_hist_list = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in output_indices_list)
+pre_output_hit_hist_list = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in pre_output_indices_list)
+
+'''
 output_hit_hist_list = []
 for indices in output_indices_list:
     hit_hist = cdispatch.multistart(start_nodes = indices)
@@ -117,6 +126,27 @@ pre_output_hit_hist_list = []
 for indices in pre_output_indices_list:
     hit_hist = cdispatch.multistart(start_nodes = indices)
     pre_output_hit_hist_list.append(hit_hist)
+'''
+
+'''
+# Random Walk comparison
+max_hops = 10
+n_init = 100
+simultaneous = False
+transition_probs = to_markov_matrix(adj)
+
+cdispatch = TraverseDispatcher(
+    RandomWalk,
+    transition_probs,
+    stop_nodes = all_input_indices,
+    max_hops=max_hops,
+    allow_loops = False,
+    n_init=n_init,
+    simultaneous=simultaneous,
+)
+
+output_hit_hist_list_rw = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in output_indices_list)
+'''
 
 # %%
 # grouping cascade indices by cluster type
@@ -169,6 +199,9 @@ pre_output_hit_hist_lvl7 = hit_hist_to_clusters(pre_output_hit_hist_list, lvl7)
 
 output_summed_hist_lvl7 = sum_cluster_hit_hist(output_hit_hist_lvl7)
 pre_output_summed_hist_lvl7= sum_cluster_hit_hist(pre_output_hit_hist_lvl7)
+
+#output_hit_hist_lvl7_rw = hit_hist_to_clusters(output_hit_hist_list_rw, lvl7)
+#output_summed_hist_lvl7_rw = sum_cluster_hit_hist(output_hit_hist_lvl7_rw)
 
 
 # number of neurons per cluster group over threshold (hops remain intact)
@@ -231,7 +264,7 @@ plt.savefig('cascades/feedback_through_brain/plots/summed_output_feedback_throug
 # plot signal of each output type through clusters
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(10, 10)
+    3, 1, figsize=(2.5, 5)
 )
 
 fig.tight_layout(pad=2.0)
@@ -239,7 +272,7 @@ vmax = n_init
 
 for i in range(0, len(output_names_reordered)):
     ax = axs[i]
-    sns.heatmap(output_summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
+    sns.heatmap(output_summed_hist_lvl7[i].loc[order, 0:6], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
     ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
 
@@ -250,7 +283,7 @@ for i in range(0, len(output_names_reordered)):
 plt.savefig('cascades/feedback_through_brain/plots/output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(10, 10)
+    3, 1, figsize=(2.5, 5)
 )
 
 fig.tight_layout(pad=2.0)
@@ -258,7 +291,7 @@ vmax = n_init
 
 for i in range(0, len(pre_output_names)):
     ax = axs[i]
-    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
+    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order, 0:6], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
     ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
 
@@ -269,3 +302,11 @@ for i in range(0, len(pre_output_names)):
 plt.savefig('cascades/feedback_through_brain/plots/preoutput_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# single neuron perspective
+
+# amount of neurons that receive feedback from dVNCs
+sum(output_hit_hist_list[0][:, 0:5].sum(axis=1)>50)
+
+# or...
+
+sum((output_hit_hist_list[0]>50).sum(axis=1)>0)
