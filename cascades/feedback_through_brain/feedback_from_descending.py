@@ -264,38 +264,47 @@ plt.savefig('cascades/feedback_through_brain/plots/summed_output_feedback_throug
 # plot signal of each output type through clusters
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(2.5, 5)
+    1, 3, figsize=(3.5, 1.25)
 )
 
-fig.tight_layout(pad=2.0)
+#fig.tight_layout(pad=1)
 vmax = n_init
 
 for i in range(0, len(output_names_reordered)):
     ax = axs[i]
-    sns.heatmap(output_summed_hist_lvl7[i].loc[order, 0:6], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
-    ax.set_ylabel('Individual Clusters')
+    
+    cbar = False
+    sns.heatmap(output_summed_hist_lvl7[i].loc[order, 0:4], ax = ax, rasterized=True, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
+    ax.set_ylabel('')
+    if(i==0):
+        ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
-
-    ax.set_xlabel('Hops from %s signal' %output_names_reordered[i])
+    ax.set_xlabel('Hops')
+    ax.set_title('%s signal' %output_names_reordered[i][3:])
 
     #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
 
 plt.savefig('cascades/feedback_through_brain/plots/output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
-    3, 1, figsize=(2.5, 5)
+    1, 3, figsize=(3.5, 1.25)
 )
 
-fig.tight_layout(pad=2.0)
+#fig.tight_layout(pad=1)
 vmax = n_init
 
 for i in range(0, len(pre_output_names)):
     ax = axs[i]
-    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order, 0:6], ax = ax, rasterized=True, vmax = vmax, cbar_kws={'label': 'Average Number of Visits'})
-    ax.set_ylabel('Individual Clusters')
+    cbar = False
+    if(i==(len(pre_output_names)-1)):
+        cbar = False
+    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order, 0:4], ax = ax, rasterized=True, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
+    ax.set_ylabel('')
+    if(i==0):
+        ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
-
-    ax.set_xlabel('Hops from %s signal' %pre_output_names[i])
+    ax.set_xlabel('Hops')
+    ax.set_title('%s signal' %pre_output_names[i][3:])
 
     #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
 
@@ -305,8 +314,60 @@ plt.savefig('cascades/feedback_through_brain/plots/preoutput_feedback_through_cl
 # single neuron perspective
 
 # amount of neurons that receive feedback from dVNCs
-sum(output_hit_hist_list[0][:, 0:5].sum(axis=1)>50)
+#sum(output_hit_hist_list[0][:, 0:5].sum(axis=1)>50)
 
-# or...
+feedback_from_dVNC = np.where((output_hit_hist_list[0][:, 1:4]).sum(axis=1)>50)[0]
+feedback_from_dSEZ = np.where((output_hit_hist_list[1][:, 1:4]).sum(axis=1)>50)[0]
+feedback_from_RG = np.where((output_hit_hist_list[2][:, 1:4]).sum(axis=1)>50)[0]
 
-sum((output_hit_hist_list[0]>50).sum(axis=1)>0)
+feedback_from_pre_dVNC = np.where((pre_output_hit_hist_list[0][:, 1:4]).sum(axis=1)>50)[0]
+feedback_from_pre_dSEZ = np.where((pre_output_hit_hist_list[1][:, 1:4]).sum(axis=1)>50)[0]
+feedback_from_pre_RG = np.where((pre_output_hit_hist_list[2][:, 1:4]).sum(axis=1)>50)[0]
+
+feedback_from_pre_dVNC = np.delete(feedback_from_pre_dVNC, all_output_indices)
+feedback_from_pre_dSEZ = np.delete(feedback_from_pre_dSEZ, all_output_indices)
+feedback_from_pre_RG = np.delete(feedback_from_pre_RG, all_output_indices)
+
+iou_data = [feedback_from_dVNC, feedback_from_dSEZ, feedback_from_pre_dVNC, feedback_from_pre_dSEZ, feedback_from_pre_RG]
+iou_matrix = np.zeros((len(iou_data), len(iou_data)))
+
+for i in range(len(iou_data)):
+    for j in range(len(iou_data)):
+        if(len(np.union1d(iou_data[i], iou_data[j])) > 0):
+            iou = len(np.intersect1d(iou_data[i], iou_data[j]))/len(np.union1d(iou_data[i], iou_data[j]))
+            iou_matrix[i, j] = iou
+
+iou_matrix = pd.DataFrame(iou_matrix, index = ['dVNC (%i)' %len(feedback_from_dVNC), 
+                                                'dSEZ (%i)' %len(feedback_from_dSEZ),
+                                                'pre-dVNC (%i)' %len(feedback_from_pre_dVNC), 
+                                                'pre-dSEZ (%i)' %len(feedback_from_pre_dSEZ), 
+                                                'pre-RG (%i)' %len(feedback_from_pre_RG)], columns = ['dVNC', 'dSEZ', 'pre-dVNC', 'pre-dSEZ', 'pre-RG'])
+
+new_order = [0, 4, 1, 2, 3]
+iou_matrix = iou_matrix.iloc[new_order, new_order]
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2.5, 2.5)
+)
+
+ax = axs
+fig.tight_layout(pad=2.0)
+sns.heatmap(iou_matrix, ax = ax, rasterized = True, square = True)
+ax.set_title('Intersection of Feedback Types')
+
+plt.savefig('cascades/feedback_through_brain/plots/output_FBN_centers.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# export feedback types
+
+def index_to_skid(index, mg):
+    return(mg.meta.iloc[index, :].name)
+
+feedback_from_dVNC_skids = [index_to_skid(x, mg) for x in feedback_from_dVNC]
+feedback_from_dSEZ_skids = [index_to_skid(x, mg) for x in feedback_from_dSEZ]
+feedback_from_pre_dVNC_skids = [index_to_skid(x, mg) for x in feedback_from_pre_dVNC]
+feedback_from_pre_dSEZ_skids = [index_to_skid(x, mg) for x in feedback_from_pre_dSEZ]
+feedback_from_pre_RG_skids = [index_to_skid(x, mg) for x in feedback_from_pre_RG]
+
+
+# %%
