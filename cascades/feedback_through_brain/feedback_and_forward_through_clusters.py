@@ -336,24 +336,36 @@ fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clust
 
 feedback_mat_ad = sum(alt_summed_hops_hist_lvl7_ad[0:4])
 
-ff_fb_character_ad = []
+ff_fb_character_ad_output = []
 for i in range(len(feedback_mat_ad.columns)):
     cols = feedback_mat_ad.columns
     column = feedback_mat_ad.loc[:, cols[i]]
-    if(i==0):
-        fb = 0
-    if(i>0):
-        fb = sum(column[0:(i+1)])
     
-    if(i==(len(column)-1)):
-        ff = 0
-    if(i<(len(column)-1)):
-        ff = sum(column[(i+1):len(column)])
+    fb = sum(column[0:i])
+    ff = sum(column[(i+1):len(column)])
 
-    ff_fb_character_ad.append([column.name, ff, fb, ff/(ff+fb), fb/(ff+fb)])
+    if((ff>0) | (fb>0)):
+        ff_fb_character_ad_output.append([column.name, ff, fb, ff/(ff+fb), fb/(ff+fb)])
+    if((ff==0) & (fb==0)):
+        ff_fb_character_ad_output.append([column.name, 0, 0, 0, 0])
 
-ff_fb_character_ad = pd.DataFrame(ff_fb_character_ad, columns = ['cluster', 'feedforward', 'feedback', 'p_ff', 'p_fb'])
+ff_fb_character_ad_output = pd.DataFrame(ff_fb_character_ad_output, columns = ['cluster', 'feedforward', 'feedback', 'p_ff', 'p_fb'])
 
+ff_fb_character_ad_input = []
+for i in range(len(feedback_mat_ad.columns)):
+    cols = feedback_mat_ad.columns
+    column = feedback_mat_ad.loc[cols[i]]
+    
+    ff = sum(column[0:i])
+    fb = sum(column[(i+1):len(column)])
+
+    if((ff>0) | (fb>0)):
+        ff_fb_character_ad_input.append([column.name, ff, fb, ff/(ff+fb), fb/(ff+fb)])
+    if((ff==0) & (fb==0)):
+        ff_fb_character_ad_input.append([column.name, 0, 0, 0, 0])
+
+ff_fb_character_ad_input = pd.DataFrame(ff_fb_character_ad_input, columns = ['neuron', 'feedforward', 'feedback', 'p_ff', 'p_fb'])
+'''
 fig, axs = plt.subplots(
     1, 1, figsize = (1.5, 2)
 )
@@ -365,20 +377,25 @@ ax.set_xticks([])
 ax.set_xlabel('Individual Clusters')
 
 fig.savefig('cascades/feedback_through_brain/plots/ff_fb_character_clusters_ad.pdf', bbox_inches='tight')
-
+'''
 fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 2)
+    2, 1, figsize = (1.5, 2)
 )
-ax = axs
-sns.lineplot(x = range(len(ff_fb_character_ad.feedforward)), y = ff_fb_character_ad.feedforward, ax = ax)
-sns.lineplot(x = range(len(ff_fb_character_ad.feedback)), y = ff_fb_character_ad.feedback, ax = ax)
-ax.set(ylim = (0, max(ff_fb_character_ad.feedforward)*1.025))
-ax.set_ylabel('Signal Intensity')
+ax = axs[0]
+sns.lineplot(x = range(len(ff_fb_character_ad_output.feedforward)), y = ff_fb_character_ad_output.feedforward, ax = ax)
+sns.lineplot(x = range(len(ff_fb_character_ad_output.feedback)), y = ff_fb_character_ad_output.feedback, ax = ax)
+ax.set_ylabel('Signal Intensity\n3-Hop Output')
+ax.set_xticks([])
+
+ax = axs[1]
+sns.lineplot(x = range(len(ff_fb_character_ad_input.feedforward)), y = ff_fb_character_ad_input.feedforward, ax = ax)
+sns.lineplot(x = range(len(ff_fb_character_ad_input.feedback)), y = ff_fb_character_ad_input.feedback, ax = ax)
+ax.set_ylabel('Signal Intensity\n3-Hop Input')
 ax.set_xticks([])
 ax.set_xlabel('Individual Clusters')
 
-fig.savefig('cascades/feedback_through_brain/plots/ff_fb_character_clusters_ad_raw.pdf', bbox_inches='tight')
-
+fig.savefig('cascades/feedback_through_brain/plots/ff_fb_character_clusters_ad_input_output.pdf', bbox_inches='tight')
+'''
 # aa version
 
 feedback_mat_aa = sum(alt_summed_hops_hist_lvl7_aa[0:4])
@@ -425,9 +442,11 @@ ax.set_xticks([])
 ax.set_xlabel('Individual Clusters')
 
 fig.savefig('cascades/feedback_through_brain/plots/ff_fb_character_clusters_aa_raw.pdf', bbox_inches='tight')
-
+'''
 
 # %%
 # how much "signal flow" distance does each signal travel? in feedforward and feedback directions?
+
+
 
 # %%

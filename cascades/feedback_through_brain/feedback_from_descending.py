@@ -371,3 +371,5 @@ feedback_from_pre_RG_skids = [index_to_skid(x, mg) for x in feedback_from_pre_RG
 
 
 # %%
+# plot connectivity matrix between outputs and pre-outputs
+

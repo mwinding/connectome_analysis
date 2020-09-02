@@ -139,7 +139,7 @@ for skid in sorted_skids:
     sorted_indices.append(skid_to_index(skid, mg))
 
 p = 0.05
-max_hops = 10
+max_hops = 5
 n_init = 100
 simultaneous = True
 transition_probs = to_transmission_matrix(adj, p)
@@ -268,13 +268,139 @@ for hit_hist in neuron_hit_hist_list:
 
 neuron_hit_hist_hop_summed = pd.DataFrame(neuron_hit_hist_hop_summed).T
 
+neuron_hit_hist_hop_summed.to_csv('cascades/feedback_through_brain/cascades_from_single_neurons.csv')
+#neuron_hit_hist_hop_summed = pd.read_csv('cascades/feedback_through_brain/cascades_from_single_neurons.csv')
 import cmasher as cmr
 
 plt.imshow(neuron_hit_hist_hop_summed, cmap=cmr.ember, interpolation='none')
 plt.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_neurons_4hops_ad.pdf', bbox_inches='tight')
 
 # %%
+# feedback character of individual neurons (output)
+
+feedback_mat_ad = neuron_hit_hist_hop_summed
+
+ff_fb_character_ad_output = []
+for i in range(len(feedback_mat_ad.columns)):
+    cols = feedback_mat_ad.columns
+    column = feedback_mat_ad.loc[:, cols[i]]
+    
+    fb = sum(column[0:i])
+    ff = sum(column[(i+1):len(column)])
+
+    if((ff>0) | (fb>0)):
+        ff_fb_character_ad_output.append([column.name, ff, fb, ff/(ff+fb), fb/(ff+fb)])
+    if((ff==0) & (fb==0)):
+        ff_fb_character_ad_output.append([column.name, 0, 0, 0, 0])
+
+ff_fb_character_ad_output = pd.DataFrame(ff_fb_character_ad_output, columns = ['neuron', 'feedforward', 'feedback', 'p_ff', 'p_fb'])
+
+# feedback character of individual neurons (input)
+
+ff_fb_character_ad_input = []
+for i in range(len(feedback_mat_ad.columns)):
+    cols = feedback_mat_ad.columns
+    column = feedback_mat_ad.loc[cols[i]]
+    
+    ff = sum(column[0:i])
+    fb = sum(column[(i+1):len(column)])
+
+    if((ff>0) | (fb>0)):
+        ff_fb_character_ad_input.append([column.name, ff, fb, ff/(ff+fb), fb/(ff+fb)])
+    if((ff==0) & (fb==0)):
+        ff_fb_character_ad_input.append([column.name, 0, 0, 0, 0])
+
+ff_fb_character_ad_input = pd.DataFrame(ff_fb_character_ad_input, columns = ['neuron', 'feedforward', 'feedback', 'p_ff', 'p_fb'])
+
+fig, axs = plt.subplots(
+    2, 1, figsize = (1.75, 1.75)
+)
+fig.tight_layout(pad = 0.25)
+ax = axs[0]
+
+ind = range(len(ff_fb_character_ad_output.feedforward))
+ax.bar(ind, ff_fb_character_ad_output.p_ff, color = 'tab:blue')
+ax.bar(ind, ff_fb_character_ad_output.p_fb, bottom = ff_fb_character_ad_output.p_ff, color = 'tab:orange')
+
+# neurons with no output
+no_output = (ff_fb_character_ad_output.p_ff + ff_fb_character_ad_output.p_fb) == 0
+no_output_ind = np.where(no_output)[0]
+ax.bar(no_output_ind, [1] * len(no_output_ind), color = 'lightgray')
+
+ax.set_xticks([])
+ax.set(ylim = (0, 1))
+ax.set_title('Output Type')
+
+ax = axs[1]
+
+ind = range(len(ff_fb_character_ad_input.feedforward))
+ax.bar(ind, ff_fb_character_ad_input.p_ff, color = 'tab:blue')
+ax.bar(ind, ff_fb_character_ad_input.p_fb, bottom = ff_fb_character_ad_input.p_ff, color = 'tab:orange')
+
+# neurons with no input
+no_input = (ff_fb_character_ad_input.p_ff + ff_fb_character_ad_input.p_fb) == 0
+no_input_ind = np.where(no_input)[0]
+ax.bar(no_input_ind, [1] * len(no_input_ind), color = 'lightgray')
+
+ax.set_xticks([])
+ax.set(ylim = (0, 1))
+ax.set_title('Input Type')
+plt.savefig('cascades/feedback_through_brain/plots/ff_fb_character_neurons_ad.pdf', bbox_inches='tight')
+
+# %%
+# comparison of input to output fractions of ff/fb
+
+# median output position
+
+def counts_to_list(count_list):
+    expanded_counts = []
+    for i, count in enumerate(count_list):
+        expanded = np.repeat(i, count)
+        expanded_counts.append(expanded)
+    
+    return([x for sublist in expanded_counts for x in sublist])
+
+median_hops_output = []
+for i in range(len(neuron_hit_hist_hop_summed)):
+    column = neuron_hit_hist_hop_summed.iloc[:, i].drop(i)
+    median_diff = [i, np.median(counts_to_list(column)) - i]
+    median_hops_output.append(median_diff)
+
+median_hops_output = pd.DataFrame(median_hops_output, columns = ['index', 'median_hops'])
+
+median_hops_input = []
+for i in range(len(neuron_hit_hist_hop_summed)):
+    row = neuron_hit_hist_hop_summed.iloc[i, :].drop(i)
+    median_diff = [i, np.median(counts_to_list(row)) - i]
+    median_hops_input.append(median_diff)
+
+median_hops_input = pd.DataFrame(median_hops_input, columns = ['index', 'median_hops'])
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (1.75, 1.75)
+)
+ax = axs
+ax.set(xlim = (-2000, 2000))
+sns.distplot(median_hops_output.median_hops, ax = ax, kde = False)
+sns.distplot(median_hops_input.median_hops, ax = ax, kde = False)
+plt.savefig('cascades/feedback_through_brain/plots/ff_fb_median_hops.pdf', bbox_inches='tight')
+
+'''
+median_hops_ff = []
+for i in range(len(neuron_hit_hist_hop_summed)):
+    column = neuron_hit_hist_hop_summed.iloc[:, i].drop(i)
+    median_diff = [i, np.median(counts_to_list(column)) - i]
+    median_hops.append(median_diff)
+
+median_hops_fb = []
+for i in range(len(neuron_hit_hist_hop_summed)):
+    column = neuron_hit_hist_hop_summed.iloc[:, i].drop(i)
+    median_diff = [i, np.median(counts_to_list(column)) - i]
+    median_hops.append(median_diff)
+'''
+# %%
 # compare rw to cascades
+
 from src.traverse import to_markov_matrix, RandomWalk
 
 def run_cascades_from_node(i, cdispatch):
