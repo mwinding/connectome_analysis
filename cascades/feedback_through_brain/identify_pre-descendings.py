@@ -224,10 +224,11 @@ for i_iter, i in enumerate(oddRows):
     for j_iter, j in enumerate(oddCols_RG):
         summed_pairs = interlaced_RG_mat.iat[i, j] + interlaced_RG_mat.iat[i+1, j+1] + interlaced_RG_mat.iat[i+1, j] + interlaced_RG_mat.iat[i, j+1]
         sumMat_RG.iat[i_iter, j_iter] = summed_pairs/2
+
 # %%
 # plotting number of connections to and from descendings
 fig, axs = plt.subplots(
-    3, 2, figsize=(8, 8)
+    3, 2, figsize=(2.5, 3)
 )
 
 fig.tight_layout(pad = 2.5)
@@ -240,49 +241,55 @@ ax = axs[0, 0]
 count_per_us_neuron = (sumMat_dVNC.values>threshold).sum(axis=1)
 data = count_per_us_neuron[count_per_us_neuron>0]
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of brain neuron pairs')
+ax.set_ylabel('Neuron pairs')
 ax.set_xlabel('Connection(s) to dVNCs')
 ax.set_xticks(x_range)
+ax.set(xlim = (0.5, 10))
 
 ax = axs[0, 1]
 count_per_descending = (sumMat_dVNC.values>threshold).sum(axis=0)
 data = count_per_descending
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of dVNC neuron pairs')
+ax.set_ylabel('dVNC pairs')
 ax.set_xlabel('Connection(s) received')
 ax.set_xticks(x_range)
+ax.set(xlim = (-0.5, 7))
 
 ax = axs[1, 0]
 count_per_us_neuron = (sumMat_dSEZ.values>threshold).sum(axis=1)
 data = count_per_us_neuron[count_per_us_neuron>0]
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of brain neuron pairs')
+ax.set_ylabel('Neuron pairs')
 ax.set_xlabel('Connection(s) to dSEZs')
 ax.set_xticks(x_range)
+ax.set(xlim = (0.5, 10))
 
 ax = axs[1, 1]
 count_per_descending = (sumMat_dSEZ.values>threshold).sum(axis=0)
 data = count_per_descending
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of dSEZ neuron pairs')
+ax.set_ylabel('dSEZ pairs')
 ax.set_xlabel('Connection(s) received')
 ax.set_xticks(x_range)
+ax.set(xlim = (-0.5, 7))
 
 ax = axs[2, 0]
 count_per_us_neuron = (sumMat_RG.values>threshold).sum(axis=1)
 data = count_per_us_neuron[count_per_us_neuron>0]
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of brain neuron pairs')
+ax.set_ylabel('Neuron pairs')
 ax.set_xlabel('Connection(s) to RGNs')
 ax.set_xticks(x_range)
+ax.set(xlim = (0.5, 10))
 
 ax = axs[2, 1]
 count_per_descending = (sumMat_RG.values>threshold).sum(axis=0)
 data = count_per_descending
 ax.hist(data, bins=range(min(data), max(data) + binwidth, binwidth), align = align)
-ax.set_ylabel('Number of RGN pairs')
+ax.set_ylabel('RGN pairs')
 ax.set_xlabel('Connection(s) received')
 ax.set_xticks(x_range)
+ax.set(xlim = (-0.5, 7))
 
 plt.savefig('cascades/feedback_through_brain/plots/connections_from_to_descendings_5percent_threshold.pdf', bbox_inches='tight', transparent = True)
 # %%
@@ -306,8 +313,210 @@ pre_dVNC_skids = brain_skids_pairs.loc[pre_dVNC_skidleft, :]
 pre_dSEZ_skids = brain_skids_pairs.loc[pre_dSEZ_skidleft, :]
 pre_RGN_skids = brain_skids_pairs.loc[pre_RGN_skidleft, :]
 
-pre_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/pre_dVNC_skids.csv', index = False)
-pre_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/pre_dSEZ_skids.csv', index = False)
-pre_RGN_skids.to_csv('cascades/feedback_through_brain/plots/pre_RGN_skids.csv', index = False)
+#pre_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/pre_dVNC_skids.csv', index = False)
+#pre_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/pre_dSEZ_skids.csv', index = False)
+#pre_RGN_skids.to_csv('cascades/feedback_through_brain/plots/pre_RGN_skids.csv', index = False)
+
+# %%
+# plot connectivity matrices of pre-output to output
+
+from src.visualization import CLASS_COLOR_DICT, adjplot
+'''
+adjplot(
+    adj,
+    meta=mg.meta,
+    sort_class="hemisphere",  # group by hemisphere, this is a key for column in "meta"
+    plot_type="scattermap",  # plot dots instead of a heatmap
+    sizes=(1, 1),  # min and max sizes for dots, so this is effectively binarizing
+    item_order="Pair ID",  # order by pairs (some have no pair here so don't look same)
+    ax=ax
+)
+'''
+pre_dVNC_dSEZ_RGN = list(np.intersect1d(np.intersect1d(pre_dVNC_skidleft, pre_dSEZ_skidleft), pre_RGN_skidleft))
+pre_dVNC_dSEZ = list(np.setdiff1d(np.intersect1d(pre_dVNC_skidleft, pre_dSEZ_skidleft), pre_dVNC_dSEZ_RGN))
+pre_dVNC_RGN = list(np.setdiff1d(np.intersect1d(pre_dVNC_skidleft, pre_RGN_skidleft), pre_dVNC_dSEZ_RGN))
+pre_dSEZ_RGN = list(np.setdiff1d(np.intersect1d(pre_dSEZ_skidleft, pre_RGN_skidleft), pre_dVNC_dSEZ_RGN))
+combos = pre_dVNC_dSEZ_RGN + pre_dVNC_dSEZ + pre_dVNC_RGN + pre_dSEZ_RGN
+pre_dVNC = list(np.setdiff1d(pre_dVNC_skidleft, combos))
+pre_dSEZ = list(np.setdiff1d(pre_dSEZ_skidleft, combos))
+pre_RGN = list(np.setdiff1d(pre_RGN_skidleft, combos))
+
+output_mat = pd.concat([sumMat_dVNC, sumMat_dSEZ, sumMat_RG], axis = 1)
+
+plt.savefig('cascades/feedback_through_brain/plots/preoutput_to_output.pdf')
+# full interlaced adj matrix, summed pairs
+# FUTURE: add colored bars to side of matrix to indicate cell type
+
+interlaced_mat = pd.DataFrame(adj, index = mg.meta.index, columns = mg.meta.index)
+interlaced_mat = interlaced_mat.loc[brain_pair_order, brain_pair_order]
+
+# convert to %input
+for column in interlaced_mat.columns:
+    dendrite_input = mg.meta.loc[column].dendrite_input
+    if(dendrite_input>0):
+        interlaced_mat.loc[:, column] = interlaced_mat.loc[:, column]/dendrite_input
+    if(dendrite_input==0):
+        interlaced_mat.loc[:, column] = 0
+
+oddRows = np.arange(0, len(interlaced_mat.index), 2)
+oddCols = np.arange(0, len(interlaced_mat.columns), 2)
+
+# summing partners
+sumMat = np.zeros(shape=(len(oddRows),len(oddCols)))
+sumMat = pd.DataFrame(sumMat, columns = interlaced_mat.columns[oddCols], index = interlaced_mat.index[oddRows])
+
+for i_iter, i in tqdm(enumerate(oddRows)):
+    for j_iter, j in enumerate(oddCols):
+        summed_pairs = interlaced_mat.iloc[i, j] + interlaced_mat.iloc[i+1, j+1] + interlaced_mat.iloc[i+1, j] + interlaced_mat.iloc[i, j+1]
+        sumMat.iat[i_iter, j_iter] = summed_pairs/2
+
+sns.heatmap(sumMat.loc[(pre_dVNC + pre_dVNC_dSEZ + pre_dSEZ + pre_RGN + pre_dSEZ_RGN + pre_dVNC_RGN + pre_dVNC_dSEZ_RGN + list(dVNC_pairs.leftid) + list(dSEZ_pairs.leftid) + list(RG_pairs.leftid)),
+            (pre_dVNC + pre_dVNC_dSEZ + pre_dSEZ + pre_RGN + pre_dSEZ_RGN + pre_dVNC_RGN + pre_dVNC_dSEZ_RGN + list(dVNC_pairs.leftid) + list(dSEZ_pairs.leftid) + list(RG_pairs.leftid))], 
+            cmap = 'Blues', rasterized = True, vmax = 0.2, square = True, ax = ax)
+plt.savefig('cascades/feedback_through_brain/plots/preoutput_output_adj_matrix.pdf')
+
+fig, ax = plt.subplots(1,1,figsize=(6,5))
+sns.heatmap(sumMat.loc[(pre_dVNC + pre_dVNC_dSEZ + pre_dSEZ + pre_RGN + pre_dSEZ_RGN + pre_dVNC_RGN + pre_dVNC_dSEZ_RGN),
+            (list(dVNC_pairs.leftid) + list(dSEZ_pairs.leftid) + list(RG_pairs.leftid))], 
+            cmap = 'Blues', rasterized = True, vmax = 0.2, ax = ax)
+ax.set_xticks([])
+ax.set_yticks([])
+plt.savefig('cascades/feedback_through_brain/plots/preoutput_to_output_adj_matrix.pdf')
+
+fig, ax = plt.subplots(1,1,figsize=(6,5))
+sns.heatmap(sumMat.loc[(list(dVNC_pairs.leftid) + list(dSEZ_pairs.leftid) + list(RG_pairs.leftid)),
+            (pre_dVNC + pre_dVNC_dSEZ + pre_dSEZ + pre_RGN + pre_dSEZ_RGN + pre_dVNC_RGN + pre_dVNC_dSEZ_RGN)], 
+            cmap = 'Blues', rasterized = True, vmax = 0.2, square = True, ax = ax)
+ax.set_xticks([])
+ax.set_yticks([])
+plt.savefig('cascades/feedback_through_brain/plots/output_to_preoutput_adj_matrix.pdf')
+# %%
+# downstream of outputs (by connectivity)
+
+ds_dVNCs = sumMat.loc[dVNC_pairs.leftid, :]
+ds_dSEZs = sumMat.loc[dSEZ_pairs.leftid, :]
+ds_RGNs = sumMat.loc[RG_pairs.leftid, :]
+
+meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
+
+# level 7 clusters
+clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
+lvl7 = clusters.groupby('lvl7_labels')
+
+# order of clusters
+order_df = []
+for key in lvl7.groups:
+    skids = lvl7.groups[key]
+    node_visits = meta_with_order.loc[skids, :].median_node_visits
+    order_df.append([key, np.nanmean(node_visits)])
+
+order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
+order_df = order_df.sort_values(by = 'node_visit_order')
+
+order = list(order_df.cluster)
+
+# order skids within groups
+cluster_lvl7_indices_list = []
+sorted_skids = []
+for skids in cluster_lvl7:
+    skids_median_visit = meta_with_order.loc[skids, 'median_node_visits']
+    skids_sorted = skids_median_visit.sort_values().index
+
+    indices = []
+    for skid in skids_sorted:
+        index = skid_to_index(skid, mg)
+        indices.append(index)
+    cluster_lvl7_indices_list.append(indices)
+    sorted_skids.append(skids_sorted)
+
+# delist
+sorted_skids = [val for sublist in sorted_skids for val in sublist]
+sorted_skids_left = list(np.intersect1d(sumMat.columns, sorted_skids))
+
+import cmasher as cmr
+
+fig, axs = plt.subplots(
+    3, 1, figsize = (4, 1.25)
+)
+ax = axs[0]
+ax.imshow(ds_dVNCs.loc[:, sorted_skids_left], cmap = 'Blues', interpolation = 'none', vmax = 0.1)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_title('Individual Brain Neurons')
+ax.set_ylabel('dVNCs')
+
+ax = axs[1]
+ax.imshow(ds_dSEZs.loc[:, sorted_skids_left], cmap = 'Blues', interpolation = 'none', vmax = 0.1)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_ylabel('dSEZs')
+
+ax = axs[2]
+ax.imshow(ds_RGNs.loc[:, sorted_skids_left], cmap = 'Blues', interpolation = 'none', vmax = 0.1)
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_ylabel('RGNs')
+
+plt.savefig('cascades/feedback_through_brain/plots/downstream_outputs_connectivity_matrix.pdf', bbox_inches='tight')
+
+
+# plot connectivity from all outputs
+summed_ds_outputs = pd.DataFrame([ds_dVNCs.loc[:, sorted_skids_left].sum(axis=0), ds_dSEZs.loc[:, sorted_skids_left].sum(axis=0), ds_RGNs.loc[:, sorted_skids_left].sum(axis=0)])
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (2, .5)
+)
+ax = axs
+sns.heatmap(summed_ds_outputs/2, ax = ax, cmap = 'Blues', vmax = 0.2)
+ax.set_title('Individual Brain Neurons')
+ax.set_xticks([])
+ax.set_yticks([])
+
+plt.savefig('cascades/feedback_through_brain/plots/downstream_outputs_summed_connectivity_matrix.pdf', bbox_inches='tight')
+
+# %%
+# plot connectivity between all pre-output types and outputs
+output_skids_left = list(dVNC_pairs.leftid) + list(dSEZ_pairs.leftid) + list(RG_pairs.leftid)
+summed_types = [list(sumMat.loc[pre_dVNC, output_skids_left].sum(axis = 0)),
+            list(sumMat.loc[pre_dSEZ, output_skids_left].sum(axis = 0)),
+            list(sumMat.loc[pre_RGN, output_skids_left].sum(axis = 0)),
+            list(sumMat.loc[pre_dVNC_dSEZ, output_skids_left].sum(axis = 0)),
+            list(sumMat.loc[pre_dSEZ_RGN, output_skids_left].sum(axis=0)),
+            list(sumMat.loc[pre_dVNC_dSEZ_RGN, output_skids_left].sum(axis=0))]
+
+summed_types = pd.DataFrame(summed_types, columns = output_skids_left, index = ['pre-dVNC', 'pre-dSEZ', 'pre-RGN', 'pre-dVNCs/dSEZ', 'pre-dSEZ/RGN', 'pre-all'])
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (2, .9)
+)
+ax = axs
+sns.heatmap(summed_types/2, ax = ax, cmap = 'Blues', vmax = 0.4)
+ax.set_title('dVNCs dSEZs RGNs')
+ax.set_xticks([])
+
+plt.savefig('cascades/feedback_through_brain/plots/preoutputs_outputs_summed_connectivity_matrix.pdf', bbox_inches='tight')
+
+# plot connectivity from pre-outputs to brain
+non_output = list(np.intersect1d(sorted_skids_left, sumMat.columns.drop(output_skids_left)))
+
+summed_types = [list(sumMat.loc[pre_dVNC, non_output].sum(axis = 0)),
+            list(sumMat.loc[pre_dSEZ, non_output].sum(axis = 0)),
+            list(sumMat.loc[pre_RGN, non_output].sum(axis = 0)),
+            list(sumMat.loc[pre_dVNC_dSEZ, non_output].sum(axis = 0)),
+            list(sumMat.loc[pre_dSEZ_RGN, non_output].sum(axis=0)),
+            list(sumMat.loc[pre_dVNC_dSEZ_RGN, non_output].sum(axis=0))]
+
+summed_types = pd.DataFrame(summed_types, columns = non_output, index = ['pre-dVNC', 'pre-dSEZ', 'pre-RGN', 'pre-dVNCs/dSEZ', 'pre-dSEZ/RGN', 'pre-all'])
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (2, .9)
+)
+ax = axs
+sns.heatmap(summed_types/2, ax = ax, cmap = 'Blues', vmax = 0.4)
+ax.set_title('Non-output brain neurons')
+ax.set_xticks([])
+
+plt.savefig('cascades/feedback_through_brain/plots/preoutputs_to_brain_summed_connectivity_matrix.pdf', bbox_inches='tight')
+
 
 # %%
