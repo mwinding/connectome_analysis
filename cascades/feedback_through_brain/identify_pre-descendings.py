@@ -467,7 +467,7 @@ fig, axs = plt.subplots(
     1, 1, figsize = (2, .5)
 )
 ax = axs
-sns.heatmap(summed_ds_outputs/2, ax = ax, cmap = 'Blues', vmax = 0.2)
+sns.heatmap(summed_ds_outputs/2, ax = ax, cmap = 'Blues', vmax = 0.4)
 ax.set_title('Individual Brain Neurons')
 ax.set_xticks([])
 ax.set_yticks([])
