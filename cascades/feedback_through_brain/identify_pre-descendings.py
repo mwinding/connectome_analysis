@@ -27,7 +27,7 @@ from src.visualization import CLASS_COLOR_DICT, adjplot
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
-#plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({'font.size': 6})
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
@@ -319,6 +319,7 @@ pre_RGN_skids = brain_skids_pairs.loc[pre_RGN_skidleft, :]
 
 # %%
 # plot connectivity matrices of pre-output to output
+from tqdm import tqdm
 
 from src.visualization import CLASS_COLOR_DICT, adjplot
 '''
@@ -415,6 +416,11 @@ order_df = order_df.sort_values(by = 'node_visit_order')
 
 order = list(order_df.cluster)
 
+# getting skids of each cluster
+cluster_lvl7 = []
+for key in order:
+    cluster_lvl7.append(lvl7.groups[key].values)
+
 # order skids within groups
 cluster_lvl7_indices_list = []
 sorted_skids = []
@@ -467,7 +473,7 @@ fig, axs = plt.subplots(
     1, 1, figsize = (2, .5)
 )
 ax = axs
-sns.heatmap(summed_ds_outputs/2, ax = ax, cmap = 'Blues', vmax = 0.4)
+sns.heatmap(summed_ds_outputs, ax = ax, cmap = 'Blues', vmax = 0.4)
 ax.set_title('Individual Brain Neurons')
 ax.set_xticks([])
 ax.set_yticks([])
@@ -512,11 +518,34 @@ fig, axs = plt.subplots(
     1, 1, figsize = (2, .9)
 )
 ax = axs
-sns.heatmap(summed_types/2, ax = ax, cmap = 'Blues', vmax = 0.4)
+sns.heatmap(summed_types, ax = ax, cmap = 'Blues', vmax = 0.4)
 ax.set_title('Non-output brain neurons')
 ax.set_xticks([])
 
 plt.savefig('cascades/feedback_through_brain/plots/preoutputs_to_brain_summed_connectivity_matrix.pdf', bbox_inches='tight')
 
+
+# %%
+# identify neurons ds of brain outputs
+
+import connectome_tools.process_matrix as promat
+
+threshold = 0.05 # %5 input threshold
+pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
+
+source_dVNC = np.where((ds_dVNCs > threshold).sum(axis = 1))[0]
+destination_dVNC = np.where((ds_dVNCs > threshold).sum(axis = 0))[0]
+dVNC2 = pd.DataFrame([promat.get_paired_skids(x, pairs) for x in ds_dVNCs.columns[destination_dVNC]]
+                    , columns = ['skid_left', 'skid_right'])
+dVNC2.to_csv('cascades/feedback_through_brain/plots/dVNC_2nd_order.csv', index = False)
+
+source_dSEZ = np.where((ds_dSEZs > threshold).sum(axis = 1))[0]
+destination_dSEZ = np.where((ds_dSEZs > threshold).sum(axis = 0))[0]
+dSEZ2 = pd.DataFrame([promat.get_paired_skids(x, pairs) for x in ds_dSEZs.columns[destination_dSEZ]]
+                    , columns = ['skid_left', 'skid_right'])
+dSEZ2.to_csv('cascades/feedback_through_brain/plots/dSEZ_2nd_order.csv', index = False)
+
+source_RGN = np.where((ds_RGNs > threshold).sum(axis = 1))[0]
+destination_RGN = np.where((ds_RGNs > threshold).sum(axis = 0))[0]
 
 # %%
