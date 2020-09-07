@@ -262,53 +262,45 @@ ax.set_xlabel('Hops from output signal')
 plt.savefig('cascades/feedback_through_brain/plots/summed_output_feedback_through_clusters_lvl7_num.pdf', format='pdf', bbox_inches='tight')
 # %%
 # plot signal of each output type through clusters
-
+width = 2
+height = 2
 fig, axs = plt.subplots(
-    1, 3, figsize=(3.5, 1.25)
+    2, 3, figsize=(width, height)
 )
 
 #fig.tight_layout(pad=1)
 vmax = n_init
 
 for i in range(0, len(output_names_reordered)):
-    ax = axs[i]
+    ax = axs[0, i]
     
     cbar = False
-    sns.heatmap(output_summed_hist_lvl7[i].loc[order, 0:4], ax = ax, rasterized=True, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
+    sns.heatmap(output_summed_hist_lvl7[i].loc[order, 0:3], ax = ax, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
+    ax.set_ylabel('')
+    if(i==0):
+        ax.set_ylabel('Individual Clusters')
+    ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_title('%s' %output_names_reordered[i][3:])
+
+    #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
+
+for i in range(0, len(pre_output_names)):
+    ax = axs[1, i]
+    cbar = False
+    if(i==(len(pre_output_names)-1)):
+        cbar = False
+    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order, 0:3], ax = ax, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
     ax.set_ylabel('')
     if(i==0):
         ax.set_ylabel('Individual Clusters')
     ax.set_yticks([])
     ax.set_xlabel('Hops')
-    ax.set_title('%s signal' %output_names_reordered[i][3:])
+    ax.set_title('%s' %pre_output_names[i][3:])
 
     #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
 
 plt.savefig('cascades/feedback_through_brain/plots/output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
-
-fig, axs = plt.subplots(
-    1, 3, figsize=(3.5, 1.25)
-)
-
-#fig.tight_layout(pad=1)
-vmax = n_init
-
-for i in range(0, len(pre_output_names)):
-    ax = axs[i]
-    cbar = False
-    if(i==(len(pre_output_names)-1)):
-        cbar = False
-    sns.heatmap(pre_output_summed_hist_lvl7[i].loc[order, 0:4], ax = ax, rasterized=True, vmax = vmax, cbar = cbar, cbar_kws={'label': 'Average Number of Visits'})
-    ax.set_ylabel('')
-    if(i==0):
-        ax.set_ylabel('Individual Clusters')
-    ax.set_yticks([])
-    ax.set_xlabel('Hops')
-    ax.set_title('%s signal' %pre_output_names[i][3:])
-
-    #sns.heatmap(summed_hist_lvl7[1].loc[sort], ax = ax, rasterized=True)
-
-plt.savefig('cascades/feedback_through_brain/plots/preoutput_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # single neuron perspective
@@ -363,10 +355,17 @@ plt.savefig('cascades/feedback_through_brain/plots/output_FBN_centers.pdf', form
 def index_to_skid(index, mg):
     return(mg.meta.iloc[index, :].name)
 
-feedback_from_dVNC_skids = [index_to_skid(x, mg) for x in feedback_from_dVNC]
-feedback_from_dSEZ_skids = [index_to_skid(x, mg) for x in feedback_from_dSEZ]
-feedback_from_pre_dVNC_skids = [index_to_skid(x, mg) for x in feedback_from_pre_dVNC]
-feedback_from_pre_dSEZ_skids = [index_to_skid(x, mg) for x in feedback_from_pre_dSEZ]
-feedback_from_pre_RG_skids = [index_to_skid(x, mg) for x in feedback_from_pre_RG]
+feedback_from_dVNC_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_dVNC], columns = ['skid'])
+feedback_from_dSEZ_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_dSEZ], columns = ['skid'])
+feedback_from_pre_dVNC_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_dVNC], columns = ['skid'])
+feedback_from_pre_dSEZ_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_dSEZ], columns = ['skid'])
+feedback_from_pre_RG_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_RG], columns = ['skid'])
+
+feedback_from_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_dVNC.csv', index = False)
+feedback_from_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_dSEZ.csv', index = False)
+feedback_from_pre_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_predVNC.csv', index = False)
+feedback_from_pre_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_predSEZ.csv', index = False)
+feedback_from_pre_RG_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_preRGN.csv', index = False)
+
 
 # %%
