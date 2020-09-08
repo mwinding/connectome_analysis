@@ -294,39 +294,41 @@ fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_clust
 
 # %%
 # some examples
+width = 0.75
+height = 1.5
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 2)
+    1, 1, figsize = (width, height)
 )
 ax = axs
-sns.heatmap(summed_hops_hist_lvl7_ad[0].iloc[:, 0:5], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[0].iloc[:, 0:4], ax = axs)
 ax.set_yticks([])
 ax.set_ylabel('Individual Clusters')
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster0.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 2)
+    1, 1, figsize = (width, height)
 )
 ax = axs
-sns.heatmap(summed_hops_hist_lvl7_ad[40].iloc[:, 0:5], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[40].iloc[:, 0:4], ax = axs)
 ax.set_yticks([])
 ax.set_ylabel('Individual Clusters')
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster40.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 2)
+    1, 1, figsize = (width, height)
 )
 ax = axs
-sns.heatmap(summed_hops_hist_lvl7_ad[50].iloc[:, 0:5], rasterized = True, ax = axs)
+sns.heatmap(pd.concat([summed_hops_hist_lvl7_ad[50].iloc[:, 0:4], summed_hops_hist_lvl7_ad[50].iloc[:, 0:4].sum(axis = 1)], axis = 1), ax = axs)
 ax.set_yticks([])
 ax.set_ylabel('Individual Clusters')
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster50.pdf', bbox_inches='tight')
 
 fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 2)
+    1, 1, figsize = (width, height)
 )
 ax = axs
-sns.heatmap(summed_hops_hist_lvl7_ad[86].iloc[:, 0:5], rasterized = True, ax = axs)
+sns.heatmap(summed_hops_hist_lvl7_ad[86].iloc[:, 0:4], ax = axs)
 ax.set_yticks([])
 ax.set_ylabel('Individual Clusters')
 fig.savefig('cascades/feedback_through_brain/plots/feedback_vs_feedforward_cluster86.pdf', bbox_inches='tight')
