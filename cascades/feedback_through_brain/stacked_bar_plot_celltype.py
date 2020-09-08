@@ -27,7 +27,7 @@ from src.visualization import CLASS_COLOR_DICT, adjplot
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
-#plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({'font.size': 6})
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
@@ -154,5 +154,64 @@ for i in range(len(RG_types.index)):
     plt.bar(ind, RG_types.iloc[i, :], bottom = RG_types.iloc[0:i, :].sum(axis = 0),color = colors[i])
 plt.savefig('cascades/feedback_through_brain/plots/celltypes_RG_pathway.pdf', bbox_inches='tight')
 '''
+
+# %%
+# intersection between types
+
+dVNC_FB_type = member_types(pymaid.get_skids_by_annotation('mw dVNC feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:dVNC')
+dSEZ_FB_type = member_types(pymaid.get_skids_by_annotation('mw dSEZ feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:dSEZ')
+predVNC_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-dVNC feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:pre-dVNC')
+predSEZ_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-dSEZ feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:pre-dSEZ')
+preRGN_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-RG feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:pre-RGN')
+
+pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC')
+pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ')
+pre_RGN = pymaid.get_skids_by_annotation('mw pre-RG')
+
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+RGN = pymaid.get_skids_by_annotation('mw RG')
+
+ds_dVNC = pymaid.get_skids_by_annotation('mw dVNC 2nd_order')
+ds_dSEZ = pymaid.get_skids_by_annotation('mw dSEZ 2nd_order')
+
+dVNC_FB = pymaid.get_skids_by_annotation('mw dVNC feedback 3hop 7-Sept 2020')
+dSEZ_FB = pymaid.get_skids_by_annotation('mw dSEZ feedback 3hop 7-Sept 2020')
+
+pre_dVNC_FB = pymaid.get_skids_by_annotation('mw pre-dVNC feedback 3hop 7-Sept 2020')
+pre_dSEZ_FB = pymaid.get_skids_by_annotation('mw pre-dSEZ feedback 3hop 7-Sept 2020')
+pre_RGN_FB = pymaid.get_skids_by_annotation('mw pre-RG feedback 3hop 7-Sept 2020')
+
+iou_data = [pre_dVNC, dVNC, ds_dVNC, dVNC_FB, pre_dVNC_FB, 
+            pre_dSEZ, dSEZ, ds_dSEZ, dSEZ_FB, pre_dSEZ_FB,
+            pre_RGN, RGN, pre_RGN_FB]
+
+names = ['pre-dVNC', 'dVNC', 'ds-dVNC', 'dVNC-c1', 'dVNC-c2',
+        'pre-dSEZ', 'dSEZ', 'ds-dSEZ', 'dSEZ-c1', 'dSEZ-c2',
+        'pre-RGN', 'RGN', 'RGN-c2']
+
+def iou_matrix(data, names):
+    iou_matrix = np.zeros((len(data), len(data)))
+
+    for i in range(len(data)):
+        for j in range(len(data)):
+            if(len(np.union1d(data[i], data[j])) > 0):
+                iou = len(np.intersect1d(data[i], data[j]))/len(np.union1d(data[i], data[j]))
+                iou_matrix[i, j] = iou
+
+    iou_matrix = pd.DataFrame(iou_matrix, index = names, columns = names)
+    return(iou_matrix)
+
+iou = iou_matrix([pre_dVNC, pre_dSEZ, pre_RGN, dVNC, dSEZ, RGN, ds_dVNC, ds_dSEZ, dVNC_FB, pre_dVNC_FB, dSEZ_FB, pre_dSEZ_FB, pre_RGN_FB], ['pre-dVNC', 'pre-dSEZ', 'pre-RGN', 'dVNC', 'dSEZ', 'RGN', 'ds-dVNC', 'ds-dSEZ', 'c: dVNC', 'c: pre-dVNC', 'c: dSEZ', 'c: pre-dSEZ', 'c: pre-RGN'])
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2.5, 2.5)
+)
+
+ax = axs
+fig.tight_layout(pad=2.0)
+sns.heatmap(iou, ax = ax, square = True)
+ax.set_title('Intersection of Feedback Types')
+plt.savefig('cascades/feedback_through_brain/plots/output_FBN_centers_primary.pdf', format='pdf', bbox_inches='tight')
 
 # %%
