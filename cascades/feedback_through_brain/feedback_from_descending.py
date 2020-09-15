@@ -73,7 +73,7 @@ pre_output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_anno
 
 #%%
 # cascades from each output type, ending at brain inputs 
-# maybe should switch to senosry second-order?
+# maybe should switch to sensory second-order?
 from src.traverse import Cascade, to_transmission_matrix
 from src.traverse import to_markov_matrix, RandomWalk
 from src.traverse import TraverseDispatcher
@@ -115,38 +115,6 @@ cdispatch = TraverseDispatcher(
 
 output_hit_hist_list = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in output_indices_list)
 pre_output_hit_hist_list = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in pre_output_indices_list)
-
-'''
-output_hit_hist_list = []
-for indices in output_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    output_hit_hist_list.append(hit_hist)
-
-pre_output_hit_hist_list = []
-for indices in pre_output_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = indices)
-    pre_output_hit_hist_list.append(hit_hist)
-'''
-
-'''
-# Random Walk comparison
-max_hops = 10
-n_init = 100
-simultaneous = False
-transition_probs = to_markov_matrix(adj)
-
-cdispatch = TraverseDispatcher(
-    RandomWalk,
-    transition_probs,
-    stop_nodes = all_input_indices,
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-output_hit_hist_list_rw = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in output_indices_list)
-'''
 
 # %%
 # grouping cascade indices by cluster type
