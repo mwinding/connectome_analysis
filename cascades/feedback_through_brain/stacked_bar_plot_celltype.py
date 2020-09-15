@@ -47,7 +47,7 @@ def skid_to_index(skid, mg):
 # %%
 # which cell types are in a set of skids?
 
-annot_list_types = ['sensory', 'PN', 'LHN', 'MBIN', 'KC', 'MBON', 'FBN', 'CN', 'dVNC', 'dSEZ', 'RGN']
+annot_list_types = ['sensory', 'PN', 'LHN', 'MBIN', 'KC', 'MBON', 'FBN', 'CN', 'dVNC', 'dSEZ', 'RGN', 'others']
 annot_list = [list(pymaid.get_annotated('mw brain inputs').name), 
             list(pymaid.get_annotated('mw brain inputs 2nd_order PN').name),
             ['mw LHN'], ['mw MBIN'], ['mw KC'], ['mw MBON'],
@@ -76,6 +76,9 @@ RGN_skids = pymaid.get_skids_by_annotation('mw RG')
 skid_list = [inputs_skids, PN_skids, LHN_skids, MBIN_skids, KC_skids, MBON_skids, 
             FBN_skids, CN_skids, dVNC_skids, dSEZ_skids, RGN_skids]
 
+others = np.setdiff1d(mg.meta.index, np.unique([val for sublist in skid_list for val in sublist])) # list of all unannotated neurons
+skid_list.append(others)
+
 def member_types(data, skid_list, celltype_names, col_name):
 
     fraction_type = []
@@ -83,7 +86,7 @@ def member_types(data, skid_list, celltype_names, col_name):
         fraction = len(np.intersect1d(data, skids))/len(data)
         fraction_type.append(fraction)
 
-    fraction_type = pd.DataFrame(fraction_type, index = celltype_names, columns = [col_name])
+    fraction_type = pd.DataFrame(fraction_type, index = celltype_names, columns = ['%s (%i)' %(col_name, len(data))])
     return(fraction_type)
 
 pre_dVNC_type = member_types(pymaid.get_skids_by_annotation('mw pre-dVNC'), skid_list, annot_list_types, 'pre-dVNC')
@@ -94,6 +97,9 @@ dSEZ_type = member_types(pymaid.get_skids_by_annotation('mw dSEZ'), skid_list, a
 RGN_type = member_types(pymaid.get_skids_by_annotation('mw RG'), skid_list, annot_list_types, 'RGN')
 dVNC2_type = member_types(pymaid.get_skids_by_annotation('mw dVNC 2nd_order'), skid_list, annot_list_types, 'dVNC2')
 dSEZ2_type = member_types(pymaid.get_skids_by_annotation('mw dSEZ 2nd_order'), skid_list, annot_list_types, 'dSEZ2')
+ds_pre_dVNC_type = member_types(pymaid.get_skids_by_annotation('mw ds-pre-dVNC'), skid_list, annot_list_types, 'ds pre-dVNC')
+ds_pre_dSEZ_type = member_types(pymaid.get_skids_by_annotation('mw ds-pre-dSEZ'), skid_list, annot_list_types, 'ds pre-dSEZ')
+ds_pre_RGN_type = member_types(pymaid.get_skids_by_annotation('mw ds-pre-RGN'), skid_list, annot_list_types, 'ds pre-RGN')
 
 dVNC_FB_type = member_types(pymaid.get_skids_by_annotation('mw dVNC feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:dVNC')
 dSEZ_FB_type = member_types(pymaid.get_skids_by_annotation('mw dSEZ feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:dSEZ')
@@ -101,9 +107,9 @@ predVNC_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-dVNC feedb
 predSEZ_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-dSEZ feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:pre-dSEZ')
 preRGN_FB_type = member_types(pymaid.get_skids_by_annotation('mw pre-RG feedback 3hop 7-Sept 2020'), skid_list, annot_list_types, 'c:pre-RGN')
 
-dVNC_types = pd.concat([pre_dVNC_type, dVNC_type, dVNC2_type, dVNC_FB_type, predVNC_FB_type], axis = 1)
-dSEZ_types = pd.concat([pre_dSEZ_type, dSEZ_type, dSEZ2_type, dSEZ_FB_type, predSEZ_FB_type], axis = 1)
-RG_types = pd.concat([pre_RGN_type, RGN_type, preRGN_FB_type], axis = 1)
+dVNC_types = pd.concat([pre_dVNC_type, dVNC_type, dVNC2_type, dVNC_FB_type, ds_pre_dVNC_type, predVNC_FB_type], axis = 1)
+dSEZ_types = pd.concat([pre_dSEZ_type, dSEZ_type, dSEZ2_type, dSEZ_FB_type, predSEZ_FB_type, predSEZ_FB_type], axis = 1)
+RG_types = pd.concat([pre_RGN_type, RGN_type, ds_pre_RGN_type, preRGN_FB_type], axis = 1)
 
 import cmasher as cmr
 
@@ -131,29 +137,6 @@ fig, axs = plt.subplots(
 )
 sns.heatmap(RG_types.drop(index = ['sensory', 'KC']), annot=True, fmt=".0%", linewidth = 0.25, vmax = vmax, cmap = cmap, cbar = cbar, annot_kws={"size": fontsize})
 plt.savefig('cascades/feedback_through_brain/plots/celltypes_RG_pathway.pdf', bbox_inches='tight')
-
-'''
-ind = range(len(dVNC_types.columns))
-colors = ['tab:blue', 'tab:green', 'tab:red', 'tab:purple', 'blue', 'brown', 'orange', 'purple', 'black', 'white', 'magenta']
-plt.bar(ind, [1,1,1],color = 'gray')
-for i in range(len(dVNC_types.index)):
-    plt.bar(ind, dVNC_types.iloc[i, :], bottom = dVNC_types.iloc[0:i, :].sum(axis = 0),color = colors[i])
-plt.savefig('cascades/feedback_through_brain/plots/celltypes_dVNC_pathway.pdf', bbox_inches='tight')
-        
-ind = range(len(dSEZ_types.columns))
-colors = ['tab:blue', 'tab:green', 'tab:red', 'tab:purple', 'blue', 'brown', 'orange', 'purple']
-plt.bar(ind, [1,1,1],color = 'gray')
-for i in range(len(dSEZ_types.index)):
-    plt.bar(ind, dSEZ_types.iloc[i, :], bottom = dSEZ_types.iloc[0:i, :].sum(axis = 0),color = colors[i])
-plt.savefig('cascades/feedback_through_brain/plots/celltypes_dSEZ_pathway.pdf', bbox_inches='tight')
-
-ind = range(len(RG_types.columns))
-colors = ['tab:blue', 'tab:green', 'tab:red', 'tab:purple', 'blue', 'brown', 'orange', 'purple']
-plt.bar(ind, [1,1,1],color = 'gray')
-for i in range(len(RG_types.index)):
-    plt.bar(ind, RG_types.iloc[i, :], bottom = RG_types.iloc[0:i, :].sum(axis = 0),color = colors[i])
-plt.savefig('cascades/feedback_through_brain/plots/celltypes_RG_pathway.pdf', bbox_inches='tight')
-'''
 
 # %%
 # intersection between types
