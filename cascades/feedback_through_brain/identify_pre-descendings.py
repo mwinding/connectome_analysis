@@ -321,18 +321,6 @@ pre_RGN_skids = brain_skids_pairs.loc[pre_RGN_skidleft, :]
 # plot connectivity matrices of pre-output to output
 from tqdm import tqdm
 
-from src.visualization import CLASS_COLOR_DICT, adjplot
-'''
-adjplot(
-    adj,
-    meta=mg.meta,
-    sort_class="hemisphere",  # group by hemisphere, this is a key for column in "meta"
-    plot_type="scattermap",  # plot dots instead of a heatmap
-    sizes=(1, 1),  # min and max sizes for dots, so this is effectively binarizing
-    item_order="Pair ID",  # order by pairs (some have no pair here so don't look same)
-    ax=ax
-)
-'''
 pre_dVNC_dSEZ_RGN = list(np.intersect1d(np.intersect1d(pre_dVNC_skidleft, pre_dSEZ_skidleft), pre_RGN_skidleft))
 pre_dVNC_dSEZ = list(np.setdiff1d(np.intersect1d(pre_dVNC_skidleft, pre_dSEZ_skidleft), pre_dVNC_dSEZ_RGN))
 pre_dVNC_RGN = list(np.setdiff1d(np.intersect1d(pre_dVNC_skidleft, pre_RGN_skidleft), pre_dVNC_dSEZ_RGN))
@@ -547,5 +535,51 @@ dSEZ2.to_csv('cascades/feedback_through_brain/plots/dSEZ_2nd_order.csv', index =
 
 source_RGN = np.where((ds_RGNs > threshold).sum(axis = 1))[0]
 destination_RGN = np.where((ds_RGNs > threshold).sum(axis = 0))[0]
+
+# %%
+# identify neurons ds of pre-brain outputs
+
+import connectome_tools.process_matrix as promat
+
+threshold = 0.05 # %5 input threshold
+pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
+
+pre_dVNC_CATMAID = pymaid.get_skids_by_annotation('mw pre-dVNC')
+pre_dSEZ_CATMAID = pymaid.get_skids_by_annotation('mw pre-dSEZ')
+pre_RGN_CATMAID = pymaid.get_skids_by_annotation('mw pre-RG')
+
+pre_dVNC_CATMAID_pairs = promat.extract_pairs_from_list(pre_dVNC_CATMAID, pairs)
+pre_dSEZ_CATMAID_pairs = promat.extract_pairs_from_list(pre_dSEZ_CATMAID, pairs)
+pre_RGN_CATMAID_pairs = promat.extract_pairs_from_list(pre_RGN_CATMAID, pairs)
+
+# generating downstream matrix from pre-outputs; already calculated as average percent input across pairs
+ds_predVNCs = sumMat.loc[pre_dVNC_CATMAID_pairs.leftid, :]
+ds_predSEZs = sumMat.loc[pre_dSEZ_CATMAID_pairs.leftid, :]
+ds_preRGNs = sumMat.loc[pre_RGN_CATMAID_pairs.leftid, :]
+
+# identify indices over threshold and pull associated skeleton IDs
+destination_ds_predVNC = np.where((ds_predVNCs > threshold).sum(axis = 0)>0)[0]
+destination_ds_predVNC = ds_predVNCs.columns[destination_ds_predVNC]
+destination_ds_predVNC = np.setdiff1d(destination_ds_predVNC, (output_skids + pre_dVNC_CATMAID)) # exclude output neurons and source from ds_pre category
+
+destination_ds_predSEZ = np.where((ds_predSEZs > threshold).sum(axis = 0)>0)[0]
+destination_ds_predSEZ = ds_predSEZs.columns[destination_ds_predSEZ]
+destination_ds_predSEZ = np.setdiff1d(destination_ds_predSEZ, (output_skids + pre_dSEZ_CATMAID)) # exclude output neurons and source from ds_pre category
+
+destination_ds_preRGN = np.where((ds_preRGNs > threshold).sum(axis = 0)>0)[0]
+destination_ds_preRGN = ds_preRGNs.columns[destination_ds_preRGN]
+destination_ds_preRGN = np.setdiff1d(destination_ds_preRGN, (output_skids + pre_RGN_CATMAID)) # exclude output neurons and source from ds_pre category
+
+ds_predVNC_skids = pd.DataFrame([promat.get_paired_skids(x, pairs) for x in destination_ds_predVNC]
+                    , columns = ['skid_left', 'skid_right'])
+ds_predVNC_skids.to_csv('cascades/feedback_through_brain/plots/ds_pre_dVNCs.csv', index = False)
+
+ds_predSEZ_skids = pd.DataFrame([promat.get_paired_skids(x, pairs) for x in destination_ds_predSEZ]
+                    , columns = ['skid_left', 'skid_right'])
+ds_predSEZ_skids.to_csv('cascades/feedback_through_brain/plots/ds_pre_dSEZs.csv', index = False)
+
+ds_preRGN_skids = pd.DataFrame([promat.get_paired_skids(x, pairs) for x in destination_ds_preRGN]
+                    , columns = ['skid_left', 'skid_right'])
+ds_preRGN_skids.to_csv('cascades/feedback_through_brain/plots/ds_pre_RGNs.csv', index = False)
 
 # %%
