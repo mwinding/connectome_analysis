@@ -46,20 +46,28 @@ def get_paired_skids(skid, pairList):
     return([pair_left, pair_right])
 
 # converts array of skids into left-right pairs in separate columns
+# puts unpaired and nonpaired neurons in different lists
 def extract_pairs_from_list(skids, pairList):
     pairs = []
+    unpaired = []
+    nonpaired = []
     for i in skids:
-        if(int(i) in pairList["leftid"].values):
+        if((int(i) not in pairList.leftid.values) & (int(i) not in pairList.rightid.values)):
+            nonpaired.append({'nonpaired': int(i)})
+            continue
+
+        if((int(i) in pairList["leftid"].values) & (get_paired_skids(int(i), pairList)[1] in skids)):
             pair = get_paired_skids(int(i), pairList)
             pairs.append({'leftid': pair[0], 'rightid': pair[1]})
 
-        # delaying with non-paired neurons
-        # UNTESTED
-        #if (pair==0):
-        #    break
+        if(((int(i) in pairList["leftid"].values) & (get_paired_skids(int(i), pairList)[1] not in skids)|
+            (int(i) in pairList["rightid"].values) & (get_paired_skids(int(i), pairList)[0] not in skids))):
+            unpaired.append({'unpaired': int(i)})
 
     pairs = pd.DataFrame(pairs)
-    return(pairs)
+    unpaired = pd.DataFrame(unpaired)
+    nonpaired = pd.DataFrame(nonpaired)
+    return(pairs, unpaired, nonpaired)
 
 # converts a interlaced left-right pair adjacency matrix into a binary connection matrix based on some threshold
 def binary_matrix(matrix_path, threshold, total_threshold): 
