@@ -99,7 +99,7 @@ all_output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
 
 p = 0.05
 max_hops = 10
-n_init = 100
+n_init = 1000
 simultaneous = True
 transition_probs = to_transmission_matrix(adj, p)
 
@@ -192,7 +192,7 @@ fig, axs = plt.subplots(
     1, 1, figsize=(5, 5)
 )
 
-vmax = 300
+vmax = n_init
 
 ax = axs
 sns.heatmap(sum(output_summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
@@ -206,7 +206,7 @@ fig, axs = plt.subplots(
     1, 1, figsize=(5, 5)
 )
 
-vmax = 300
+vmax = n_init
 
 ax = axs
 sns.heatmap(sum(pre_output_summed_hist_lvl7).loc[order, 0:7], ax = ax, vmax = vmax, rasterized=True, cbar_kws={'label': 'Visits from sensory signal'})
@@ -271,24 +271,46 @@ for i in range(0, len(pre_output_names)):
 plt.savefig('cascades/feedback_through_brain/plots/output_feedback_through_clusters_lvl7.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# single neuron perspective
+# amount of neurons that receive feedback from dVNCs, single neuron perspective
+# pairs both need to be over threshold; unpaired neurons need to just be overthreshold
 
-# amount of neurons that receive feedback from dVNCs
-#sum(output_hit_hist_list[0][:, 0:5].sum(axis=1)>50)
+import connectome_tools.process_matrix as promat
 
-feedback_from_dVNC = np.where((output_hit_hist_list[0][:, 1:4]).sum(axis=1)>50)[0]
-feedback_from_dSEZ = np.where((output_hit_hist_list[1][:, 1:4]).sum(axis=1)>50)[0]
-feedback_from_RG = np.where((output_hit_hist_list[2][:, 1:4]).sum(axis=1)>50)[0]
+def index_to_skid(index, mg):
+    return(mg.meta.iloc[index, :].name)
 
-feedback_from_pre_dVNC = np.where((pre_output_hit_hist_list[0][:, 1:4]).sum(axis=1)>50)[0]
-feedback_from_pre_dSEZ = np.where((pre_output_hit_hist_list[1][:, 1:4]).sum(axis=1)>50)[0]
-feedback_from_pre_RG = np.where((pre_output_hit_hist_list[2][:, 1:4]).sum(axis=1)>50)[0]
+def pair_threshold(hit_hist, threshold, hops, excluded_indices, mg, pairs):
 
-feedback_from_pre_dVNC = np.delete(feedback_from_pre_dVNC, all_output_indices)
-feedback_from_pre_dSEZ = np.delete(feedback_from_pre_dSEZ, all_output_indices)
-feedback_from_pre_RG = np.delete(feedback_from_pre_RG, all_output_indices)
+    neurons = np.where((hit_hist[:, 1:(hops+1)]).sum(axis=1)>threshold)[0]
+    neurons = np.delete(neurons, excluded_indices)
+    neurons = [index_to_skid(x, mg) for x in neurons] # convert to skid
 
-iou_data = [feedback_from_dVNC, feedback_from_dSEZ, feedback_from_pre_dVNC, feedback_from_pre_dSEZ, feedback_from_pre_RG]
+    neurons_pairs, neurons_unpaired, neurons_nonpaired = promat.extract_pairs_from_list(neurons, pairs)
+    return(neurons_pairs, neurons_unpaired, neurons_nonpaired)
+
+pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0) # import pairs
+
+threshold = n_init/2
+hops = 3
+
+# identify pairs and unpaired neurons over threshold
+feedback_dVNC_pairs, feedback_dVNC_unpaired, feedback_dVNC_nonpaired = pair_threshold(output_hit_hist_list[0], threshold, hops, all_output_indices, mg, pairs)
+feedback_dSEZ_pairs, feedback_dSEZ_unpaired, feedback_dSEZ_nonpaired = pair_threshold(output_hit_hist_list[1], threshold, hops, all_output_indices, mg, pairs)
+#feedback_RGN_pairs, feedback_RGN_unpaired, feedback_RGN_nonpaired = pair_threshold(output_hit_hist_list[2], threshold, hops, all_output_indices, mg, pairs)
+
+feedback_pre_dVNC_pairs, feedback_pre_dVNC_unpaired, feedback_pre_dVNC_nonpaired = pair_threshold(pre_output_hit_hist_list[0], threshold, hops, all_output_indices, mg, pairs)
+feedback_pre_dSEZ_pairs, feedback_pre_dSEZ_unpaired, feedback_pre_dSEZ_nonpaired = pair_threshold(pre_output_hit_hist_list[1], threshold, hops, all_output_indices, mg, pairs)
+feedback_pre_RGN_pairs, feedback_pre_RGN_unpaired, feedback_pre_RGN_nonpaired = pair_threshold(pre_output_hit_hist_list[2], threshold, hops, all_output_indices, mg, pairs)
+
+# combine paired and nonpaired neurons over threshold
+feedback_from_dVNC = np.concatenate([feedback_dVNC_pairs.leftid, feedback_dVNC_pairs.rightid, feedback_dVNC_nonpaired.nonpaired])
+feedback_from_dSEZ = np.concatenate([feedback_dSEZ_pairs.leftid, feedback_dSEZ_pairs.rightid, feedback_dSEZ_nonpaired.nonpaired])
+
+feedback_from_pre_dVNC = np.concatenate([feedback_pre_dVNC_pairs.leftid, feedback_pre_dVNC_pairs.rightid, feedback_pre_dVNC_nonpaired.nonpaired])
+feedback_from_pre_dSEZ = np.concatenate([feedback_pre_dSEZ_pairs.leftid, feedback_pre_dSEZ_pairs.rightid, feedback_pre_dSEZ_nonpaired.nonpaired])
+feedback_from_pre_RGN = np.concatenate([feedback_pre_RGN_pairs.leftid, feedback_pre_RGN_pairs.rightid, feedback_pre_RGN_nonpaired.nonpaired])
+
+iou_data = [feedback_from_dVNC, feedback_from_dSEZ, feedback_from_pre_dVNC, feedback_from_pre_dSEZ, feedback_from_pre_RGN]
 iou_matrix = np.zeros((len(iou_data), len(iou_data)))
 
 for i in range(len(iou_data)):
@@ -301,9 +323,9 @@ iou_matrix = pd.DataFrame(iou_matrix, index = ['dVNC (%i)' %len(feedback_from_dV
                                                 'dSEZ (%i)' %len(feedback_from_dSEZ),
                                                 'pre-dVNC (%i)' %len(feedback_from_pre_dVNC), 
                                                 'pre-dSEZ (%i)' %len(feedback_from_pre_dSEZ), 
-                                                'pre-RG (%i)' %len(feedback_from_pre_RG)], columns = ['dVNC', 'dSEZ', 'pre-dVNC', 'pre-dSEZ', 'pre-RG'])
+                                                'pre-RG (%i)' %len(feedback_from_pre_RGN)], columns = ['dVNC', 'dSEZ', 'pre-dVNC', 'pre-dSEZ', 'pre-RG'])
 
-new_order = [0, 4, 1, 2, 3]
+new_order = [0, 1, 4, 2, 3]
 iou_matrix = iou_matrix.iloc[new_order, new_order]
 
 fig, axs = plt.subplots(
@@ -319,21 +341,15 @@ plt.savefig('cascades/feedback_through_brain/plots/output_FBN_centers.pdf', form
 
 # %%
 # export feedback types
+from datetime import date
 
 def index_to_skid(index, mg):
     return(mg.meta.iloc[index, :].name)
 
-feedback_from_dVNC_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_dVNC], columns = ['skid'])
-feedback_from_dSEZ_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_dSEZ], columns = ['skid'])
-feedback_from_pre_dVNC_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_dVNC], columns = ['skid'])
-feedback_from_pre_dSEZ_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_dSEZ], columns = ['skid'])
-feedback_from_pre_RG_skids = pd.DataFrame([index_to_skid(x, mg) for x in feedback_from_pre_RG], columns = ['skid'])
-
-feedback_from_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_dVNC.csv', index = False)
-feedback_from_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_dSEZ.csv', index = False)
-feedback_from_pre_dVNC_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_predVNC.csv', index = False)
-feedback_from_pre_dSEZ_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_predSEZ.csv', index = False)
-feedback_from_pre_RG_skids.to_csv('cascades/feedback_through_brain/plots/feedback_from_preRGN.csv', index = False)
-
+pd.DataFrame(feedback_from_dVNC, columns = ['skids']).to_csv('cascades/feedback_through_brain/plots/feedback_from_dVNC-%s.csv' %(str(date.today())), index = False)
+pd.DataFrame(feedback_from_dSEZ, columns = ['skids']).to_csv('cascades/feedback_through_brain/plots/feedback_from_dSEZ-%s.csv' %(str(date.today())), index = False)
+pd.DataFrame(feedback_from_pre_dVNC, columns = ['skids']).to_csv('cascades/feedback_through_brain/plots/feedback_from_predVNC-%s.csv' %(str(date.today())), index = False)
+pd.DataFrame(feedback_from_pre_dSEZ, columns = ['skids']).to_csv('cascades/feedback_through_brain/plots/feedback_from_predSEZ-%s.csv' %(str(date.today())), index = False)
+pd.DataFrame(feedback_from_pre_RGN, columns = ['skids']).to_csv('cascades/feedback_through_brain/plots/feedback_from_preRGN-%s.csv' %(str(date.today())), index = False)
 
 # %%
