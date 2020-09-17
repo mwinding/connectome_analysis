@@ -4,6 +4,31 @@ import pandas as pd
 import numpy as np
 import csv
 
+class Adjacency_matrix(mg, pairs, mat_type):
+    self.mg = mg
+    self.pairs = pairs
+    self.mat_type = mat_type # 'axo-dendritic', 'axo-axonic', etc.
+    self.adj_df = pd.DataFrame(mg.adj, index = mg.meta.index, columns = mg.meta.index)
+
+    def interlaced_matrix(self):
+        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(self.mg.meta.index, self.pairs)
+
+        # left_right interlaced order for brain matrix
+        brain_pair_order = []
+        for i in range(0, len(brain_pairs)):
+            brain_pair_order.append(brain_pairs.iloc[i].leftid)
+            brain_pair_order.append(brain_pairs.iloc[i].rightid)
+
+        interlaced_mat = self.adj_df.loc[brain_pair_order + list(brain_nonpaired), brain_pair_order + list(brain_nonpaired)]
+
+        index_df = pd.DataFrame([['pairs', skid] for skid in brain_pair_order] + [['nonpaired', skid] for skid in list(brain_nonpaired)], 
+                                columns = ['pair_status', 'skid'])
+        index = pd.MultiIndex.from_frame(index_df)
+
+        interlaced_mat.index = index
+        interlaced_mat.columns = index
+        return(interlaced_mat)
+
 class Promat():
     # trim out neurons not currently in the brain matrix
     @staticmethod
@@ -74,25 +99,59 @@ class Promat():
         nonpaired = pd.DataFrame(nonpaired)
         return(pairs, unpaired, nonpaired)
 
+    # generates interlaced left-right pair adjacency matrix with nonpaired neurons at bottom and right
+    @staticmethod
+    def interlaced_matrix(adj_df, pairs):
+        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(mg.meta.index, pairs)
+
+        # left_right interlaced order for brain matrix
+        brain_pair_order = []
+        for i in range(0, len(brain_pairs)):
+            brain_pair_order.append(brain_pairs.iloc[i].leftid)
+            brain_pair_order.append(brain_pairs.iloc[i].rightid)
+
+        interlaced_mat = adj_df.loc[brain_pair_order + list(brain_nonpaired), brain_pair_order + list(brain_nonpaired)]
+
+        index_df = pd.DataFrame([['pairs', skid] for skid in brain_pair_order] + [['nonpaired', skid] for skid in list(brain_nonpaired)], 
+                                columns = ['pair_status', 'skid'])
+        index = pd.MultiIndex.from_frame(index_df)
+
+        interlaced_mat.index = index
+        interlaced_mat.columns = index
+        return(interlaced_mat)
+
+    # converts matrix to fraction_input matrix by dividing every column by dendritic input
+    @staticmethod
+    def fraction_input_matrix(adj_df, mg, axon=False):
+        for column in adj_df.columns:
+            if(axon):
+                axon_input = mg.meta.loc[column].axon_input
+                adj_df.loc[:, column] = adj_df.loc[:, column]/axon_input
+
+            if(axon==False):
+                dendrite_input = mg.meta.loc[column].dendrite_input
+                adj_df.loc[:, column] = adj_df.loc[:, column]/dendrite_input
+
+        return(adj_df)
+
     # converts a interlaced left-right pair adjacency matrix into a binary connection matrix based on some threshold
     @staticmethod
-    def binary_matrix(matrix_path, threshold, total_threshold): 
-        matrix = pd.read_csv(matrix_path, header=0, index_col=0, quotechar='"', skipinitialspace=True)
+    def binary_matrix(adj, threshold, total_threshold):
 
-        oddCols = np.arange(0, len(matrix.columns), 2)
-        oddRows = np.arange(0, len(matrix.index), 2)
+        oddCols = np.arange(0, len(adj.columns), 2)
+        oddRows = np.arange(0, len(adj.index), 2)
 
         # column names are the skid of left neuron from pair
         binMat = np.zeros(shape=(len(oddRows),len(oddCols)))
-        binMat = pd.DataFrame(binMat, columns = matrix.columns[oddCols], index = matrix.index[oddRows])
+        binMat = pd.DataFrame(binMat, columns = adj.columns[oddCols], index = adj.index[oddRows])
 
         for i in oddRows:
             for j in oddCols:
-                sum_all = matrix.iat[i, j] + matrix.iat[i+1, j+1] + matrix.iat[i+1, j] + matrix.iat[i, j+1]
-                if(matrix.iat[i, j] >= threshold and matrix.iat[i+1, j+1] >= threshold and sum_all >= total_threshold):
+                sum_all = adj.iat[i, j] + adj.iat[i+1, j+1] + adj.iat[i+1, j] + adj.iat[i, j+1]
+                if(adj.iat[i, j] >= threshold and adj.iat[i+1, j+1] >= threshold and sum_all >= total_threshold):
                     binMat.iat[int(i/2), int(j/2)] = 1
 
-                if(matrix.iat[i+1, j] >= threshold and matrix.iat[i, j+1] >= threshold and sum_all >= total_threshold):
+                if(adj.iat[i+1, j] >= threshold and adj.iat[i, j+1] >= threshold and sum_all >= total_threshold):
                     binMat.iat[int(i/2), int(j/2)] = 1
             
         return(binMat)
@@ -115,7 +174,7 @@ class Promat():
                 left_identifier = pairList['leftid'][i]
                 left_sum = submatrix.loc[left_identifier]
             
-                right_identifier = promat.identify_pair(pairList['leftid'][i], pairList)
+                right_identifier = Promat.identify_pair(pairList['leftid'][i], pairList)
                 right_sum = submatrix.loc[right_identifier]
                     
                 summed_paired.append([left_identifier, right_identifier, left_sum, right_sum])
