@@ -134,7 +134,7 @@ for i in range(0, 2):
 # %%
 # identify pre-descending types
 # contributing 5% input to a particular descending neuron
-import connectome_tools.process_matrix as promat
+from connectome_tools.process_matrix import Promat
 
 def skid_to_index(skid, mg):
     index_match = np.where(mg.meta.index == skid)[0]
@@ -149,10 +149,10 @@ def index_to_skid(index, mg):
 # import pairs
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 
-dVNC_pairs = promat.extract_pairs_from_list(output_skids_list_reordered[0], pairs)
-dSEZ_pairs = promat.extract_pairs_from_list(output_skids_list_reordered[1], pairs)
-RG_pairs = promat.extract_pairs_from_list(output_skids_list_reordered[2], pairs)
-brain_skids_pairs = promat.extract_pairs_from_list(mg.meta.index, pairs)
+dVNC_pairs = Promat.extract_pairs_from_list(output_skids_list_reordered[0], pairs)
+dSEZ_pairs = Promat.extract_pairs_from_list(output_skids_list_reordered[1], pairs)
+RG_pairs = Promat.extract_pairs_from_list(output_skids_list_reordered[2], pairs)
+brain_skids_pairs = Promat.extract_pairs_from_list(mg.meta.index, pairs)
 
 # left_right interlaced order for dVNC pairs
 dVNC_pair_order = []
@@ -227,6 +227,9 @@ for i_iter, i in enumerate(oddRows):
 
 # %%
 # plotting number of connections to and from descendings
+### *****align/bin issues here***** ####
+### see upstream_MNs.py for solution ###
+
 fig, axs = plt.subplots(
     3, 2, figsize=(2.5, 3)
 )
