@@ -98,27 +98,53 @@ class Adjacency_matrix():
 
         return(adj)
 
-    def downstream(self, source, threshold):
+    def downstream(self, source, threshold, exclude=[], by_group=False):
         adj = self.adj_pairwise
 
         source_pair_id = np.unique([x[1] for x in self.adj_inter.loc[(slice(None), slice(None), source), :].index])
 
-        bin_mat = adj.loc[(slice(None), source_pair_id), :] > threshold
-        bin_column = np.where(bin_mat.sum(axis = 0) > 0)[0]
-        ds_neurons = bin_mat.columns[bin_column]
+        if(by_group):
+            bin_mat = adj.loc[(slice(None), source_pair_id), :].sum(axis=0) > threshold
+            bin_column = np.where(bin_mat)[0]
+            ds_neurons = bin_mat.index[bin_column]
 
-        ds_neurons_skids = []
-        for pair in ds_neurons:
-            if(pair[0] == 'pairs'):
-                ds_neurons_skids.append(pair[1])
-                ds_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
-            if(pair[0] == 'nonpaired'):
-                ds_neurons_skids.append(pair[1])
+            ds_neurons_skids = []
+            for pair in ds_neurons:
+                if((pair[0] == 'pairs') & (pair[1] not in exclude)):
+                    ds_neurons_skids.append(pair[1])
+                    ds_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
+                if((pair[0] == 'nonpaired') & (pair[1] not in exclude)):
+                    ds_neurons_skids.append(pair[1])
 
-        return(ds_neurons_skids)
+            return(ds_neurons_skids)
+
+        if(by_group==False):
+            bin_mat = adj.loc[(slice(None), source_pair_id), :] > threshold
+            bin_column = np.where(bin_mat.sum(axis = 0) > 0)[0]
+            ds_neurons = bin_mat.columns[bin_column]
+            bin_row = np.where(bin_mat.sum(axis = 1) > 0)[0]
+            us_neurons = bin_mat.index[bin_row]
+
+            ds_neurons_skids = []
+            for pair in ds_neurons:
+                if((pair[0] == 'pairs') & (pair[1] not in exclude)):
+                    ds_neurons_skids.append(pair[1])
+                    ds_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
+                if((pair[0] == 'nonpaired') & (pair[1] not in exclude)):
+                    ds_neurons_skids.append(pair[1])
+
+            source_skids = []
+            for pair in us_neurons:
+                if(pair[0] == 'pairs'):
+                    source_skids.append(pair[1])
+                    source_skids.append(Promat.identify_pair(pair[1], self.pairs))
+                if(pair[0] == 'nonpaired'):
+                    source_skids.append(pair[1])
+
+            return(source_skids, ds_neurons_skids)
 
 
-    def upstream(self, source, threshold):
+    def upstream(self, source, threshold, exclude = []):
         adj = self.adj_pairwise
 
         source_pair_id = np.unique([x[1] for x in self.adj_inter.loc[(slice(None), slice(None), source), :].index])
@@ -129,13 +155,29 @@ class Adjacency_matrix():
 
         us_neurons_skids = []
         for pair in ds_neurons:
-            if(pair[0] == 'pairs'):
+            if((pair[0] == 'pairs') & (pair[1] not in exclude)):
                 us_neurons_skids.append(pair[1])
                 us_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
-            if(pair[0] == 'nonpaired'):
+            if((pair[0] == 'nonpaired') & (pair[1] not in exclude)):
                 us_neurons_skids.append(pair[1])
 
         return(us_neurons_skids)
+
+    def downstream_multihop(self, source, threshold):
+        ds = self.downstream(source, threshold, exclude=source)
+
+        before = ds
+        output = ds
+        layers = []
+        layers.append(ds)
+        if(len(output)!=0):
+            ds = self.downstream(ds, threshold, exclude = before)
+            layers.append(ds)
+
+            output = ds
+            before = before + ds
+
+        return(layers)
         
     '''
     def downstream_old(self, source, threshold, pairwise=True):
@@ -283,7 +325,7 @@ class Promat():
 
         if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
             print("skid %i is not in paired list" % (skid))
-            return(0)
+            return([skid, skid])
 
         return([pair_left, pair_right])
 
