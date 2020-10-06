@@ -163,7 +163,7 @@ class Adjacency_matrix():
 
         return(us_neurons_skids)
 
-    def downstream_multihop(self, source, threshold, hops=10):
+    def downstream_multihop(self, source, threshold, min_members=10, hops=10):
         _, ds = self.downstream(source, threshold, exclude=source)
 
         before = source + ds
@@ -174,13 +174,13 @@ class Adjacency_matrix():
         for i in range(0,hops):
             _, ds = self.downstream(ds, threshold, exclude = before)
                 
-            if(len(ds)!=0):
+            if((len(ds)!=0) & (len(ds)>=min_members)):
                 layers.append(ds)
                 before = before + ds
 
         return(layers)
 
-    def upstream_multihop(self, source, threshold, hops=10):
+    def upstream_multihop(self, source, threshold, min_members=10, hops=10):
         us = self.upstream(source, threshold, exclude=source)
 
         before = source + us
@@ -191,7 +191,7 @@ class Adjacency_matrix():
         for i in range(0,hops):
             us = self.upstream(us, threshold, exclude = before)
                 
-            if(len(us)!=0):
+            if((len(us)!=0) & (len(us)>=min_members)):
                 layers.append(us)
                 before = before + us
 
