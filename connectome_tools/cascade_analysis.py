@@ -57,30 +57,30 @@ class Celltype:
     def get_skids(self):
         return(self.skids)
 
-    def downstream_pairwise(pairs):
-        Promat.
+    def downstream_pairwise(self, pairs):
         return(pairs)
 
-    def upstream_pairwise(pairs):
+    def upstream_pairwise(self, pairs):
         return(pairs)
 
 class Celltype_Analyzer:
-    def __init__(self, list_Celltypes, mg):
+    def __init__(self, list_Celltypes, adj=[], skids=[]):
         self.Celltypes = list_Celltypes
         self.celltype_names = [celltype.get_name() for celltype in self.Celltypes]
         self.num = len(list_Celltypes) # how many cell types
         self.known_types = []
         self.known_types_names = []
-        self.mg = mg
+        #self.mg = mg
+        self.adj = adj
+        self.skids = skids
         self.adj_df = []
-        self.generate_adj()
 
-    def get_celltype_names():
+    def get_celltype_names(self):
         return self.celltype_names
 
     def generate_adj(self):
         # adjacency matrix only between assigned cell types
-        adj_df = pd.DataFrame(self.mg.adj, index = self.mg.meta.index, columns = self.mg.meta.index)
+        adj_df = pd.DataFrame(self.adj, index = self.skids, columns = self.skids)
         skids = [skid for celltype in self.Celltypes for skid in celltype.get_skids()]
         adj_df = adj_df.loc[skids, skids]
 
@@ -100,10 +100,12 @@ class Celltype_Analyzer:
         self.num += 1
         self.generate_adj()
 
-    def set_known_types(self, list_Celltypes):
-        unknown_skids = np.setdiff1d(self.mg.meta.index, np.unique([skid for celltype in list_Celltypes for skid in celltype.get_skids()]))
-        unknown_type = [Celltype('unknown', unknown_skids)]
-        list_Celltypes = list_Celltypes + unknown_type
+    def set_known_types(self, list_Celltypes, unknown=True):
+        if(unknown==True):
+            unknown_skids = np.setdiff1d(self.skids, np.unique([skid for celltype in list_Celltypes for skid in celltype.get_skids()]))
+            unknown_type = [Celltype('unknown', unknown_skids)]
+            list_Celltypes = list_Celltypes + unknown_type
+            
         self.known_types = list_Celltypes
         self.known_types_names = [celltype.get_name() for celltype in list_Celltypes]
 
