@@ -33,20 +33,15 @@ A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 A1_proprio = pymaid.get_skids_by_annotation('mw A1 proprio')
 A1_somato = pymaid.get_skids_by_annotation('mw A1 somato')
 
-#ds_dVNC = VNC_adj.downstream(dVNC, 0.05, exclude = dVNC, by_group=True)
-#pd.DataFrame(ds_dVNC).to_csv(f'VNC_interaction/data/ds_dVNC_{str(date.today())}.csv', index = False)
-
-#source_dVNC, ds_dVNC2 = VNC_adj.downstream(dVNC, 0.05, exclude = dVNC, by_group=False)
-
 # %%
 from connectome_tools.cascade_analysis import Celltype_Analyzer, Celltype
 
 # VNC layering with respect to sensories or motorneurons
-threshold = 0.025
+threshold = 0.01
 
-us_A1_MN = VNC_adj.upstream_multihop(A1_MN, threshold)
-ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold)
-ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold)
+us_A1_MN = VNC_adj.upstream_multihop(A1_MN, threshold, min_members=0)
+ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold, min_members=0)
+ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold, min_members=0)
 
 # how many neurons are included in layering?
 VNC_layers = [us_A1_MN, ds_proprio, ds_somato]
@@ -64,7 +59,7 @@ celltypes = celltypes_us_MN + celltypes_ds_proprio + celltypes_ds_somato
 
 VNC_analyzer = Celltype_Analyzer(celltypes)
 sns.heatmap(VNC_analyzer.compare_membership(), square = True)
-plt.savefig('VNC_interaction/plots/similarity_between_VNC_layers.pdf', bbox_inches='tight')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_similarity_between_VNC_layers.pdf', bbox_inches='tight')
 
 # %%
 # upset plot of VNC types (MN, Proprio, Somato)
@@ -107,7 +102,7 @@ for celltype in np.unique(cats):
 
 upset = from_memberships(np.unique(cats), data = counts)
 plot(upset, sort_categories_by = None)
-plt.savefig('VNC_interaction/plots/VNC_signal_type.pdf', bbox_inches='tight')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_signal_type.pdf', bbox_inches='tight')
 
 # %%
 # upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
@@ -139,66 +134,150 @@ for celltype in np.unique(cats):
 
 upset = from_memberships(np.unique(cats), data = counts)
 plot(upset, sort_categories_by = None)
-plt.savefig('VNC_interaction/plots/VNC_layer_signal_type.pdf', bbox_inches='tight')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_layer_signal_type.pdf', bbox_inches='tight')
+
+# %%
+# number of VNC neurons per layer
+
+MN_counts = [len(layer) for layer in ([A1_MN] + us_A1_MN)]
+Proprio_counts = [len(layer) for layer in ([A1_proprio] + ds_proprio)]
+Somato_counts = [len(layer) for layer in ([A1_somato] + ds_somato)]
+max_length = max([len(MN_counts), len(Proprio_counts), len(Somato_counts)])
+
+if(len(MN_counts)<max_length):
+    MN_counts = MN_counts + [0]*(max_length-len(MN_counts))
+
+if(len(Proprio_counts)<max_length):
+    Proprio_counts = Proprio_counts + [0]*(max_length-len(Proprio_counts))
+
+if(len(Somato_counts)<max_length):
+    Somato_counts = Somato_counts + [0]*(max_length-len(Somato_counts))
+
+VNC_layer_counts = pd.DataFrame()
+
+VNC_layer_counts['MN'] = MN_counts
+VNC_layer_counts['Proprio'] = Proprio_counts
+VNC_layer_counts['Somato'] = Somato_counts
+
+VNC_layer_counts.index = [f'Layer {i}' for i in range(0,max_length)]
+
+fig, axs = plt.subplots(
+    1, 1, figsize = (2.5, 3)
+)
+ax = axs
+sns.heatmap(VNC_layer_counts, annot=True, fmt='d', cmap = 'Greens', cbar = False, ax = axs)
+ax.set_title(f'A1 Neurons; {frac_included*100:.0f}% included')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_layers.pdf', bbox_inches='tight')
 
 # %%
 # where are ascendings in layering?
 
 A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-celltype_A1_ascending = Celltype('A1 ascending', A1_ascending)
 
-celltypes_us_MN = [Celltype(f'us-MN-{i}', layer) for i, layer in enumerate([A1_MN] + us_A1_MN)]
-celltypes_ds_proprio = [Celltype(f'ds-Proprio-{i}', layer) for i, layer in enumerate([A1_proprio] + ds_proprio)]
-celltypes_ds_somato = [Celltype(f'ds-Somato-{i}', layer) for i, layer in enumerate([A1_somato] + ds_somato)]
+VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_somato] + ds_somato]
+VNC_type_names = ['MN', 'Proprio', 'Somato']
 
-celltypes = celltypes_us_MN + celltypes_ds_proprio + celltypes_ds_somato
+MN_counts = [len(layer) for layer in VNC_layers[0]]
+Proprio_counts = [len(layer) for layer in VNC_layers[1]]
+Somato_counts = [len(layer) for layer in VNC_layers[2]]
 
-VNC_analyzer = Celltype_Analyzer(celltypes)
-VNC_analyzer.set_known_types([celltype_A1_ascending], unknown=False)
-ascendings_data = VNC_analyzer.memberships(by_celltype=False).T
-ascendings_split_data = pd.DataFrame([[x for sublist in ascendings_data.iloc[0:5].values for x in sublist] + [0.0] + [0.0], #add 0.0 to make square matrix
-                                    [x for sublist in ascendings_data.iloc[5:10].values for x in sublist] + [0.0] + [0.0],  #add 0.0 to make square matrix
-                                    [x for sublist in ascendings_data.iloc[10:17].values for x in sublist]], 
-                                    index = ['MN', 'Proprio', 'Somato'],
-                                    columns = [f'Layer {i}' for i in range(0, 7)])
+max_layers = max([len(MN_counts), len(Proprio_counts), len(Somato_counts)])
+
+mat_neurons = np.zeros(shape = (len(VNC_layers), max_layers))
+mat_neuron_skids = pd.DataFrame()
+for i in range(0,len(VNC_layers)):
+    skids = []
+    for j in range(0,len(VNC_layers[i])):
+        neurons = np.intersect1d(VNC_layers[i][j], A1_ascending)
+        count = len(neurons)
+
+        mat_neurons[i, j] = count
+        skids.append(neurons)
+    
+    if(len(skids) != max_layers):
+        skids = skids + [['']]*(max_layers-len(skids)) # make sure each column has same num elements
+
+    mat_neuron_skids[f'{VNC_type_names[i]}'] = skids
+
+ascendings_layers = pd.DataFrame(mat_neurons, index = ['MN', 'Proprio', 'Somato'], columns = [f'Layer {i}' for i in range(0, max_layers)])
+ascendings_layers_skids = mat_neuron_skids
 
 fig, axs = plt.subplots(
     1, 1, figsize = (2.5, 3)
 )
 ax = axs
-sns.heatmap(ascendings_split_data.T*len(A1_ascending), annot=True, cmap = 'Blues', cbar = False, ax = axs)
+sns.heatmap(ascendings_layers.T, annot=True, fmt='.0f', cmap = 'Blues', cbar = False, ax = axs)
 ax.set_title('Ascending Neurons')
-plt.savefig('VNC_interaction/plots/ascending_neuron_layers.pdf', bbox_inches='tight')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_ascending_neuron_layers.pdf', bbox_inches='tight')
 
 # %%
 # which dVNCs talk to each layer
 # which ds-dVNCs neurons are at each layer
 
-VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_somato] + ds_somato]
-
 # number of neurons downstream of dVNC at each VNC layer
 source_dVNC, ds_dVNC = VNC_adj.downstream(dVNC, threshold, exclude=dVNC)
-mat_neurons = np.zeros(shape = (len(VNC_layers), 7))
-for i in range(0,len(VNC_layers)):
-    for j in range(0,len(VNC_layers[i])):
-        neurons = len(np.intersect1d(VNC_layers[i][j], ds_dVNC))
-        mat_neurons[i, j] = neurons
+edges, ds_dVNC = VNC_adj.edge_threshold(source_dVNC, ds_dVNC, threshold, direction='downstream')
 
-mat_neurons = pd.DataFrame(mat_neurons, index = ['MN', 'Proprio', 'Somato'], columns = [f'Layer {i}' for i in range(0,7)])
+mat_neurons = np.zeros(shape = (len(VNC_layers), max_layers))
+mat_neuron_skids = pd.DataFrame()
+for i in range(0,len(VNC_layers)):
+    skids = []
+    for j in range(0,len(VNC_layers[i])):
+        neurons = np.intersect1d(VNC_layers[i][j], ds_dVNC)
+        count = len(neurons)
+
+        mat_neurons[i, j] = count
+        skids.append(neurons)
+    
+    if(len(skids) != max_layers):
+        skids = skids + [['']]*(max_layers-len(skids)) # make sure each column has same num elements
+
+    mat_neuron_skids[f'{VNC_type_names[i]}'] = skids
+
+ds_dVNC_layers = pd.DataFrame(mat_neurons, index = ['MN', 'Proprio', 'Somato'], columns = [f'Layer {i}' for i in range(0,max_layers)])
+ds_dVNC_layers_skids = mat_neuron_skids
 
 fig, axs = plt.subplots(
     1, 1, figsize = (2.5, 3)
 )
 ax = axs
-sns.heatmap(mat_neurons.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Reds', cbar = False, ax = ax)
+sns.heatmap(ds_dVNC_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Reds', cbar = False, ax = ax)
 ax.set_title('Downstream of dVNCs')
-plt.savefig('VNC_interaction/plots/dVNC_downstream_targets.pdf', bbox_inches='tight')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_dVNC_downstream_targets.pdf', bbox_inches='tight')
 
 # %%
-# export dVNCs and VNCs
-source_dVNC, ds_dVNC = VNC_adj.downstream(dVNC, threshold, exclude=dVNC)
-pd.DataFrame(ds_dVNC).to_csv(f'VNC_interaction/data/ds_dVNC_{str(date.today())}.csv', index = False)
-pd.DataFrame(source_dVNC).to_csv(f'VNC_interaction/data/source_dVNC_{str(date.today())}.csv', index = False)
+# export different neuron types at each VNC layer
+
+def readable_df(skids_list):
+    max_length = max([len(x) for x in skids_list])
+
+    df = pd.DataFrame()
+    
+    for i, layer in enumerate(skids_list):
+    
+        skids = list(layer)
+
+        if(len(layer)==0):
+            skids = ['']
+        if(len(skids) != max_length):
+            skids = skids + ['']*(max_length-len(skids))
+
+        df[f'Layer {i}'] = skids
+
+    return(df)
+
+readable_df(ds_dVNC_layers_skids.MN).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ds_dVNC_MN_layers_{str(date.today())}.csv', index = False)
+readable_df(ds_dVNC_layers_skids.Proprio).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ds_dVNC_Proprio_layers_{str(date.today())}.csv', index = False)
+readable_df(ds_dVNC_layers_skids.Somato).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ds_dVNC_Somato_layers_{str(date.today())}.csv', index = False)
+
+readable_df(ascendings_layers_skids.MN).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ascendings_MN_layers_{str(date.today())}.csv', index = False)
+readable_df(ascendings_layers_skids.Proprio).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ascendings_Proprio_layers_{str(date.today())}.csv', index = False)
+readable_df(ascendings_layers_skids.Somato).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ascendings_Somato_layers_{str(date.today())}.csv', index = False)
+
+# %%
+# export ds-dVNCs and dVNCs
+pd.DataFrame(ds_dVNC).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_ds_dVNC_{str(date.today())}.csv', index = False)
+pd.DataFrame(source_dVNC).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_source_dVNC_{str(date.today())}.csv', index = False)
 
 # %%
 # how many connections between dVNCs and A1 neurons?
@@ -237,6 +316,6 @@ ax.set_xlabel('Downstream A1 Pairs')
 ax.set_xticks(x_range)
 ax.set(xlim = (0.5, 4.5))
 
-plt.savefig('VNC_interaction/plots/connections_dVNC_A1.pdf')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_connections_dVNC_A1.pdf')
 
 # %%
