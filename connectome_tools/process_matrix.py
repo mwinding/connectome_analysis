@@ -165,6 +165,7 @@ class Adjacency_matrix():
 
     def downstream_multihop(self, source, threshold, min_members=10, hops=10):
         _, ds = self.downstream(source, threshold, exclude=source)
+        _, ds = self.edge_threshold(source, ds, threshold, direction='downstream')
 
         before = source + ds
 
@@ -172,8 +173,10 @@ class Adjacency_matrix():
         layers.append(ds)
 
         for i in range(0,hops):
-            _, ds = self.downstream(ds, threshold, exclude = before)
-                
+            source = ds
+            _, ds = self.downstream(source, threshold, exclude=before) 
+            _, ds = self.edge_threshold(source, ds, threshold, direction = 'downstream')
+
             if((len(ds)!=0) & (len(ds)>=min_members)):
                 layers.append(ds)
                 before = before + ds
@@ -182,6 +185,7 @@ class Adjacency_matrix():
 
     def upstream_multihop(self, source, threshold, min_members=10, hops=10):
         us = self.upstream(source, threshold, exclude=source)
+        _, us = self.edge_threshold(source, us, threshold, direction='upstream')
 
         before = source + us
 
@@ -189,119 +193,82 @@ class Adjacency_matrix():
         layers.append(us)
 
         for i in range(0,hops):
-            us = self.upstream(us, threshold, exclude = before)
-                
+            source = us
+            us = self.upstream(source, threshold, exclude = before)
+            _, us = self.edge_threshold(source, us, threshold, direction='upstream')
+
             if((len(us)!=0) & (len(us)>=min_members)):
                 layers.append(us)
                 before = before + us
 
         return(layers)
-        
-    '''
-    def downstream_old(self, source, threshold, pairwise=True):
 
-        adj = self.adj_inter            
-
-        # every other skid from paired neurons (i.e. left skid from each pair)
-        skids_row = adj.loc[('pairs', source), :].index[::2]
-        
-        # add nonpaired at the end
-        skids_row = np.concatenate([skids_row, adj.loc[('nonpaired', source),:].index]) 
-
-
-        # every other skid from paired neurons (i.e. left skid from each pair)
-        skids_column = adj.loc[:, ('pairs', slice(None))].columns[::2]
-        
-        # add nonpaired at the end
-        skids_column = np.concatenate([skids_column, adj.loc[:, ('nonpaired', slice(None))].columns])
-
-        # column names are the skid of left neuron from pair
-        aver_mat = np.zeros(shape=(len(skids_row),len(skids_column)))
-        aver_mat = pd.DataFrame(aver_mat, index = skids_row, columns = skids_column)
-        bin_mat = np.zeros(shape=(len(skids_row),len(skids_column)))
-        bin_mat = pd.DataFrame(bin_mat, index = skids_row, columns = skids_column)
-
-        for i_iter, index_i in enumerate(tqdm(skids_row)):
-            for j_iter, index_j in enumerate(skids_column):
-
-                adj_raw = adj.values
-                if(index_i[0] == 'pairs'):
-                    if(index_j[0] == 'pairs'):
-                        i = [i for i, index in enumerate(adj.index) if index == ('pairs', index_i[1])][0]
-                        j = [i for i, index in enumerate(adj.columns) if index == ('pairs', index_j[1])][0]
-                        aver_pairs = adj_raw[i, j] + adj_raw[i+1, j+1] + adj_raw[i+1, j] + adj_raw[i, j+1]
-                        aver_pairs = aver_pairs/2
-
-                    if(index_j[0] == 'nonpaired'):
-                        i = [i for i, index in enumerate(adj.index) if index == ('pairs', index_i[1])][0]
-                        j = [i for i, index in enumerate(adj.columns) if index == ('nonpaired', index_j[1])][0]
-                        aver_pairs = adj_raw[i, j] + adj_raw[i+1, j]
-                        aver_pairs = aver_pairs/2
-    
-                if(index_i[0] == 'nonpaired'):
-                    if(index_j[0] == 'pairs'):
-                        i = [i for i, index in enumerate(adj.index) if index == ('nonpaired', index_i[1])][0]
-                        j = [i for i, index in enumerate(adj.columns) if index == ('pairs', index_j[1])][0]
-                        aver_pairs = adj_raw[i, j] + adj_raw[i, j+1]
-                        aver_pairs = aver_pairs/2
-
-                    if(index_j[0] == 'nonpaired'):
-                        i = [i for i, index in enumerate(adj.index) if index == ('nonpaired', index_i[1])][0]
-                        j = [i for i, index in enumerate(adj.columns) if index == ('nonpaired', index_j[1])][0]
-                        aver_pairs = adj_raw[i, j]
-            
-                aver_mat.iat[i_iter, j_iter] = aver_pairs
-                if(aver_pairs > threshold):
-                    bin_mat.iat[i_iter, j_iter] = 1
-
-        return(aver_mat, bin_mat)
-
-    def average_pairwise_matrix_old(self):
+    # checking additional threshold criteria after identifying neurons over summed threshold
+    # can also just input all possible downstream neurons, but it will be slow
+    def edge_threshold(self, source_skids, partner_neurons_skids, threshold, direction, strict=False):
 
         adj = self.adj_inter.copy()
 
-        paired_rows = np.arange(0, len(adj.loc[('pairs', slice(None)), :].index), 2)
-        paired_rows_names = adj.loc[('pairs', slice(None)), :].index[paired_rows]
+        source_pair_id = np.unique([x[1] for x in adj.loc[(slice(None), slice(None), source_skids), :].index])
+        partner_pair_id = np.unique([x[1] for x in adj.loc[(slice(None), slice(None), partner_neurons_skids), :].index])
 
-        paired_columns = np.arange(0, len(adj.loc[:, ('pairs', slice(None))].columns), 2)
-        paired_columns_names = adj.loc[:, ('pairs', slice(None))].index[paired_columns]
+        all_edges = []
+        for source in source_pair_id:
+            for partner in partner_pair_id:
+                if(direction=='downstream'):
+                    edges = adj.loc[(slice(None), source), (slice(None), partner)]
+                if(direction=='upstream'):
+                    edges = adj.loc[(slice(None), partner), (slice(None), source)]
 
-        nonpaired_rows = np.arange(max(paired_rows)+2, max(paired_rows)+2 + len(adj.loc[('nonpaired', slice(None)), :].index), 1)
-        nonpaired_rows_names = adj.loc[('nonpaired', slice(None)), :].index
-        nonpaired_columns = np.arange(max(paired_columns)+2, max(paired_columns)+2 + len(adj.loc[:, ('nonpaired', slice(None))].columns), 1)
-        nonpaired_columns_names = adj.loc[:, ('nonpaired', slice(None))].columns
+                if(len(edges)==2): #paired
+                    if(direction=='downstream'):
+                        edges = pd.DataFrame([[source, partner, edges.iloc[0,0], edges.iloc[1,1], False, 'ipsilateral'],
+                                            [source, partner, edges.iloc[1,0], edges.iloc[0,1], False, 'contralateral']], 
+                                            columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
 
-        rows = np.concatenate([paired_rows, nonpaired_rows])
-        columns = np.concatenate([paired_columns, nonpaired_columns])
-        row_names = np.concatenate([paired_rows_names, nonpaired_rows_names])
-        column_names = np.concatenate([paired_columns_names, nonpaired_columns_names])
+                    if(direction=='upstream'):
+                        edges = pd.DataFrame([[partner, source, edges.iloc[0,0], edges.iloc[1,1], False, 'ipsilateral'],
+                                            [partner, source, edges.iloc[1,0], edges.iloc[0,1], False, 'contralateral']], 
+                                            columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
 
-        # column names are the skid of left neuron from pair
-        aver_mat = np.zeros(shape=(len(rows),len(columns)))
-        aver_mat = pd.DataFrame(aver_mat, index = row_names, columns = column_names)
+                    if(strict==True):
+                        # is each edge weight over threshold?
+                        for index in edges.index:
+                            if((edges.loc[index].left>threshold) & (edges.loc[index].right>threshold)):
+                                edges.loc[index, 'overthres'] = True
 
-        # summed interaction types (averaged for 2 partners if appropriate)
-        for i, row in enumerate(rows):
-            for j, column in enumerate(columns):
-                if((row <= max(paired_rows)) & (column <= max(paired_columns))): # pairs to pairs
-                    sum_all = adj.iloc[row, column] + adj.iloc[row+1, column+1] + adj.iloc[row+1, column] + adj.iloc[row, column+1]
-                    aver_mat.iloc[i, j] = sum_all/2
+                    if(strict==False):
+                        # is average edge weight over threshold
+                        for index in edges.index:
+                            if(((edges.loc[index].left + edges.loc[index].right)/2) > threshold):
+                                edges.loc[index, 'overthres'] = True
 
-                if((row <= max(paired_rows)) & (column > max(paired_columns))): # pairs to nonpaired
-                    sum_all = adj.iloc[row, column] + adj.iloc[row+1, column]
-                    aver_mat.iloc[i, j] = sum_all/2
+                    # are both edges present?
+                    for index in edges.index:
+                        if((edges.loc[index].left==0) | (edges.loc[index].right==0)):
+                            edges.loc[index, 'overthres'] = False
 
-                if((row > max(paired_rows)) & (column <= max(paired_columns))): # nonpaired to pairs
-                    sum_all = adj.iloc[row, column] + adj.iloc[row, column+1]
-                    aver_mat.iloc[i, j] = sum_all/2
+                    all_edges.append(edges.values[0])
+                    all_edges.append(edges.values[1])
 
-                if((row > max(paired_rows)) & (column > max(paired_columns))): # nonpaired to nonpaired
-                    aver_mat.iloc[i, j] = adj.iloc[row, column]
+                ''' # not currently implemented non-paired connections
+                if(len(edges)==1): #unpaired
+                    edges = pd.DataFrame([[edges.iloc[0,0], edges.iloc[0,1], False, 'unpaired'], 
+                                        columns = ['left', 'right', 'overthres', 'type'])
+                '''
 
-        self.adj_pairwise = aver_mat
-        return(aver_mat)
-        '''
+        all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
+        
+        if(direction=='downstream'):
+            partner_skids = np.unique(all_edges[all_edges.overthres==True].downstream_pair_id) # identify downstream pairs
+        if(direction=='upstream'):
+            partner_skids = np.unique(all_edges[all_edges.overthres==True].upstream_pair_id) # identify upstream pairs
+        
+        partner_skids = [x[2] for x in adj.loc[(slice(None), partner_skids), :].index] # convert from pair_id to skids
 
+        return(all_edges, partner_skids)
+            
+       
 class Promat():
     # trim out neurons not currently in the brain matrix
     @staticmethod
