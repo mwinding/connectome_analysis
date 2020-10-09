@@ -98,7 +98,7 @@ class Adjacency_matrix():
 
         return(adj)
 
-    def downstream(self, source, threshold, exclude=[], by_group=False):
+    def downstream(self, source, threshold, exclude=[], by_group=False, exclude_unpaired = False):
         adj = self.adj_pairwise
 
         source_pair_id = np.unique([x[1] for x in self.adj_inter.loc[(slice(None), slice(None), source), :].index])
@@ -113,7 +113,7 @@ class Adjacency_matrix():
                 if((pair[0] == 'pairs') & (pair[1] not in exclude)):
                     ds_neurons_skids.append(pair[1])
                     ds_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
-                if((pair[0] == 'nonpaired') & (pair[1] not in exclude)):
+                if((pair[0] == 'nonpaired') & (pair[1] not in exclude) & (exclude_unpaired==False)):
                     ds_neurons_skids.append(pair[1])
 
             return(ds_neurons_skids)
@@ -130,7 +130,7 @@ class Adjacency_matrix():
                 if((pair[0] == 'pairs') & (pair[1] not in exclude)):
                     ds_neurons_skids.append(pair[1])
                     ds_neurons_skids.append(Promat.identify_pair(pair[1], self.pairs))
-                if((pair[0] == 'nonpaired') & (pair[1] not in exclude)):
+                if((pair[0] == 'nonpaired') & (pair[1] not in exclude) & (exclude_unpaired==False)):
                     ds_neurons_skids.append(pair[1])
 
             source_skids = []
@@ -205,6 +205,7 @@ class Adjacency_matrix():
 
     # checking additional threshold criteria after identifying neurons over summed threshold
     # can also just input all possible downstream neurons, but it will be slow
+    # still is super slow because it queries all edges between source and ds neurons, not just ones that passed last threshold
     def edge_threshold(self, source_skids, partner_neurons_skids, threshold, direction, strict=False):
 
         adj = self.adj_inter.copy()
@@ -220,7 +221,7 @@ class Adjacency_matrix():
                 if(direction=='upstream'):
                     edges = adj.loc[(slice(None), partner), (slice(None), source)]
 
-                if(len(edges)==2): #paired
+                if((len(edges.index)==2) & (len(edges.columns)==2)): #paired
                     if(direction=='downstream'):
                         edges = pd.DataFrame([[source, partner, edges.iloc[0,0], edges.iloc[1,1], False, 'ipsilateral'],
                                             [source, partner, edges.iloc[1,0], edges.iloc[0,1], False, 'contralateral']], 
