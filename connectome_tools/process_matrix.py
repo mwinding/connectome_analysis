@@ -163,7 +163,7 @@ class Adjacency_matrix():
 
         return(us_neurons_skids)
 
-    def downstream_multihop(self, source, threshold, min_members=10, hops=10):
+    def downstream_multihop(self, source, threshold, min_members=0, hops=10):
         _, ds = self.downstream(source, threshold, exclude=source)
         _, ds = self.edge_threshold(source, ds, threshold, direction='downstream')
 
@@ -268,6 +268,31 @@ class Adjacency_matrix():
         partner_skids = [x[2] for x in adj.loc[(slice(None), partner_skids), :].index] # convert from pair_id to skids
 
         return(all_edges, partner_skids)
+
+    def layer_id(self, layers, layer_names, celltype_skids):
+        max_layers = max([len(layer) for layer in layers])
+
+        mat_neurons = np.zeros(shape = (len(layers), max_layers))
+        mat_neuron_skids = pd.DataFrame()
+        for i in range(0,len(layers)):
+            skids = []
+            for j in range(0,len(layers[i])):
+                neurons = np.intersect1d(layers[i][j], celltype_skids)
+                count = len(neurons)
+
+                mat_neurons[i, j] = count
+                skids.append(neurons)
+            
+            if(len(skids) != max_layers):
+                skids = skids + [['']]*(max_layers-len(skids)) # make sure each column has same num elements
+
+            mat_neuron_skids[f'{layer_names[i]}'] = skids
+
+        id_layers = pd.DataFrame(mat_neurons, index = layer_names, columns = [f'Layer {i}' for i in range(0,max_layers)])
+        id_layers_skids = mat_neuron_skids
+
+        return(id_layers, id_layers_skids)
+
             
        
 class Promat():
