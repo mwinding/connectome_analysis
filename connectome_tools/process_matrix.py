@@ -163,8 +163,8 @@ class Adjacency_matrix():
 
         return(us_neurons_skids)
 
-    def downstream_multihop(self, source, threshold, min_members=0, hops=10):
-        _, ds = self.downstream(source, threshold, exclude=source)
+    def downstream_multihop(self, source, threshold, min_members=0, hops=10, exclude = []):
+        _, ds = self.downstream(source, threshold, exclude=(source + exclude))
         _, ds = self.edge_threshold(source, ds, threshold, direction='downstream')
 
         before = source + ds
@@ -172,7 +172,7 @@ class Adjacency_matrix():
         layers = []
         layers.append(ds)
 
-        for i in range(0,hops):
+        for i in range(0,(hops-1)):
             source = ds
             _, ds = self.downstream(source, threshold, exclude=before) 
             _, ds = self.edge_threshold(source, ds, threshold, direction = 'downstream')
@@ -183,8 +183,8 @@ class Adjacency_matrix():
 
         return(layers)
 
-    def upstream_multihop(self, source, threshold, min_members=10, hops=10):
-        us = self.upstream(source, threshold, exclude=source)
+    def upstream_multihop(self, source, threshold, min_members=10, hops=10, exclude=[]):
+        us = self.upstream(source, threshold, exclude=(source+exclude))
         _, us = self.edge_threshold(source, us, threshold, direction='upstream')
 
         before = source + us
@@ -192,7 +192,7 @@ class Adjacency_matrix():
         layers = []
         layers.append(us)
 
-        for i in range(0,hops):
+        for i in range(0,(hops-1)):
             source = us
             us = self.upstream(source, threshold, exclude = before)
             _, us = self.edge_threshold(source, us, threshold, direction='upstream')
@@ -288,7 +288,7 @@ class Adjacency_matrix():
 
             mat_neuron_skids[f'{layer_names[i]}'] = skids
 
-        id_layers = pd.DataFrame(mat_neurons, index = layer_names, columns = [f'Layer {i}' for i in range(0,max_layers)])
+        id_layers = pd.DataFrame(mat_neurons, index = layer_names, columns = [f'Layer {i+1}' for i in range(0,max_layers)])
         id_layers_skids = mat_neuron_skids
 
         return(id_layers, id_layers_skids)
