@@ -93,5 +93,54 @@ ax.set_ylabel('')
 ax.set(title='pre-dVNC')
 
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_ascending_paths_hops-{hops}.pdf', bbox_inches='tight')
+# %%
+# ascending paths upstream of particular dVNC paths
+
+# setting up paramters for downstream_multihop from dVNC to A1
+adj_A1 = pd.read_csv('VNC_interaction/data/axon-dendrite.csv', header = 0, index_col = 0)
+inputs_A1 = pd.read_csv('VNC_interaction/data/input_counts.csv', index_col = 0)
+inputs_A1 = pd.DataFrame(inputs_A1.values, index = inputs_A1.index, columns = ['axon_input', 'dendrite_input'])
+
+A1_adj = Adjacency_matrix(adj_A1.values, adj_A1.index, pairs, inputs_A1,'axo-dendritic')
+
+threshold = 0.01
+
+source_dVNC, ds_dVNC = A1_adj.downstream(dVNC, threshold, exclude=dVNC)
+edges, ds_dVNC_cleaned = A1_adj.edge_threshold(source_dVNC, ds_dVNC, threshold, direction='downstream')
+edges[edges.overthres==True]
+
+source_dVNC_cleaned = np.unique(edges[edges.overthres==True].upstream_pair_id)
+source_dVNC_pairs = A1_adj.adj_inter.loc[(slice(None), source_dVNC_cleaned), :].index
+source_dVNC_pairs = [x[2] for x in source_dVNC_pairs]
+source_dVNC_pairs = Promat.extract_pairs_from_list(source_dVNC_pairs, pairs)[0]
+
+source_dVNC_pair_paths = []
+for index in tqdm(range(0, len(source_dVNC_pairs))):
+    ds_dVNC = A1_adj.downstream_multihop(list(source_dVNC_pairs.loc[index]), threshold, min_members = 0, hops=5)
+    source_dVNC_pair_paths.append(ds_dVNC)
+
+# identifying ascending neurons of interest
+order = [16, 0, 2, 11, 8, 1, 3, 5, 7, 12, 13, 9, 10, 15, 4, 6, 14]
+
+ascending_layers,ascending_skids = A1_adj.layer_id(source_dVNC_pair_paths, source_dVNC_pairs.leftid, A1_ascending)
+ascending_layers = ascending_layers.iloc[order, :]
+ascending_skids = ascending_skids.T.iloc[order, :]
+
+ascending_skids_allhops = []
+for index in ascending_skids.index:
+    skids_allhops = [x for sublist in ascending_skids.loc[index].values for x in sublist if x!='']
+    ascending_skids_allhops.append(skids_allhops)
+
+# running downstream_multihop of A1 ascendings into brain
+ascendings_paths = []
+for index in tqdm(range(0, len(ascending_skids_allhops))):
+    ds_dVNC = VNC_adj.downstream_multihop(ascending_skids_allhops[index], threshold, min_members = 0, hops=5)
+    ascendings_paths.append(ds_dVNC)
+
+# identify neuron types
+all_layers,_ = VNC_adj.layer_id(ascendings_paths, range(0, len(ascendings_paths)), A1_adj.adj.index) # include all neurons to get total number of neurons per layer
+dVNC_layers,_ = VNC_adj.layer_id(ascendings_paths, range(0, len(ascendings_paths)), dVNC) 
+pre_dVNC_layers,_ = VNC_adj.layer_id(ascendings_paths, range(0, len(ascendings_paths)), pre-dVNC) 
+
 
 # %%
