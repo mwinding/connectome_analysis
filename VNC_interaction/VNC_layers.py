@@ -14,6 +14,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
 rm = pymaid.CatmaidInstance(url, name, password, token)
 adj = pd.read_csv('VNC_interaction/data/axon-dendrite.csv', header = 0, index_col = 0)
 inputs = pd.read_csv('VNC_interaction/data/input_counts.csv', index_col = 0)
@@ -203,6 +207,30 @@ ax.set_title('Downstream of dVNCs')
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_dVNC_downstream_targets.pdf', bbox_inches='tight')
 
 # %%
+# plot A1 structure together
+
+plt.rcParams['font.size'] = 6
+
+fig, axs = plt.subplots(
+    1, 3, figsize = (2.5, 1.5)
+)
+ax = axs[0]
+sns.heatmap(VNC_layer_counts, cbar_kws={'label': 'Number of Neurons'}, annot = True, fmt='.0f', cmap = 'Greens', cbar = False, ax = ax)
+ax.set_title('A1 Neurons')
+
+ax = axs[1]
+sns.heatmap(ascendings_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Blues', cbar = False, ax = ax)
+ax.set_title('Ascendings')
+ax.set_yticks([])
+
+ax = axs[2]
+sns.heatmap(ds_dVNC_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Reds', cbar = False, ax = ax)
+ax.set_title('ds-dVNCs')
+ax.set_yticks([])
+
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_A1_structure.pdf', bbox_inches='tight')
+
+# %%
 # pathways identification
 # which dVNCs go to which MNs?
 '''
@@ -256,11 +284,11 @@ source_dVNC_pairs = Promat.extract_pairs_from_list(source_dVNC_pairs, pairs)[0]
 
 pair_paths = []
 for index in tqdm(range(0, len(source_dVNC_pairs))):
-    ds_dVNC = VNC_adj.downstream_multihop(list(source_dVNC_pairs.loc[index]), threshold, min_members = 0, hops=4)
+    ds_dVNC = VNC_adj.downstream_multihop(list(source_dVNC_pairs.loc[index]), threshold, min_members = 0, hops=5)
     pair_paths.append(ds_dVNC)
 
 # determine which neurons are only in one pathway
-VNC_types_df = pd.DataFrame([x for x in VNC_types_df.index], index = VNC_types_df.values, columns = ['MN', 'Proprio', 'Somato'])
+VNC_types_df = pd.DataFrame([x for x in VNC_types_df.index], index = VNC_types_df.values, columns = VNC_types_df.index.names)
 sensory_type = list(VNC_types_df[(VNC_types_df.MN == False) & ((VNC_types_df.Proprio == True) | (VNC_types_df.Somato == True))].index)
 motor_sens_MN = list(np.intersect1d(sensory_type, A1_MN))
 motor_MN = list(np.setdiff1d(A1_MN, motor_sens_MN))
@@ -284,7 +312,7 @@ mixed_type_layers_MN,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, 
 
 
 fig, axs = plt.subplots(
-    3, 3, figsize=(10, 14)
+    3, 3, figsize=(5, 7)
 )
 vmax = 4
 
@@ -391,7 +419,7 @@ ascending_simple_layers = ascending_simple_layers.iloc[order, :]
 VNC_sens_layers = VNC_sens_layers.iloc[order, :]
 
 fig, axs = plt.subplots(
-    1, 4, figsize=(10, 4)
+    1, 4, figsize=(4, 2.25)
 )
 
 ax = axs[0]
@@ -427,6 +455,48 @@ ax.set_ylabel('')
 ax.set(title='A1 Sensory Interneurons')
 
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths_simple.pdf', bbox_inches='tight')
+
+# %%
+# plot by individual dVNC
+
+# split plot types by dVNC pair
+dVNC_pairs = all_simple_layers.index
+layer_types = [all_simple_layers, motor_simple_layers, ascending_simple_layers, VNC_sens_layers]
+col = ['Greens', 'Reds', 'Blues', 'Purples']
+
+dVNC_list = []
+for pair in dVNC_pairs:
+    mat = np.zeros(shape=(len(layer_types), len(all_simple_layers.columns)))
+    for i, layer_type in enumerate(layer_types):
+        mat[i, :] = layer_type.loc[pair]
+
+    dVNC_list.append(mat)
+
+# loop through pairs to plot
+for i, dVNC in enumerate(dVNC_list):
+
+    data = pd.DataFrame(dVNC, index = ['All', 'Motor', 'Ascend', 'Sens IN'])
+    mask_list = []
+    for i_iter in range(0, len(data.index)):
+        mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+        mask[i_iter, :] = [False]*len(data.columns)
+        mask_list.append(mask)
+
+    fig, axs = plt.subplots(
+        1, 1, figsize=(.9, .5)
+    )
+    for j, mask in enumerate(mask_list):
+        if((j == 0) | (j == 1)):
+            vmax = 60
+        if((j == 2) | (j == 3)):
+            vmax = 20
+        ax = axs
+        annotations = data.astype(int).astype(str)
+        annotations[annotations=='0']=''
+        sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
+
+    plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+
 
 # %%
 # export different neuron types at each VNC layer
@@ -465,7 +535,6 @@ pd.DataFrame(source_dVNC).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshol
 # %%
 # how many connections between dVNCs and A1 neurons?
 # out of date
-
 
 source_ds = VNC_adj.adj_pairwise.loc[(slice(None), source_dVNC), (slice(None), ds_dVNC)]
 
