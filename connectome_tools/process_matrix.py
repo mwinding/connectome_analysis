@@ -284,7 +284,7 @@ class Adjacency_matrix():
                 skids.append(neurons)
             
             if(len(skids) != max_layers):
-                skids = skids + [['']]*(max_layers-len(skids)) # make sure each column has same num elements
+                skids = skids + [[]]*(max_layers-len(skids)) # make sure each column has same num elements
 
             mat_neuron_skids[f'{layer_names[i]}'] = skids
 
