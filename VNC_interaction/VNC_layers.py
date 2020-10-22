@@ -412,7 +412,7 @@ ascending_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.lefti
 VNC_sens_type = list(np.setdiff1d(VNC_types_df[(VNC_types_df.MN == False) & ((VNC_types_df.Proprio == True) | (VNC_types_df.Somato == True))].index, A1_MN))
 VNC_sens_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_sens_type)
 
-order = [16, 0, 2, 11, 8, 1, 3, 5, 7, 12, 13, 9, 10, 15, 4, 6, 14]
+order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14]
 all_simple_layers = all_simple_layers.iloc[order, :]
 motor_simple_layers = motor_simple_layers.iloc[order, :]
 ascending_simple_layers = ascending_simple_layers.iloc[order, :]
