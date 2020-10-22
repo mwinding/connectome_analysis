@@ -134,6 +134,7 @@ for i in range(0, 2):
 # %%
 # identify pre-descending types
 # contributing 5% input to a particular descending neuron
+# old method, using the new one below
 from connectome_tools.process_matrix import Promat
 
 def skid_to_index(skid, mg):
@@ -224,6 +225,32 @@ for i_iter, i in enumerate(oddRows):
     for j_iter, j in enumerate(oddCols_RG):
         summed_pairs = interlaced_RG_mat.iat[i, j] + interlaced_RG_mat.iat[i+1, j+1] + interlaced_RG_mat.iat[i+1, j] + interlaced_RG_mat.iat[i, j+1]
         sumMat_RG.iat[i_iter, j_iter] = summed_pairs/2
+
+# %%
+# identifying pre-descendings based on an individual pair of neurons contributing 1% input to descending neuron
+
+from connectome_tools.process_matrix import Adjacency_matrix, Promat
+from datetime import date
+
+threshold = 0.01
+
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+RGN = pymaid.get_skids_by_annotation('mw RGN')
+
+brain_adj = Adjacency_matrix(adj, mg.meta.index, pairs, mg.meta.loc[:, ['dendrite_input', 'axon_input']],'axo-dendritic')
+
+pre_dVNC = brain_adj.upstream(dVNC, threshold, exclude = dVNC)
+_, pre_dVNC = brain_adj.edge_threshold(dVNC, pre_dVNC, threshold, direction='upstream')
+pd.DataFrame(pre_dVNC).to_csv(f'cascades/feedback_through_brain/plots/pre_dVNC_Threshold_{threshold}.csv', index = False, header = False)
+
+pre_dSEZ = brain_adj.upstream(dSEZ, threshold, exclude = dSEZ)
+_, pre_dSEZ = brain_adj.edge_threshold(dSEZ, pre_dSEZ, threshold, direction='upstream')
+pd.DataFrame(pre_dSEZ).to_csv(f'cascades/feedback_through_brain/plots/pre_dSEZ_Threshold_{threshold}.csv', index = False, header = False)
+
+pre_RGN = brain_adj.upstream(RGN, threshold, exclude = RGN)
+_, pre_RGN = brain_adj.edge_threshold(RGN, pre_RGN, threshold, direction='upstream')
+pd.DataFrame(pre_RGN).to_csv(f'cascades/feedback_through_brain/plots/pre_RGN_Threshold_{threshold}.csv', index = False, header = False)
 
 # %%
 # plotting number of connections to and from descendings
