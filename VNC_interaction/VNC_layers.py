@@ -14,7 +14,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-z
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 adj = pd.read_csv('VNC_interaction/data/axon-dendrite.csv', header = 0, index_col = 0)
@@ -70,9 +72,11 @@ from upsetplot import plot
 from upsetplot import from_contents
 from upsetplot import from_memberships
 
-VNC_types = [[x for layer in us_A1_MN for x in layer], 
-                [x for layer in ds_proprio for x in layer], 
-                [x for layer in ds_somato for x in layer]]
+hops_included = 3
+
+VNC_types = [[x for layer in us_A1_MN[0:hops_included] for x in layer], 
+                [x for layer in ds_proprio[0:hops_included] for x in layer], 
+                [x for layer in ds_somato[0:hops_included] for x in layer]]
 
 data = [x for cell_type in VNC_types for x in cell_type]
 data = np.unique(data)
@@ -102,9 +106,12 @@ for celltype in np.unique(cats_simple):
 
     counts.append(count)
 
+coverage = np.unique([x for sublist in us_A1_MN[0:hops_included] for x in sublist] + [x for sublist in ds_proprio[0:hops_included] for x in sublist] + [x for sublist in ds_somato[0:hops_included] for x in sublist])
+
 upset = from_memberships(np.unique(cats_simple), data = counts)
 plot(upset, sort_categories_by = None)
-plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_signal_type.pdf', bbox_inches='tight')
+plt.title(f'{len(np.intersect1d(A1, coverage))/len(A1)*100:.2f}% of A1 neurons covered')
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC-signal-type_hops-{hops_included}.pdf', bbox_inches='tight')
 
 # %%
 # upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
