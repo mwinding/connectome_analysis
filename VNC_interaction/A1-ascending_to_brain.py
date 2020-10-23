@@ -65,12 +65,16 @@ all_type_layers,all_type_layers_skids = VNC_adj.layer_id(ascending_pair_paths, A
 dVNC_A1_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, dVNC_to_A1)
 dVNC_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, dVNC)
 predVNC_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, pre_dVNC)
+dSEZ_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, dSEZ)
+RGN_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, RGN)
 
 valid_ascendings = ~(all_type_layers.iloc[:, 0]==0)
 all_type_layers = all_type_layers[valid_ascendings] # remove all ascendings with no strong brain connections
 dVNC_A1_type_layers = dVNC_A1_type_layers[valid_ascendings]
 dVNC_type_layers = dVNC_type_layers[valid_ascendings]
 predVNC_type_layers = predVNC_type_layers[valid_ascendings]
+dSEZ_type_layers = dSEZ_type_layers[valid_ascendings]
+RGN_type_layers = RGN_type_layers[valid_ascendings]
 
 fig, axs = plt.subplots(
     1, 4, figsize=(6, 4)
@@ -118,8 +122,8 @@ plt.rcParams['font.size'] = 6
 asc_pairs = all_type_layers.index
 #layer_types = [all_type_layers, dVNC_type_layers, dVNC_A1_type_layers, predVNC_type_layers]
 #col = ['Greens', 'Reds', 'Purples', 'Blues']
-layer_types = [all_type_layers, dVNC_type_layers, predVNC_type_layers]
-col = ['Greens', 'Reds', 'Purples']
+layer_types = [all_type_layers, dVNC_type_layers, dSEZ_type_layers, RGN_type_layers]
+col = ['Greens', 'Reds', 'Purples', 'Oranges']
 
 asc_list = []
 for pair in asc_pairs:
@@ -133,7 +137,7 @@ for pair in asc_pairs:
 for i, asc in enumerate(asc_list):
 
     #data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dVNC-A1', 'pre-dVNC'])
-    data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'pre-dVNC']).iloc[:, 0:2]
+    data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dSEZ', 'RGN']).iloc[:, 0:2]
     mask_list = []
     for i_iter in range(0, len(data.index)):
         mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
@@ -141,15 +145,15 @@ for i, asc in enumerate(asc_list):
         mask_list.append(mask)
 
     fig, axs = plt.subplots(
-        1, 1, figsize=(.4, .375)
+        1, 1, figsize=(.4, .5)
     )
     for j, mask in enumerate(mask_list):
         if((j == 0)):
             vmax = 200
-        #if(j == 2):
-        #    vmax = 20
+        if(j == 3):
+            vmax = 8
         if((j == 1) | (j == 2)):
-            vmax = 50
+            vmax = 40
         ax = axs
         annotations = data.astype(int).astype(str)
         annotations[annotations=='0']=''
