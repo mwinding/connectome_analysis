@@ -286,13 +286,35 @@ class Adjacency_matrix():
             if(len(skids) != max_layers):
                 skids = skids + [[]]*(max_layers-len(skids)) # make sure each column has same num elements
 
-            mat_neuron_skids[f'{layer_names[i]}'] = skids
+            mat_neuron_skids[layer_names[i]] = skids
 
         id_layers = pd.DataFrame(mat_neurons, index = layer_names, columns = [f'Layer {i+1}' for i in range(0,max_layers)])
         id_layers_skids = mat_neuron_skids
 
         return(id_layers, id_layers_skids)
 
+    # generate a binary connectivity matrix that 
+    def hop_matrix(self, layer_id_skids, source_leftid, destination_leftid):
+        mat = pd.DataFrame(np.zeros(shape = (len(source_leftid), len(destination_leftid))), 
+                            index = source_leftid, 
+                            columns = destination_leftid)
+
+        for index in mat.index:
+            data = layer_id_skids.loc[index, :]
+            for i, hop in enumerate(data):
+                for column in mat.columns:
+                    if(column in hop):
+                        mat.loc[index, column] = i+1
+
+        max_value = mat.values.max()
+        mat_plotting = mat.copy()
+
+        for index in mat_plotting.index:
+            for column in mat_plotting.columns:
+                if(mat_plotting.loc[index, column]>0):
+                    mat_plotting.loc[index, column] = 1 - (mat_plotting.loc[index, column] - max_value)
+
+        return(mat, mat_plotting)
             
        
 class Promat():
