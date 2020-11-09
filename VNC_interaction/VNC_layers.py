@@ -43,9 +43,9 @@ from connectome_tools.cascade_analysis import Celltype_Analyzer, Celltype
 # VNC layering with respect to sensories or motorneurons
 threshold = 0.01
 
-us_A1_MN = VNC_adj.upstream_multihop(A1_MN, threshold, min_members=0)
-ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold, min_members=0)
-ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold, min_members=0)
+us_A1_MN = VNC_adj.upstream_multihop(A1_MN, threshold, min_members=0, exclude = A1_MN + A1_proprio + A1_somato)
+ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold, min_members=0, exclude = A1_MN + A1_proprio + A1_somato)
+ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold, min_members=0, exclude = A1_MN + A1_proprio + A1_somato)
 
 # how many neurons are included in layering?
 VNC_layers = [us_A1_MN, ds_proprio, ds_somato]
@@ -170,6 +170,12 @@ VNC_layer_counts['Somato'] = Somato_counts
 
 VNC_layer_counts.index = [f'Layer {i}' for i in range(0,max_length)]
 
+# alternative way of identifying layers
+VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_somato] + ds_somato]
+VNC_type_names = ['MN', 'Proprio', 'Somato']
+
+all_layers, all_layers_skids = VNC_adj.layer_id(VNC_layers, VNC_type_names, A1)
+
 fig, axs = plt.subplots(
     1, 1, figsize = (2.5, 3)
 )
@@ -236,43 +242,235 @@ ax.set_yticks([])
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_A1_structure.pdf', bbox_inches='tight')
 
 # %%
-# pathways identification
-# which dVNCs go to which MNs?
-'''
-from tqdm import tqdm
+# supplementary plot with exclusive MN, proprio, and Somato types
 
-# identify dVNCs associated with MN pathways
+skids_MN_only = list(VNC_types_df.loc[(True, False, False)]) + A1_MN
+skids_Proprio_only = list(VNC_types_df.loc[(False, True, False)]) + A1_proprio
+skids_Somato_only = list(VNC_types_df.loc[(False, False, True)]) + A1_somato
+skids_MN_Proprio = list(VNC_types_df.loc[(True, True, False)])
+skids_MN_Somato = list(VNC_types_df.loc[(True, False, True)])
+skids_Proprio_Somato = list(VNC_types_df.loc[(False, True, True)])
+skids_MN_Proprio_Somato = list(VNC_types_df.loc[(True, True, True)])
 
-source_dVNC, ds_dVNC = VNC_adj.downstream(dVNC, threshold, exclude=dVNC)
-edges, ds_dVNC_cleaned = VNC_adj.edge_threshold(source_dVNC, ds_dVNC, threshold, direction='downstream')
-edges[edges.overthres==True]
+upset_names = ['MN only', 'Proprio only', 'Somato only', 'MN + Proprio', 'MN + Somato', 'Proprio + Somato', 'MN + Proprio + Somato']
+upset_skids = [skids_MN_only, skids_Proprio_only, skids_Somato_only, 
+                skids_MN_Proprio, skids_MN_Somato, skids_Proprio_Somato, skids_MN_Proprio_Somato]
 
-source_dVNC_cleaned = np.unique(edges[edges.overthres==True].upstream_pair_id)
-source_dVNC_pairs = VNC_adj.adj_inter.loc[(slice(None), source_dVNC_cleaned), :].index
-source_dVNC_pairs = [x[2] for x in source_dVNC_pairs]
-source_dVNC_pairs = Promat.extract_pairs_from_list(source_dVNC_pairs, pairs)[0]
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(all_layers_skids.T.values, ['MN', 'Proprio', 'Somato'], skids)
+    #count_layers.columns = [f'Layer {x}' for x in range(0, len(count_layers.columns))]
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
 
-motor_paths = []
-for index in tqdm(range(0, len(source_dVNC_pairs))):
-    ds_dVNC = VNC_adj.downstream_multihop(list(source_dVNC_pairs.loc[index]), threshold, min_members = 0, hops=4)
-    motor_paths.append(ds_dVNC)
+MN_df = pd.DataFrame()
+MN_df['MN'] = all_layers.T.MN
 
-all_layers_motor = []
-all_layers_motor_count = []
-for layers in motor_paths:
-    layers_motor = []
-    layers_motor_count = []
+Proprio_df = pd.DataFrame()
+Proprio_df['Proprio'] = all_layers.T.Proprio
 
-    for layer in layers:
-        layer_motor = np.intersect1d(layer, A1_MN)
-        layers_motor.append(layer_motor)
-        layers_motor_count.append(len(layer_motor))
+Somato_df = pd.DataFrame()
+Somato_df['Somato'] = all_layers.T.Somato
 
-    all_layers_motor.append(layers_motor)
-    all_layers_motor_count.append(layers_motor_count)
-    
-#readable_df(motor_paths[0]).to_csv(f'VNC_interaction/data/csvs/Threshold-{threshold}_motorpath0_{str(date.today())}.csv', index = False)
-'''
+for i, types in enumerate(upset_types_layers):
+    MN_df[f'{upset_names[i]}'] = types.MN
+    Proprio_df[f'{upset_names[i]}'] = types.Proprio
+    Somato_df[f'{upset_names[i]}'] = types.Somato
+
+# plot types
+data = MN_df.iloc[1:len(MN_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Greens', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_VNC-layer-type_MN.pdf', bbox_inches='tight')
+
+data = Proprio_df.iloc[1:len(Proprio_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Greens', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_VNC-layer-type_Proprio.pdf', bbox_inches='tight')
+
+
+data = Somato_df.iloc[1:len(Somato_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Greens', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_VNC-layer-type_Somato.pdf', bbox_inches='tight')
+
+# ascending neurons
+
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(ascendings_layers_skids.T.values, ['MN', 'Proprio', 'Somato'], skids)
+    #count_layers.columns = [f'Layer {x}' for x in range(0, len(count_layers.columns))]
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
+
+MN_df = pd.DataFrame()
+MN_df['MN'] = ascendings_layers.T.MN
+
+Proprio_df = pd.DataFrame()
+Proprio_df['Proprio'] = ascendings_layers.T.Proprio
+
+Somato_df = pd.DataFrame()
+Somato_df['Somato'] = ascendings_layers.T.Somato
+
+for i, types in enumerate(upset_types_layers):
+    MN_df[f'{upset_names[i]}'] = types.MN
+    Proprio_df[f'{upset_names[i]}'] = types.Proprio
+    Somato_df[f'{upset_names[i]}'] = types.Somato
+
+# plot types
+data = MN_df.iloc[1:len(MN_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Blues', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ascending-layer-type_MN.pdf', bbox_inches='tight')
+
+data = Proprio_df.iloc[1:len(Proprio_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Blues', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ascending-layer-type_Proprio.pdf', bbox_inches='tight')
+
+
+data = Somato_df.iloc[1:len(Somato_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Blues', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ascending-layer-type_Somato.pdf', bbox_inches='tight')
+
+
+####
+# ds-dVNC neurons
+####
+
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(ds_dVNC_layers_skids.T.values, ['MN', 'Proprio', 'Somato'], skids)
+    #count_layers.columns = [f'Layer {x}' for x in range(0, len(count_layers.columns))]
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
+
+MN_df = pd.DataFrame()
+MN_df['MN'] = ds_dVNC_layers.T.MN
+
+Proprio_df = pd.DataFrame()
+Proprio_df['Proprio'] = ds_dVNC_layers.T.Proprio
+
+Somato_df = pd.DataFrame()
+Somato_df['Somato'] = ds_dVNC_layers.T.Somato
+
+for i, types in enumerate(upset_types_layers):
+    MN_df[f'{upset_names[i]}'] = types.MN
+    Proprio_df[f'{upset_names[i]}'] = types.Proprio
+    Somato_df[f'{upset_names[i]}'] = types.Somato
+
+# plot types
+data = MN_df.iloc[1:len(MN_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Reds', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ds-dVNC-layer-type_MN.pdf', bbox_inches='tight')
+
+data = Proprio_df.iloc[1:len(Proprio_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Reds', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ds-dVNC-layer-type_Proprio.pdf', bbox_inches='tight')
+
+
+data = Somato_df.iloc[1:len(Somato_df), :]
+mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+mask[:, 0] = [False]*len(data.index)
+
+fig, axs = plt.subplots(
+    1, 1, figsize=(2, 2)
+)
+annotations = data.astype(int).astype(str)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, ax=axs, cmap = 'Reds', cbar = False)
+sns.heatmap(data, annot = annotations, fmt = 's', mask = np.invert(mask), ax=axs, cbar = False)
+
+plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_ds-dVNC-layer-type_Somato.pdf', bbox_inches='tight')
+# layer numbers are off my one (should be layer 1, 2, etc.; not layer 2, 3, etc.)
+# this only affects the axis, not the content
+
+# %%
+# identities of ascending neurons
+from itertools import compress
+
+ascending_pairs = Promat.extract_pairs_from_list(A1_ascending, pairs)[0]
+ascending_types = [VNC_types_df.index[VNC_types_df==x] for x in ascending_pairs.leftid]
+
+col = []
+for types in ascending_types:
+    if(len(types)==0):
+        col.append('Unknown')
+    if(len(types)>0):
+        bool_types = [x for sublist in types for x in sublist]
+        col.append(list(compress(['MN', 'Proprio', 'Somato'], bool_types)))
+
+ascending_pairs['type'] = col
+
 # %%
 # pathways downstream of each dVNC pair
 # with detailed VNC layering types
