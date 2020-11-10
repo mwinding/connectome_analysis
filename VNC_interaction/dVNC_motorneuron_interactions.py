@@ -23,7 +23,7 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 adj = pd.read_csv('VNC_interaction/data/axon-dendrite.csv', header = 0, index_col = 0)
 inputs = pd.read_csv('VNC_interaction/data/input_counts.csv', index_col = 0)
 inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-09-22.csv', header = 0) # import pairs
+pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
 
 # %%
 from connectome_tools.process_matrix import Adjacency_matrix, Promat
@@ -157,7 +157,7 @@ adj.columns = adj.columns.astype(int) #convert column names to int for easier in
 
 inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
 inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-09-22.csv', header = 0) # import pairs
+pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dVNC_pairs = Promat.extract_pairs_from_list(dVNC, pairs)[0]
@@ -253,14 +253,17 @@ df['layer2'] = layer2
 df_loops = df.loc[[x!=[] for x in df.layer1], :]
 
 # plot MN hits for each of these dVNCs
+import math 
+MN_order = pd.read_csv('VNC_interaction/data/motorneuron-muscle-groups.csv')
+MN_order = [int(x) for x in MN_order.skid_leftid if np.invert(math.isnan(x))]
 
 for index in df_loops.index:
     indices = [df_loops.layer0[index]] + [x for x in df_loops.layer1[index] if x!=[]] + [x for sublist in df_loops.layer2[index] for x in sublist if x!=[]]
     
-    width = 3
-    height = 0.25*len(indices)
+    height = 3
+    width = 0.25*len(indices)
     fig,ax = plt.subplots(1,1,figsize=(width, height))
-    sns.heatmap(dVNC_motor_mat_plotting.loc[indices, :], cmap='Reds', cbar = False, ax=ax)
+    sns.heatmap(dVNC_motor_mat_plotting.loc[indices, MN_order].T, cmap='Reds', cbar = False, ax=ax)
     plt.savefig(f'VNC_interaction/plots/dVNC_loops/Path-{index}_Threshold-{threshold}_Hopwise_Connectivity_dVNC-motor.pdf', bbox_inches='tight')
 
  
