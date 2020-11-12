@@ -261,7 +261,7 @@ for index in df_loops.index:
     indices = [df_loops.layer0[index]] + [x for x in df_loops.layer1[index] if x!=[]] + [x for sublist in df_loops.layer2[index] for x in sublist if x!=[]]
     
     height = 3
-    width = 0.25*len(indices)
+    width = 0.20*len(indices)
     fig,ax = plt.subplots(1,1,figsize=(width, height))
     sns.heatmap(dVNC_motor_mat_plotting.loc[indices, MN_order].T, cmap='Reds', cbar = False, ax=ax)
     plt.savefig(f'VNC_interaction/plots/dVNC_loops/Path-{index}_Threshold-{threshold}_Hopwise_Connectivity_dVNC-motor.pdf', bbox_inches='tight')
