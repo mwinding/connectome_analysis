@@ -33,6 +33,9 @@ VNC_adj = Adjacency_matrix(adj.values, adj.index, pairs, inputs,'axo-dendritic')
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
+A1_acess = pymaid.get_skids_by_annotation('mw A1 accessory neurons')
+
+A1 = A1 + A1_acess
 
 A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 A1_proprio = pymaid.get_skids_by_annotation('mw A1 proprio')
@@ -213,43 +216,11 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_A1_structure.pdf', bbo
 plt.rcParams['font.size'] = 6
 
 # %%
-# upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
+# upset plot of VNC types (MN, Proprio, Somato) with certain number of hops (hops_included)
 
 from upsetplot import plot
 from upsetplot import from_contents
 from upsetplot import from_memberships
-
-VNC_type_layers = [x for sublist in VNC_layers for x in sublist]
-VNC_type_layer_names = [x.name for x in celltypes]
-data = [x for cell_type in VNC_type_layers for x in cell_type]
-data = np.unique(data)
-
-cats_complex = []
-for skid in data:
-    cat = []
-    for i, layer in enumerate(VNC_type_layers):
-        if(skid in layer):
-            cat = cat + [VNC_type_layer_names[i]]
-
-    cats_complex.append(cat)
-
-VNC_type_layers_df = from_memberships(cats_complex, data = data)
-
-counts = []
-for celltype in np.unique(cats_complex):
-    count = 0
-    for cat in cats_complex:
-        if(celltype == cat):
-            count += 1
-
-    counts.append(count)
-
-upset_complex = from_memberships(np.unique(cats_complex), data = counts)
-plot(upset_complex, sort_categories_by = None)
-plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_layer_signal_type.pdf', bbox_inches='tight')
-
-# %%
-# upset plot of VNC types (MN, Proprio, Somato) with certain number of hops (hops_included)
 
 hops_included = 3
 
@@ -293,6 +264,38 @@ upset = from_memberships(np.unique(cats_simple), data = counts)
 plot(upset, sort_categories_by = 'cardinality')
 plt.title(f'{len(np.intersect1d(A1, coverage))/len(A1)*100:.2f}% of A1 neurons covered')
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC-signal-type_hops-{hops_included}.pdf', bbox_inches='tight')
+
+# %%
+# upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
+
+VNC_type_layers = [x for sublist in VNC_layers for x in sublist]
+VNC_type_layer_names = [x.name for x in celltypes]
+data = [x for cell_type in VNC_type_layers for x in cell_type]
+data = np.unique(data)
+
+cats_complex = []
+for skid in data:
+    cat = []
+    for i, layer in enumerate(VNC_type_layers):
+        if(skid in layer):
+            cat = cat + [VNC_type_layer_names[i]]
+
+    cats_complex.append(cat)
+
+VNC_type_layers_df = from_memberships(cats_complex, data = data)
+
+counts = []
+for celltype in np.unique(cats_complex):
+    count = 0
+    for cat in cats_complex:
+        if(celltype == cat):
+            count += 1
+
+    counts.append(count)
+
+upset_complex = from_memberships(np.unique(cats_complex), data = counts)
+plot(upset_complex, sort_categories_by = None)
+plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC_layer_signal_type.pdf', bbox_inches='tight')
 
 # %%
 # supplementary plot with exclusive MN, proprio, and Somato types
@@ -362,8 +365,8 @@ cat_order = ['pre-MN', 'Proprio', 'Somato', 'Chord', 'Noci']
 upset_types_layers = []
 upset_types_skids = []
 for skids in upset_skids:
-    count_layers, layer_skids = VNC_adj.layer_id(all_layers_skids.T.values, general_names, skids.values)
-    upset_types_layers.append(count_layers.T)
+    count_layers, layer_skids = VNC_adj.layer_id(all_layers_skids.T.values, general_names, skids.values) 
+    upset_types_layers.append(count_layers.T) 
     upset_types_skids.append(layer_skids)
 
 for layer_type in all_layers.T.columns:
