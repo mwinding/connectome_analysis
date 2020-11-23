@@ -42,6 +42,8 @@ A1_proprio = pymaid.get_skids_by_annotation('mw A1 proprio')
 A1_chordotonal = pymaid.get_skids_by_annotation('mw A1 chordotonals')
 A1_noci = pymaid.get_skids_by_annotation('mw A1 noci')
 A1_somato = pymaid.get_skids_by_annotation('mw A1 somato')
+A1_external = pymaid.get_skids_by_annotation('mw A1 external sensories')
+# A1 vtd doesn't make 
 
 # %%
 from connectome_tools.cascade_analysis import Celltype_Analyzer, Celltype
@@ -54,9 +56,9 @@ threshold = 0.01
 ######
 
 # manual add neuron groups of interest here and names
-names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-Somato']
-general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'Somato']
-all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_somato
+names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-Somato', 'ds-ES']
+general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'Somato', 'ES']
+all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_somato + A1_external
 min_members = 4
 
 # manually determine upstream or downstream relation
@@ -65,8 +67,10 @@ ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold, min_members=min_
 ds_chord = VNC_adj.downstream_multihop(A1_chordotonal, threshold, min_members=min_members, exclude = all_source)
 ds_noci = VNC_adj.downstream_multihop(A1_noci, threshold, min_members=min_members, exclude = all_source)
 ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold, min_members=min_members, exclude = all_source)
+ds_external = VNC_adj.downstream_multihop(A1_external, threshold, min_members=min_members, exclude = all_source)
 
-VNC_layers = [us_A1_MN, ds_proprio, ds_chord, ds_noci, ds_somato]
+VNC_layers = [us_A1_MN, ds_proprio, ds_somato, ds_chord, ds_noci, ds_external]
+cat_order = ['pre-MN', 'Proprio', 'Somato', 'Chord', 'Noci', 'ES']
 
 ########
 ########
@@ -90,7 +94,7 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_similarity_between_VNC
 
 # %%
 # number of VNC neurons per layer
-VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_chordotonal] + ds_chord, [A1_noci] + ds_noci, [A1_somato] + ds_somato]
+VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_chordotonal] + ds_chord, [A1_noci] + ds_noci, [A1_somato] + ds_somato, [A1_external] + ds_external]
 all_layers, all_layers_skids = VNC_adj.layer_id(VNC_layers, general_names, A1)
 
 fig, axs = plt.subplots(
@@ -199,16 +203,16 @@ fig, axs = plt.subplots(
     1, 3, figsize = (3.25, 1.5)
 )
 ax = axs[0]
-sns.heatmap(all_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, fmt='.0f', cmap = 'Greens', cbar = False, ax = ax)
+sns.heatmap(all_layers.T.loc[:, cat_order], cbar_kws={'label': 'Number of Neurons'}, annot = True, fmt='.0f', cmap = 'Greens', cbar = False, ax = ax)
 ax.set_title('A1 Neurons')
 
 ax = axs[1]
-sns.heatmap(ascendings_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Blues', cbar = False, ax = ax)
+sns.heatmap(ascendings_layers.T.loc[:, cat_order], cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Blues', cbar = False, ax = ax)
 ax.set_title('Ascendings')
 ax.set_yticks([])
 
 ax = axs[2]
-sns.heatmap(ds_dVNC_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Reds', cbar = False, ax = ax)
+sns.heatmap(ds_dVNC_layers.T.loc[:, cat_order], cbar_kws={'label': 'Number of Neurons'}, annot = True, cmap = 'Reds', cbar = False, ax = ax)
 ax.set_title('ds-dVNCs')
 ax.set_yticks([])
 
@@ -226,7 +230,7 @@ hops_included = 3
 
 VNC_types=[]
 for celltype in VNC_layers:
-    VNC_type = [x for layer in celltype[0:hops_included] for x in layer]
+    VNC_type = [x for layer in celltype[0:hops_included+1] for x in layer]
     VNC_types.append(VNC_type)
 
 data = [x for cell_type in VNC_types for x in cell_type]
@@ -256,19 +260,24 @@ for celltype in np.unique(cats_simple):
 # how many neurons belong to a category with X hops_included
 coverage = []
 for celltype in VNC_layers:
-    celltype_list = [x for sublist in celltype[0:hops_included] for x in sublist]
+    celltype_list = [x for sublist in celltype[0:hops_included+1] for x in sublist]
     coverage = coverage + celltype_list
 coverage = np.unique(coverage)
 
+# order categories
 upset = from_memberships(np.unique(cats_simple), data = counts)
-plot(upset, sort_categories_by = 'cardinality')
+upset.index = upset.index.reorder_levels(cat_order)
+
+plot(upset, sort_categories_by = None)
 plt.title(f'{len(np.intersect1d(A1, coverage))/len(A1)*100:.2f}% of A1 neurons covered')
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC-signal-type_hops-{hops_included}.pdf', bbox_inches='tight')
 
 # %%
 # upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
 
-VNC_type_layers = [x for sublist in VNC_layers for x in sublist]
+VNC_layers_nostart = [us_A1_MN, ds_proprio, ds_chord, ds_noci, ds_somato, ds_external]
+
+VNC_type_layers = [x for sublist in VNC_layers_nostart for x in sublist]
 VNC_type_layer_names = [x.name for x in celltypes]
 data = [x for cell_type in VNC_type_layers for x in cell_type]
 data = np.unique(data)
@@ -303,7 +312,11 @@ from upsetplot import UpSet
 
 def upset_subset(upset_types_layers, upset_names, column_layer, layer_structure_name, column_name, height, width_col, color, cat_order):
     # column_layer example = all_layers.T.{column_name}
-        
+
+    # added for some edge cases
+    if(sum(column_layer)==0):
+        return()
+
     df = pd.DataFrame()
     df[f'{column_name}'] = column_layer # add first column of layering information for baseline, has nothing to do with UpSet data 
 
@@ -342,6 +355,7 @@ def upset_subset(upset_types_layers, upset_names, column_layer, layer_structure_
     nonzero_counts = data_cleaned.sum(axis=0)[1:]
 
     permut_types_df = from_memberships(nonzero_permut, nonzero_counts)
+    cat_order = [cat_order[i] for i, x in enumerate([x in permut_types_df.index.names for x in cat_order]) if x==True] # remove any cat_order names if missing; added for edge cases
     permut_types_df.index = permut_types_df.index.reorder_levels(cat_order)
     plot(permut_types_df, sort_categories_by = None)
     plt.savefig(f'VNC_interaction/plots/supplemental/Supplemental_{layer_structure_name}_{column_name}_Upset.pdf', bbox_inches='tight')
@@ -360,8 +374,7 @@ VNC_types_df = VNC_types_df.reorder_levels(permut.names)
 # skids for each permutation
 upset_skids = [VNC_types_df.loc[x] for x in permut]
 
-cat_order = ['pre-MN', 'Proprio', 'Somato', 'Chord', 'Noci']
-
+# all VNC layers
 upset_types_layers = []
 upset_types_skids = []
 for skids in upset_skids:
@@ -372,6 +385,7 @@ for skids in upset_skids:
 for layer_type in all_layers.T.columns:
     upset_subset(upset_types_layers, upset_names, all_layers.T.loc[:, layer_type], 'VNC_layers', layer_type, 0.2, 0.2, 'Greens', cat_order)
 
+# ascending locations
 upset_types_layers = []
 upset_types_skids = []
 for skids in upset_skids:
@@ -382,6 +396,7 @@ for skids in upset_skids:
 for layer_type in ascendings_layers.T.columns:
     upset_subset(upset_types_layers, upset_names, ascendings_layers.T.loc[:, layer_type], 'Ascendings_layers', layer_type, 0.2, 0.2, 'Blues', cat_order)
 
+# ds-dVNC_layers
 upset_types_layers = []
 upset_types_skids = []
 for skids in upset_skids:
@@ -393,7 +408,44 @@ for layer_type in ds_dVNC_layers.T.columns:
     upset_subset(upset_types_layers, upset_names, ds_dVNC_layers.T.loc[:, layer_type], 'ds-dVNCs_layers', layer_type, 0.2, 0.2, 'Reds', cat_order)
 
 # %%
+# locations of basins/goro/A00c
+
+# basin locations
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(basins_skids.T.values, general_names, skids.values)
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
+
+for layer_type in basins_layers.T.columns:
+    upset_subset(upset_types_layers, upset_names, all_layers.T.loc[:, layer_type], 'basin_layers', layer_type, 0.2, 0.2, 'Greens', cat_order)
+
+# gorogoro locations
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(gorogoro_skids.T.values, general_names, skids.values)
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
+
+for layer_type in gorogoro_layers.T.columns:
+    upset_subset(upset_types_layers, upset_names, all_layers.T.loc[:, layer_type], 'goro_layers', layer_type, 0.2, 0.2, 'Greens', cat_order)
+'''
+# A00c locations
+upset_types_layers = []
+upset_types_skids = []
+for skids in upset_skids:
+    count_layers, layer_skids = VNC_adj.layer_id(A00c_skids.T.values, general_names, skids.values)
+    upset_types_layers.append(count_layers.T)
+    upset_types_skids.append(layer_skids)
+
+for layer_type in A00c_layers.T.columns:
+    upset_subset(upset_types_layers, upset_names, ascendings_layers.T.loc[:, layer_type], 'A00c_layers', layer_type, 0.2, 0.2, 'Blues', cat_order)
+'''
+# %%
 # identities of ascending neurons
+# further develop this to identify next hit on "unknown" ascendings
 from itertools import compress
 
 ascending_pairs = Promat.extract_pairs_from_list(A1_ascending, pairs)[0]
