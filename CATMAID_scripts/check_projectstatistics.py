@@ -48,26 +48,30 @@ def timeTracing(user, interval, start_date):
 #ana = ['ana', 'andrey', 'marc']
 #ana_time = [timeTracing(user, 3, datetime.date(2020, 3, 27)) for user in users]
 # %%
-marc = timeTracing('marc', 3, datetime.date(2020, 5, 5))
+marc = timeTracing('marc', 3, datetime.date(2020, 6, 5))
 print(marc)
 # %%
-keira = timeTracing('keira', 3, datetime.date(2020, 5, 5))
+keira = timeTracing('keira', 3, datetime.date(2020, 6, 5))
 print(keira)
 # %%
-andy = timeTracing('andrey', 3, datetime.date(2020, 5, 5))
+andy = timeTracing('andrey', 3, datetime.date(2020, 6, 5))
 print(andy)
 # %%
-xinyu = timeTracing('xinyu', 3, datetime.date(2020, 5, 5))
+xinyu = timeTracing('xinyu', 3, datetime.date(2020, 6, 5))
 print(xinyu)
 # %%
-michael = timeTracing('michael', 3, datetime.date(2020, 5, 5))
+michael = timeTracing('michael', 3, datetime.date(2020, 6, 5))
 print(michael)
 # %%
-nadine = timeTracing('nadine', 3, datetime.date(2020, 5, 5))
+nadine = timeTracing('nadine', 3, datetime.date(2020, 6, 5))
 print(nadine)
 # %%
-ana = timeTracing('ana', 3, datetime.date(2020, 5, 5))
+ana = timeTracing('ana', 3, datetime.date(2020, 6, 5))
 print(ana)
+
+# %%
+elizabeth = timeTracing('ebarsotti', 3, datetime.date(2020, 11, 20))
+print(elizabeth)
 # %%
 #correspondences = pd.DataFrame(data = correspondences, columns = ['old_name', 'new_name'])
 #print(correspondences)
