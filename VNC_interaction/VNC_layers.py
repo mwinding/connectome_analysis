@@ -447,8 +447,10 @@ for layer_type in A00c_layers.T.columns:
 # identities of ascending neurons
 # further develop this to identify next hit on "unknown" ascendings
 from itertools import compress
+from tqdm import tqdm
 
 ascending_pairs = Promat.extract_pairs_from_list(A1_ascending, pairs)[0]
+VNC_types_df = VNC_types_df.reorder_levels(general_names)
 ascending_types = [VNC_types_df.index[VNC_types_df==x] for x in ascending_pairs.leftid]
 
 col = []
@@ -461,10 +463,44 @@ for types in ascending_types:
 
 ascending_pairs['type'] = col
 
+# multiple-hop matrix of A1 sensories to A1 ascendings
+MN_pairs = Promat.extract_pairs_from_list(A1_MN, pairs)[0]
+proprio_pairs = Promat.extract_pairs_from_list(A1_proprio, pairs)[0]
+chord_pairs = Promat.extract_pairs_from_list(A1_chordotonal, pairs)[0]
+noci_pairs = Promat.extract_pairs_from_list(A1_noci, pairs)[0]
+somato_pairs = Promat.extract_pairs_from_list(A1_somato, pairs)[0]
+external_pairs = Promat.extract_pairs_from_list(A1_external, pairs)[0]
+
+sens_pairs = pd.concat([proprio_pairs, chord_pairs, noci_pairs, somato_pairs, external_pairs])
+sens_pairs.index = range(0, len(sens_pairs))
+
+# sensory modalities generally
+sens_paths = VNC_layers
+ascending_layers,ascending_skids = VNC_adj.layer_id(sens_paths, general_names, A1_ascending)
+sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids.T, general_names, ascending_pairs.leftid, include_start=True)
+
+''' # individual sensory pairs
+sens_paths = []
+for index in tqdm(range(0, len(sens_pairs))):
+    ds_sens = VNC_adj.downstream_multihop(list(sens_pairs.loc[index]), threshold, min_members = 4, hops = 8, exclude = all_source)
+    sens_paths.append(ds_sens)
+
+ascending_layers,ascending_skids = VNC_adj.layer_id(sens_paths, sens_pairs.leftid, A1_ascending)
+sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids, sens_pairs.leftid, ascending_pairs.leftid)
+'''
+
+'''
+sens_asc_mat_list = []
+sens_asc_mat_plotting_list = []
+for sens_pairs_type in sens_pairs:
+    _,ascending_skids = VNC_adj.layer_id(sens_paths, sens_pairs_type.leftid, A1_ascending)
+    sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids, sens_pairs_type.leftid, ascending_pairs.leftid)
+    sens_asc_mat_list.append(sens_asc_mat)
+    sens_asc_mat_plotting_list.append(sens_asc_mat_plotting)
+'''
 # %%
 # pathways downstream of each dVNC pair
 # with detailed VNC layering types
-# ** rework this section for final figure (not including Chord, Noci, etc. right now)
 from tqdm import tqdm
 
 source_dVNC, ds_dVNC = VNC_adj.downstream(dVNC, threshold, exclude=dVNC)
@@ -482,14 +518,14 @@ for index in tqdm(range(0, len(source_dVNC_pairs))):
     pair_paths.append(ds_dVNC)
 
 # determine which neurons are only in one pathway
-VNC_types_df = pd.DataFrame([x for x in VNC_types_df.index], index = VNC_types_df.values, columns = VNC_types_df.index.names)
-sensory_type = list(VNC_types_df[(VNC_types_df.MN == False) & ((VNC_types_df.Proprio == True) | (VNC_types_df.Somato == True))].index)
+VNC_types_index = pd.DataFrame([x for x in VNC_types_df.index], index = VNC_types_df.values, columns = VNC_types_df.index.names)
+sensory_type = list(VNC_types_index[(VNC_types_index['pre-MN'] == False)].index)
 motor_sens_MN = list(np.intersect1d(sensory_type, A1_MN))
 motor_MN = list(np.setdiff1d(A1_MN, motor_sens_MN))
 sensory_type = np.setdiff1d(sensory_type, A1_MN)
 
-mixed_type = motor_sens_MN + list(VNC_types_df[(VNC_types_df.MN == True) & ((VNC_types_df.Proprio == True) | (VNC_types_df.Somato == True))].index)
-motor_type = motor_MN + list(VNC_types_df[(VNC_types_df.MN == True) & (VNC_types_df.Proprio == False) & (VNC_types_df.Somato == False)].index)
+mixed_type = motor_sens_MN + list(VNC_types_index[(VNC_types_index['pre-MN'] == True) & (sum(VNC_types_index.iloc[0, VNC_types_index.columns != 'pre-MN'])>0)].index)
+motor_type = motor_MN + list(VNC_types_index[(VNC_types_index['pre-MN'] == True) & (sum(VNC_types_index.iloc[0, VNC_types_index.columns != 'pre-MN'])==0)].index)
 
 # types of neurons
 motor_type_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, motor_type)
@@ -601,12 +637,15 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths.
 
 all_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_adj.adj.index) # include all neurons to get total number of neurons per layer
 motor_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A1_MN)
-ascending_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A1_ascending)
+ascending_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A1_ascending) 
+goro_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, gorogoro)
+basins_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, basins)
+A00c_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A00c) # no contact
 
-VNC_sens_type = list(np.setdiff1d(VNC_types_df[(VNC_types_df.MN == False) & ((VNC_types_df.Proprio == True) | (VNC_types_df.Somato == True))].index, A1_MN))
+VNC_sens_type = list(np.setdiff1d(VNC_types_index[(VNC_types_index['pre-MN'] == False)].index, A1_MN))
 VNC_sens_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_sens_type)
 
-order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14]
+order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14, 17, 18]
 all_simple_layers = all_simple_layers.iloc[order, :]
 motor_simple_layers = motor_simple_layers.iloc[order, :]
 ascending_simple_layers = ascending_simple_layers.iloc[order, :]
@@ -690,6 +729,42 @@ for i, dVNC in enumerate(dVNC_list):
         sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
 
     plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+
+
+layer_types = [all_simple_layers, goro_simple_layers, basins_simple_layers, A00c_simple_layers]
+col = ['Greens', 'Reds', 'Blues', 'Purples']
+dVNC_list = []
+for pair in dVNC_pairs:
+    mat = np.zeros(shape=(len(layer_types), len(all_simple_layers.columns)))
+    for i, layer_type in enumerate(layer_types):
+        mat[i, :] = layer_type.loc[pair]
+
+    dVNC_list.append(mat)
+
+# loop through pairs to plot
+for i, dVNC in enumerate(dVNC_list):
+
+    data = pd.DataFrame(dVNC, index = ['All', 'goro', 'basins', 'A00c'])
+    mask_list = []
+    for i_iter in range(0, len(data.index)):
+        mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+        mask[i_iter, :] = [False]*len(data.columns)
+        mask_list.append(mask)
+
+    fig, axs = plt.subplots(
+        1, 1, figsize=(.9, .5)
+    )
+    for j, mask in enumerate(mask_list):
+        if((j == 0) | (j == 1)):
+            vmax = 60
+        if((j == 2) | (j == 3)):
+            vmax = 20
+        ax = axs
+        annotations = data.astype(int).astype(str)
+        annotations[annotations=='0']=''
+        sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
+
+    plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/_particular_neurons_{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
 
 
 # %%
