@@ -294,7 +294,7 @@ class Adjacency_matrix():
         return(id_layers, id_layers_skids)
 
     # generate a binary connectivity matrix that 
-    def hop_matrix(self, layer_id_skids, source_leftid, destination_leftid):
+    def hop_matrix(self, layer_id_skids, source_leftid, destination_leftid, include_start=False):
         mat = pd.DataFrame(np.zeros(shape = (len(source_leftid), len(destination_leftid))), 
                             index = source_leftid, 
                             columns = destination_leftid)
@@ -304,7 +304,11 @@ class Adjacency_matrix():
             for i, hop in enumerate(data):
                 for column in mat.columns:
                     if(column in hop):
-                        mat.loc[index, column] = i+1
+                        if(include_start==True): # if the source of the hop signal is the first layer
+                            mat.loc[index, column] = i
+                        if(include_start==False): # if the first layer is the first layer downstream of source
+                            mat.loc[index, column] = i+1
+
 
         max_value = mat.values.max()
         mat_plotting = mat.copy()
