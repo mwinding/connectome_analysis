@@ -37,6 +37,10 @@ A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
 A1_proprio = pymaid.get_skids_by_annotation('mw A1 proprio')
 A1_somato = pymaid.get_skids_by_annotation('mw A1 somato')
+A1_chord = pymaid.get_skids_by_annotation('mw A1 chordotonals')
+A1_noci = pymaid.get_skids_by_annotation('mw A1 noci')
+A1_external = pymaid.get_skids_by_annotation('mw A1 external sensories')
+
 
 # %%
 # comparison of motorneurons contained in each path
@@ -59,7 +63,7 @@ for index in tqdm(range(0, len(source_dVNC_pairs))):
     ds_dVNC = VNC_adj.downstream_multihop(list(source_dVNC_pairs.loc[index]), threshold, min_members = 0, hops=5)
     source_dVNC_pair_paths.append(ds_dVNC)
 
-order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14]
+order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14, 17, 18] # added 17 and 18 because there appear to be more dVNCs?
 motor_layers,motor_skids = VNC_adj.layer_id(source_dVNC_pair_paths, source_dVNC_pairs.leftid, A1_MN)
 motor_layers = motor_layers.iloc[order, :]
 motor_skids = motor_skids.T.iloc[order, :]
@@ -114,6 +118,8 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths_
 
 # %%
 # multiple-hop connectivity matrix of dVNCs to motorneurons and ascendings
+# **** should probably use these for some figure
+# **** order MNs by muscle type in the future
 
 A1_MN_pairs = Promat.extract_pairs_from_list(A1_MN, pairs)[0]
 motor_layers,motor_skids = VNC_adj.layer_id(source_dVNC_pair_paths, source_dVNC_pairs.leftid, A1_MN)
@@ -151,7 +157,6 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_Hopwise_Connectivity_d
 # second, identify ascendings neurons ds of each dVNC
 # third, sum hops from dVNC->ascending and then ascending->new dVNC in brain
 
-
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
 
@@ -188,7 +193,7 @@ asc_dVNC_skids.index = [int(x) for x in asc_dVNC_skids.index]
 asc_dVNC_mat, asc_dVNC_mat_plotting = br_adj.hop_matrix(asc_dVNC_skids, A1_ascending_pairs.leftid, dVNC_pairs.leftid)
 
 # determine hops from dVNC to ascendings
-dVNC_dVNC_mat = pd.DataFrame(np.zeros(shape=(len(source_dVNC_pairs.leftid), len(dVNC_pairs.leftid))), index = source_dVNC_pairs.leftid[order], columns = dVNC_pairs.leftid)
+dVNC_dVNC_mat = pd.DataFrame(np.zeros(shape=(len(source_dVNC_pairs.leftid), len(dVNC_pairs.leftid))), index = source_dVNC_pairs.leftid, columns = dVNC_pairs.leftid) #source_dVNC_pairs.leftid[order]
 for i, index in enumerate(dVNC_dVNC_mat.index):
     for j, column in enumerate(dVNC_dVNC_mat.columns):
         data = dVNC_asc_mat.loc[index, :]
