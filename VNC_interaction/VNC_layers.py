@@ -41,7 +41,7 @@ A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 A1_proprio = pymaid.get_skids_by_annotation('mw A1 proprio')
 A1_chordotonal = pymaid.get_skids_by_annotation('mw A1 chordotonals')
 A1_noci = pymaid.get_skids_by_annotation('mw A1 noci')
-A1_somato = pymaid.get_skids_by_annotation('mw A1 somato')
+A1_classII_III = pymaid.get_skids_by_annotation('mw A1 somato')
 A1_external = pymaid.get_skids_by_annotation('mw A1 external sensories')
 # A1 vtd doesn't make 
 
@@ -56,8 +56,8 @@ threshold = 0.01
 ######
 
 # manual add neuron groups of interest here and names
-names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-Somato', 'ds-ES']
-general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'Somato', 'ES']
+names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-ClassII/III', 'ds-ES']
+general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'ClassII/III', 'ES']
 all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_somato + A1_external
 min_members = 4
 
@@ -66,10 +66,10 @@ us_A1_MN = VNC_adj.upstream_multihop(A1_MN, threshold, min_members=min_members, 
 ds_proprio = VNC_adj.downstream_multihop(A1_proprio, threshold, min_members=min_members, exclude = all_source)
 ds_chord = VNC_adj.downstream_multihop(A1_chordotonal, threshold, min_members=min_members, exclude = all_source)
 ds_noci = VNC_adj.downstream_multihop(A1_noci, threshold, min_members=min_members, exclude = all_source)
-ds_somato = VNC_adj.downstream_multihop(A1_somato, threshold, min_members=min_members, exclude = all_source)
+ds_classII_III = VNC_adj.downstream_multihop(A1_classII_III, threshold, min_members=min_members, exclude = all_source)
 ds_external = VNC_adj.downstream_multihop(A1_external, threshold, min_members=min_members, exclude = all_source)
 
-VNC_layers = [us_A1_MN, ds_proprio, ds_somato, ds_chord, ds_noci, ds_external]
+VNC_layers = [us_A1_MN, ds_proprio, ds_classII_III, ds_chord, ds_noci, ds_external]
 cat_order = ['pre-MN', 'Proprio', 'Somato', 'Chord', 'Noci', 'ES']
 
 ########
@@ -94,7 +94,7 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_similarity_between_VNC
 
 # %%
 # number of VNC neurons per layer
-VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_chordotonal] + ds_chord, [A1_noci] + ds_noci, [A1_somato] + ds_somato, [A1_external] + ds_external]
+VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_chordotonal] + ds_chord, [A1_noci] + ds_noci, [A1_classII_III] + ds_classII_III, [A1_external] + ds_external]
 all_layers, all_layers_skids = VNC_adj.layer_id(VNC_layers, general_names, A1)
 
 fig, axs = plt.subplots(
@@ -226,7 +226,7 @@ from upsetplot import plot
 from upsetplot import from_contents
 from upsetplot import from_memberships
 
-hops_included = 3
+hops_included = 2
 
 VNC_types=[]
 for celltype in VNC_layers:
@@ -275,7 +275,7 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_VNC-signal-type_hops-{
 # %%
 # upset plot of VNC types including layers (MN-0, -1, -2, Proprio-0, -1, 2, Somat-0, -1, -2, etc.)
 
-VNC_layers_nostart = [us_A1_MN, ds_proprio, ds_chord, ds_noci, ds_somato, ds_external]
+VNC_layers_nostart = [us_A1_MN, ds_proprio, ds_chord, ds_noci, ds_classII_III, ds_external]
 
 VNC_type_layers = [x for sublist in VNC_layers_nostart for x in sublist]
 VNC_type_layer_names = [x.name for x in celltypes]
@@ -468,10 +468,10 @@ MN_pairs = Promat.extract_pairs_from_list(A1_MN, pairs)[0]
 proprio_pairs = Promat.extract_pairs_from_list(A1_proprio, pairs)[0]
 chord_pairs = Promat.extract_pairs_from_list(A1_chordotonal, pairs)[0]
 noci_pairs = Promat.extract_pairs_from_list(A1_noci, pairs)[0]
-somato_pairs = Promat.extract_pairs_from_list(A1_somato, pairs)[0]
+classII_III_pairs = Promat.extract_pairs_from_list(A1_classII_III, pairs)[0]
 external_pairs = Promat.extract_pairs_from_list(A1_external, pairs)[0]
 
-sens_pairs = pd.concat([proprio_pairs, chord_pairs, noci_pairs, somato_pairs, external_pairs])
+sens_pairs = pd.concat([proprio_pairs, chord_pairs, noci_pairs, classII_III_pairs, external_pairs])
 sens_pairs.index = range(0, len(sens_pairs))
 
 # sensory modalities generally
@@ -479,25 +479,13 @@ sens_paths = VNC_layers
 ascending_layers,ascending_skids = VNC_adj.layer_id(sens_paths, general_names, A1_ascending)
 sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids.T, general_names, ascending_pairs.leftid, include_start=True)
 
-''' # individual sensory pairs
-sens_paths = []
-for index in tqdm(range(0, len(sens_pairs))):
-    ds_sens = VNC_adj.downstream_multihop(list(sens_pairs.loc[index]), threshold, min_members = 4, hops = 8, exclude = all_source)
-    sens_paths.append(ds_sens)
+# hops from each modality
+sens_asc_mat.T
 
-ascending_layers,ascending_skids = VNC_adj.layer_id(sens_paths, sens_pairs.leftid, A1_ascending)
-sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids, sens_pairs.leftid, ascending_pairs.leftid)
-'''
+# %%
+#UpSet of ascendings based on first two hops from each sensory modality
 
-'''
-sens_asc_mat_list = []
-sens_asc_mat_plotting_list = []
-for sens_pairs_type in sens_pairs:
-    _,ascending_skids = VNC_adj.layer_id(sens_paths, sens_pairs_type.leftid, A1_ascending)
-    sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids, sens_pairs_type.leftid, ascending_pairs.leftid)
-    sens_asc_mat_list.append(sens_asc_mat)
-    sens_asc_mat_plotting_list.append(sens_asc_mat_plotting)
-'''
+
 # %%
 # pathways downstream of each dVNC pair
 # with detailed VNC layering types
@@ -633,26 +621,57 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths.
 
 # %%
 # pathways downstream of each dVNC pair
-# simple VNC layering
 
+# set up sensory categories to test against dVNC pathways
+# excluded motorneurons from these categories
+proprio_1o = list(np.setdiff1d(ds_proprio[0], A1_MN))
+proprio_2o = list(np.setdiff1d(ds_proprio[1], A1_MN))
+somato_1o = list(np.setdiff1d(ds_classII_III[0] + ds_chord[0] + ds_noci[0] + ds_external[0], A1_MN))
+somato_2o = list(np.setdiff1d(ds_classII_III[1] + ds_chord[1] + ds_noci[1] + ds_external[1], A1_MN))
+sens_12o = np.unique(proprio_1o + proprio_2o + somato_1o + somato_2o)
+sens_1o = np.unique(proprio_1o + somato_1o)
+sens_2o = np.unique(proprio_2o + somato_2o)
+
+# check overlap between these sensory categories (just for curiosity)
+A1_ct = Celltype('A1_all', A1)
+proprio_1o_ct = Celltype('Proprio 1o', proprio_1o)
+proprio_2o_ct = Celltype('Proprio 2o', proprio_2o)
+somato_1o_ct = Celltype('Somato 1o', somato_1o)
+somato_2o_ct = Celltype('Somato 2o', somato_2o)
+sens_12o_ct = Celltype('All Sens 1o/2o', sens_12o)
+sens_1o_ct = Celltype('All Sens 1o', sens_1o)
+sens_2o_ct = Celltype('All Sens 2o', sens_2o)
+
+cta = Celltype_Analyzer([A1_ct, sens_12o_ct, sens_1o_ct, sens_2o_ct, proprio_1o_ct, proprio_2o_ct, somato_1o_ct, somato_2o_ct])
+sns.heatmap(cta.compare_membership(), annot=True)
+
+#VNC_sens_type = list(np.setdiff1d(VNC_types_index[(VNC_types_index['pre-MN'] == False)].index, A1_MN))
+#VNC_sens_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_sens_type)
+
+# identifying different cell types in dVNC pathways
 all_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_adj.adj.index) # include all neurons to get total number of neurons per layer
 motor_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A1_MN)
 ascending_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A1_ascending) 
 goro_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, gorogoro)
 basins_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, basins)
 A00c_simple_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, A00c) # no contact
+proprio_1o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, proprio_1o)
+proprio_2o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, proprio_2o)
+somato_1o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, somato_1o)
+somato_2o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, somato_2o)
 
-VNC_sens_type = list(np.setdiff1d(VNC_types_index[(VNC_types_index['pre-MN'] == False)].index, A1_MN))
-VNC_sens_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, VNC_sens_type)
 
 order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14, 17, 18]
 all_simple_layers = all_simple_layers.iloc[order, :]
 motor_simple_layers = motor_simple_layers.iloc[order, :]
 ascending_simple_layers = ascending_simple_layers.iloc[order, :]
-VNC_sens_layers = VNC_sens_layers.iloc[order, :]
+proprio_1o_layers = proprio_1o_layers.iloc[order, :]
+proprio_2o_layers = proprio_2o_layers.iloc[order, :]
+somato_1o_layers = somato_1o_layers.iloc[order, :]
+somato_2o_layers = somato_2o_layers.iloc[order, :]
 
 fig, axs = plt.subplots(
-    1, 4, figsize=(4, 2.25)
+    1, 7, figsize=(7, 2.25)
 )
 
 ax = axs[0]
@@ -680,12 +699,36 @@ ax.set_ylabel('')
 ax.set(title='Ascendings')
 
 ax = axs[3]
-annotations = VNC_sens_layers.astype(int).astype(str)
+annotations = proprio_1o_layers.astype(int).astype(str)
 annotations[annotations=='0']=''
-sns.heatmap(VNC_sens_layers, annot = annotations, fmt = 's', cmap = 'Purples', ax = ax, vmax = 20, cbar = False)
+sns.heatmap(proprio_1o_layers, annot = annotations, fmt = 's', cmap = 'Purples', ax = ax, vmax = 50, cbar = False)
 ax.set_yticks([])
 ax.set_ylabel('')
-ax.set(title='A1 Sensory Interneurons')
+ax.set(title='Proprio 1o')
+
+ax = axs[4]
+annotations = proprio_2o_layers.astype(int).astype(str)
+annotations[annotations=='0']=''
+sns.heatmap(proprio_2o_layers, annot = annotations, fmt = 's', cmap = 'Purples', ax = ax, vmax = 50, cbar = False)
+ax.set_yticks([])
+ax.set_ylabel('')
+ax.set(title='Proprio 2o')
+
+ax = axs[5]
+annotations = somato_1o_layers.astype(int).astype(str)
+annotations[annotations=='0']=''
+sns.heatmap(somato_1o_layers, annot = annotations, fmt = 's', cmap = 'GnBu', ax = ax, vmax = 50, cbar = False)
+ax.set_yticks([])
+ax.set_ylabel('')
+ax.set(title='Somato 1o')
+
+ax = axs[6]
+annotations = somato_2o_layers.astype(int).astype(str)
+annotations[annotations=='0']=''
+sns.heatmap(somato_2o_layers, annot = annotations, fmt = 's', cmap = 'GnBu', ax = ax, vmax = 50, cbar = False)
+ax.set_yticks([])
+ax.set_ylabel('')
+ax.set(title='Somato 2o')
 
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths_simple.pdf', bbox_inches='tight')
 
@@ -694,8 +737,9 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_dVNC_paths_
 
 # split plot types by dVNC pair
 dVNC_pairs = all_simple_layers.index
-layer_types = [all_simple_layers, motor_simple_layers, ascending_simple_layers, VNC_sens_layers]
-col = ['Greens', 'Reds', 'Blues', 'Purples']
+layer_types = [all_simple_layers, motor_simple_layers, ascending_simple_layers, proprio_1o_layers, proprio_2o_layers, 
+                somato_1o_layers, somato_2o_layers, goro_simple_layers, basins_simple_layers, A00c_simple_layers]
+col = ['Greens', 'Reds', 'Blues', 'Purples', 'Purples', 'GnBu', 'GnBu', 'Reds', 'Purples', 'Blues']
 
 dVNC_list = []
 for pair in dVNC_pairs:
@@ -708,7 +752,7 @@ for pair in dVNC_pairs:
 # loop through pairs to plot
 for i, dVNC in enumerate(dVNC_list):
 
-    data = pd.DataFrame(dVNC, index = ['All', 'Motor', 'Ascend', 'Sens IN'])
+    data = pd.DataFrame(dVNC, index = ['All', 'Motor', 'Ascend', 'Proprio-1', 'Proprio-2', 'Somato-1', 'Somato-2', 'Gorogoro', 'Basins', 'A00c'])
     mask_list = []
     for i_iter in range(0, len(data.index)):
         mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
@@ -716,56 +760,23 @@ for i, dVNC in enumerate(dVNC_list):
         mask_list.append(mask)
 
     fig, axs = plt.subplots(
-        1, 1, figsize=(.9, .5)
+        1, 1, figsize=(.8, 1.5)
     )
     for j, mask in enumerate(mask_list):
-        if((j == 0) | (j == 1)):
+        if((j in [0,1])):
             vmax = 60
-        if((j == 2) | (j == 3)):
+        if((j in [2])):
             vmax = 20
+        if((j in [3, 4, 5, 6])):
+            vmax = 40
+        if((j in [7, 8, 9])):
+            vmax = 10
         ax = axs
         annotations = data.astype(int).astype(str)
         annotations[annotations=='0']=''
         sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
 
     plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
-
-
-layer_types = [all_simple_layers, goro_simple_layers, basins_simple_layers, A00c_simple_layers]
-col = ['Greens', 'Reds', 'Blues', 'Purples']
-dVNC_list = []
-for pair in dVNC_pairs:
-    mat = np.zeros(shape=(len(layer_types), len(all_simple_layers.columns)))
-    for i, layer_type in enumerate(layer_types):
-        mat[i, :] = layer_type.loc[pair]
-
-    dVNC_list.append(mat)
-
-# loop through pairs to plot
-for i, dVNC in enumerate(dVNC_list):
-
-    data = pd.DataFrame(dVNC, index = ['All', 'goro', 'basins', 'A00c'])
-    mask_list = []
-    for i_iter in range(0, len(data.index)):
-        mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
-        mask[i_iter, :] = [False]*len(data.columns)
-        mask_list.append(mask)
-
-    fig, axs = plt.subplots(
-        1, 1, figsize=(.9, .5)
-    )
-    for j, mask in enumerate(mask_list):
-        if((j == 0) | (j == 1)):
-            vmax = 60
-        if((j == 2) | (j == 3)):
-            vmax = 20
-        ax = axs
-        annotations = data.astype(int).astype(str)
-        annotations[annotations=='0']=''
-        sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
-
-    plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/_particular_neurons_{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
-
 
 # %%
 # export different neuron types at each VNC layer
