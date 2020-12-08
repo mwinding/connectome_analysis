@@ -38,21 +38,23 @@ def plot_pair(num, neurons, cns, neuropil, segments, view):
         for segment in segments:
             pymaid.plot2d(segment, method='3d_complex', ax=ax)
         plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{neurons[0].skeleton_id}_morphology_side.pdf')
+        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{num}_{neurons[0].skeleton_id}_morphology_side.pdf')
 
     if(view == 'front'):
         fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = 'grey', linewidth=1.5, connectors=True)
         ax.azim = 90
         ax.dist = 2.5 # zoom
-        for segment in segments:
-            pymaid.plot2d(segment, method='3d_complex', ax=ax)
+        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
         plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{neurons[0].skeleton_id}_morphology_front.pdf')
+        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{num}_{neurons[0].skeleton_id}_morphology_front.pdf')
     
     if(view == 'top'):
         fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = 'grey', linewidth=1.5, connectors=True)
         ax.elev=90
         ax.dist = 5 # zoom
+        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        for segment in segments:
+            pymaid.plot2d(segment, method='3d_complex', ax=ax)
         plt.show()
         fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{num}_{neurons[0].skeleton_id}_morphology_top.pdf')
 
@@ -109,11 +111,11 @@ segments = [T1_left, T1_right,
             A3_left, A3_right]
 
 from tqdm import tqdm
-
+'''
 for i in tqdm(range(0, len(asc_pairs))):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'side')
-
+'''
 for i in tqdm(range(0, len(asc_pairs))):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'front')
