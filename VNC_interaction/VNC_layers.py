@@ -56,9 +56,9 @@ threshold = 0.01
 ######
 
 # manual add neuron groups of interest here and names
-names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-ClassII/III', 'ds-ES']
-general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'ClassII/III', 'ES']
-all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_somato + A1_external
+names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-ClassII_III', 'ds-ES']
+general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'ClassII_III', 'ES']
+all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_classII_III + A1_external
 min_members = 4
 
 # manually determine upstream or downstream relation
@@ -70,7 +70,7 @@ ds_classII_III = VNC_adj.downstream_multihop(A1_classII_III, threshold, min_memb
 ds_external = VNC_adj.downstream_multihop(A1_external, threshold, min_members=min_members, exclude = all_source)
 
 VNC_layers = [us_A1_MN, ds_proprio, ds_classII_III, ds_chord, ds_noci, ds_external]
-cat_order = ['pre-MN', 'Proprio', 'Somato', 'Chord', 'Noci', 'ES']
+cat_order = ['pre-MN', 'Proprio', 'ClassII_III', 'Chord', 'Noci', 'ES']
 
 ########
 ########
@@ -446,9 +446,12 @@ for layer_type in A00c_layers.T.columns:
 # %%
 # identities of ascending neurons
 # further develop this to identify next hit on "unknown" ascendings
+
 from itertools import compress
 from tqdm import tqdm
 
+# ascending identities using 2 hops from sensory/motorneurons
+# no difference between 1st-order and 2nd-order
 ascending_pairs = Promat.extract_pairs_from_list(A1_ascending, pairs)[0]
 VNC_types_df = VNC_types_df.reorder_levels(general_names)
 ascending_types = [VNC_types_df.index[VNC_types_df==x] for x in ascending_pairs.leftid]
@@ -474,6 +477,8 @@ external_pairs = Promat.extract_pairs_from_list(A1_external, pairs)[0]
 sens_pairs = pd.concat([proprio_pairs, chord_pairs, noci_pairs, classII_III_pairs, external_pairs])
 sens_pairs.index = range(0, len(sens_pairs))
 
+# determining hops from each sensory modality for each ascending neuron (using all hops)
+
 # sensory modalities generally
 sens_paths = VNC_layers
 ascending_layers,ascending_skids = VNC_adj.layer_id(sens_paths, general_names, A1_ascending)
@@ -482,9 +487,111 @@ sens_asc_mat, sens_asc_mat_plotting = VNC_adj.hop_matrix(ascending_skids.T, gene
 # hops from each modality
 sens_asc_mat.T
 
-# %%
-#UpSet of ascendings based on first two hops from each sensory modality
+# hops from each modality, threshold = 2
+hops = 2
 
+sens_asc_mat_thresh = sens_asc_mat.T.copy()
+sens_asc_mat_thresh[sens_asc_mat_thresh>hops]=0
+sens_asc_mat_thresh
+
+# sorting ascendings by type
+proprio_order1 = list(sens_asc_mat_thresh.index[sens_asc_mat_thresh.Proprio==1])
+chord_order1_2 = list(sens_asc_mat_thresh.index[sens_asc_mat_thresh.Chord==1]) + list(sens_asc_mat_thresh.index[(sens_asc_mat_thresh.Chord==2) & (sens_asc_mat_thresh.Noci==0)])
+classII_III_order1 = list(sens_asc_mat_thresh.index[sens_asc_mat_thresh.ClassII_III==1])
+noci_order2 = list(sens_asc_mat_thresh.index[sens_asc_mat_thresh.Noci==2])
+unknown = list(sens_asc_mat_thresh.index[(sens_asc_mat_thresh!=0).sum(axis=1)==0])
+
+# manual reordering based on secondary sensory partners
+proprio_order1 = [proprio_order1[i] for i in [1,2,0]]
+chord_order1_2 = [chord_order1_2[i] for i in [1,2,0,5,3,4]]
+noci_order2 = [noci_order2[i] for i in [3,1,2,0]]
+unknown = [unknown[i] for i in [2, 0, 1, 3, 4, 5]]
+
+sens_asc_order = proprio_order1 + chord_order1_2 + classII_III_order1 + noci_order2 + unknown
+annotations = sens_asc_mat.loc[:, sens_asc_order].astype(int).astype(str)
+annotations[annotations=='0']=''
+
+fig, ax = plt.subplots(1,1,figsize=(1.75,1))
+sens_asc_mat_plotting_2 = sens_asc_mat_plotting.copy()
+sens_asc_mat_plotting_2 = sens_asc_mat_plotting_2.loc[:, sens_asc_order]
+sens_asc_mat_plotting_2[sens_asc_mat_plotting_2<7] = 0
+sens_asc_mat_plotting_2[sens_asc_mat_plotting_2.loc[:, proprio_order1]<8] = 0
+sns.heatmap(sens_asc_mat_plotting_2, annot=annotations, fmt = 's', cmap = 'Blues', ax=ax, cbar = False)
+plt.xticks(range(len(sens_asc_mat_plotting_2.columns)), sens_asc_mat_plotting_2.columns, ha='left')
+plt.setp(ax.get_xticklabels(), Fontsize=4);
+ax.tick_params(left=False, bottom=False, length=0)
+plt.savefig(f'VNC_interaction/plots/individual_asc_paths/Supplemental_ascending_identity_matrix.pdf', bbox_inches='tight')
+
+# export raw data using ascending type sorting
+sens_asc_mat_thresh.T.loc[:, sens_asc_order].to_csv(f'VNC_interaction/plots/individual_asc_paths/ascending_identity_{hops}-hops.csv')
+sens_asc_mat.loc[:, sens_asc_order].to_csv(f'VNC_interaction/plots/individual_asc_paths/ascending_identity_all-hops.csv')
+
+# %%
+#UpSet based on first two hops from each sensory modality
+#doesn't do it based on a pairwise measure?
+#**** probably needs more work****
+
+hops_included = 2
+
+celltypes_2o = []
+for ct_i, celltype in enumerate(VNC_layers_nostart):
+    ct = [Celltype(f'{names[ct_i]}-{i+1}', layer) for i, layer in enumerate(celltype) if i<2]
+    celltypes_2o = celltypes_2o + ct
+
+celltypes_2o_layers = [x.get_skids() for x in celltypes_2o]
+celltypes_2o_names = [x.name for x in celltypes_2o]
+data = [x for cell_type in celltypes_2o_layers for x in cell_type]
+data = np.unique(data)
+
+cats_2o = []
+for skid in data:
+    cat = []
+    for i, layer in enumerate(celltypes_2o_layers):
+        if(skid in layer):
+            cat = cat + [celltypes_2o_names[i]]
+
+    cats_2o.append(cat)
+
+celltypes_2o_df = from_memberships(cats_2o, data = data)
+
+counts = []
+for celltype in np.unique(cats_2o):
+    count = 0
+    for cat in cats_2o:
+        if(celltype == cat):
+            count += 1
+
+    counts.append(count)
+
+upset_2o = from_memberships(np.unique(cats_2o), data = counts)
+plot(upset_2o, sort_categories_by = None)
+#plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_ascendings_signal_type.pdf', bbox_inches='tight')
+
+# UpSet based on first two hops, ascendings only
+data = A1_ascending
+
+cats_2o_asc = []
+for skid in data:
+    cat = []
+    for i, layer in enumerate(celltypes_2o_layers):
+        if(skid in layer):
+            cat = cat + [celltypes_2o_names[i]]
+
+    cats_2o_asc.append(cat)
+
+celltypes_2o_asc_df = from_memberships(cats_2o_asc, data = data)
+
+counts = []
+for celltype in np.unique(cats_2o_asc):
+    count = 0
+    for cat in cats_2o:
+        if(celltype == cat):
+            count += 1
+
+    counts.append(count)
+
+upset_2o_asc = from_memberships(np.unique(cats_2o_asc), data = counts)
+plot(upset_2o_asc, sort_categories_by = None)
 
 # %%
 # pathways downstream of each dVNC pair
