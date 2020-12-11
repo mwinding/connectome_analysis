@@ -26,46 +26,7 @@ pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # i
 
 sens_asc_mat_thresh = pd.read_csv('VNC_interaction/plots/individual_asc_paths/ascending_identity_2-hops.csv', header=0, index_col=0)
 
-# %%
-# plotting neurons
-
-def plot_pair(num, neurons, cns, neuropil, segments, view):
-    if(view == 'side'):
-        fig, ax = pymaid.plot2d([neurons, cns], method='3d_complex', color = 'grey', linewidth=1.5, connectors=True)
-        ax.azim=0
-        ax.dist = 5 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
-        for segment in segments:
-            pymaid.plot2d(segment, method='3d_complex', ax=ax)
-        plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{num}_{neurons[0].skeleton_id}_morphology_side.png', dpi=200)
-
-    if(view == 'front'):
-        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = 'grey', linewidth=1.5, connectors=True)
-        ax.azim = 90
-        ax.dist = 2.5 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
-        plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_paths/{num}_{neurons[0].skeleton_id}_morphology_front.png', dpi=200)
-    
-    if(view == 'top'):
-        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = 'grey', linewidth=1.5, connectors=True)
-        ax.elev=90
-        ax.dist = 5 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
-        for segment in segments:
-            pymaid.plot2d(segment, method='3d_complex', ax=ax)
-        plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_top.png', dpi=200)
-
-
-ascendings = [int(x) for x in sens_asc_mat_thresh.columns]
-asc_pairs = [pairs[pairs.leftid==x].loc[:, ['leftid', 'rightid']].values for x in ascendings]
-asc_pairs = [list(x) for sublist in asc_pairs for x in sublist]
-
-#neuron_left = pymaid.get_neurons(asc_pairs[0][0])
-#neuron_right = pymaid.get_neurons(asc_pairs[0][1])
-
+# setting up volumes for future cells
 cns = pymaid.get_volume('cns')
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 T1_left = pymaid.get_volume('T1_left')
@@ -80,35 +41,104 @@ A2_left = pymaid.get_volume('A2_left')
 A2_right = pymaid.get_volume('A2_right')
 A3_left = pymaid.get_volume('A3_left')
 A3_right = pymaid.get_volume('A3_right')
+A4_left = pymaid.get_volume('A4_left')
+A4_right = pymaid.get_volume('A4_right')
+A5_left = pymaid.get_volume('A5_left')
+A5_right = pymaid.get_volume('A5_right')
+A6_left = pymaid.get_volume('A6_left')
+A6_right = pymaid.get_volume('A6_right')
+A7_left = pymaid.get_volume('A7_left')
+A7_right = pymaid.get_volume('A7_right')
+A8_left = pymaid.get_volume('A8_left')
+A8_right = pymaid.get_volume('A8_right')
+
+mult = 0.8
 
 # Set color and alpha of volumes
 cns.color = (250, 250, 250, .05)
-neuropil.color = (250, 250, 250, .1)
+neuropil.color = (250, 250, 250, .06)
 
-T1_left.color = (0, 50, 250, .025)
-T1_right.color = (0, 50, 250, .025)
+T1_left.color = (0, 0, 250, .03*mult)
+T1_right.color = (0, 0, 250, .03*mult)
 
-T2_left.color = (0, 150, 250, .05)
-T2_right.color = (0, 150, 250, .05)
+T2_left.color = (0, 250, 250, .075*mult)
+T2_right.color = (0, 250, 250, .075*mult)
 
-T3_left.color = (0, 250, 250, .075)
-T3_right.color = (0, 250, 250, .075)
+T3_left.color = (0, 250, 250, .04*mult)
+T3_right.color = (0, 250, 250, .04*mult)
 
-A1_left.color = (0, 250, 0, .075)
-A1_right.color = (0, 250, 0, .075)
+A1_left.color = (0, 250, 0, .075*mult)
+A1_right.color = (0, 250, 0, .075*mult)
 
-A2_left.color = (200, 100, 0, .05)
-A2_right.color = (200, 100, 0, .05)
+A2_left.color = (0, 250, 0, .04*mult)
+A2_right.color = (0, 250, 0, .04*mult)
 
-A3_left.color = (250, 50, 0, .025)
-A3_right.color = (250, 50, 0, .025)
+A3_left.color = (250, 250, 0, .08*mult)
+A3_right.color = (250, 250, 0, .08*mult)
+
+A4_left.color = (250, 250, 0, .04*mult)
+A4_right.color = (250, 250, 0, .04*mult)
+
+A5_left.color = (250, 0, 0, .06*mult)
+A5_right.color = (250, 0, 0, .06*mult)
+
+A6_left.color = (250, 0, 0, .03*mult)
+A6_right.color = (250, 0, 0, .03*mult)
+
+A7_left.color = (250, 0, 150, .05*mult)
+A7_right.color = (250, 0, 150, .05*mult)
+
+A8_left.color = (250, 0, 150, .025*mult)
+A8_right.color = (250, 0, 150, .025*mult)
+
+# %%
+# plotting neurons
+
+def plot_pair(num, neurons, cns, neuropil, segments, view):
+    if(view == 'side'):
+        fig, ax = pymaid.plot2d([neurons, cns], method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
+        ax.azim=0
+        ax.dist = 5.2 # zoom
+        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        for segment in segments:
+            pymaid.plot2d(segment, method='3d_complex', ax=ax)
+        plt.show()
+        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_side.png', dpi=200)
+
+    if(view == 'front'):
+        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
+        ax.azim = 90
+        ax.dist = 2.5 # zoom
+        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        plt.show()
+        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_front.png', dpi=200)
+    
+    if(view == 'top'):
+        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
+        ax.elev=90
+        ax.dist = 5.2 # zoom
+        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        for segment in segments:
+            pymaid.plot2d(segment, method='3d_complex', ax=ax)
+        plt.show()
+        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_top.png', dpi=200)
+
+
+ascendings = [int(x) for x in sens_asc_mat_thresh.columns]
+asc_pairs = [pairs[pairs.leftid==x].loc[:, ['leftid', 'rightid']].values for x in ascendings]
+asc_pairs = [list(x) for sublist in asc_pairs for x in sublist]
 
 segments = [T1_left, T1_right,
             T2_left, T2_right,
             T3_left, T3_right,
             A1_left, A1_right,
             A2_left, A2_right,
-            A3_left, A3_right]
+            A3_left, A3_right,
+            A4_left, A4_right,
+            A5_left, A5_right,
+            A6_left, A6_right,
+            A7_left, A7_right,
+            A8_left, A8_right]
 
 #neurons = pymaid.get_neurons(asc_pairs[0])
 #plot_pair(0, neurons, cns, neuropil, segments, 'side')
@@ -116,7 +146,7 @@ segments = [T1_left, T1_right,
 for i in range(0, len(asc_pairs)):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'side')
-
+    
 for i in range(0, len(asc_pairs)):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'front')
@@ -130,16 +160,6 @@ for i in range(0, len(asc_pairs)):
 
 SEZ_left = pymaid.get_volume('SEZ_left')
 SEZ_right = pymaid.get_volume('SEZ_right')
-A4_left = pymaid.get_volume('A4_left')
-A4_right = pymaid.get_volume('A4_right')
-A5_left = pymaid.get_volume('A5_left')
-A5_right = pymaid.get_volume('A5_right')
-A6_left = pymaid.get_volume('A6_left')
-A6_right = pymaid.get_volume('A6_right')
-A7_left = pymaid.get_volume('A7_left')
-A7_right = pymaid.get_volume('A7_right')
-A8_left = pymaid.get_volume('A8_left')
-A8_right = pymaid.get_volume('A8_right')
 
 # calculate edges of each segment
 def volume_edges(vol_left, vol_right):
@@ -171,12 +191,13 @@ A4_A5 = np.mean([A4_max, A5_min])
 A5_A6 = np.mean([A5_max, A6_min])
 A6_A7 = np.mean([A6_max, A7_min])
 A7_A8 = np.mean([A7_max, A8_min])
-end_A8_neuropil = neuropil.bbox[2,1]
+neuropil_max = neuropil.bbox[2,1]
+neuropil_min = neuropil.bbox[2,0]
 
-boundary_z = [SEZ_min, SEZ_T1, T1_T2, T2_T3,
+boundary_z = [neuropil_min, SEZ_T1, T1_T2, T2_T3,
                 T3_A1, A1_A2, A2_A3,
                 A3_A4, A4_A5, A5_A6,
-                A6_A7, A7_A8, end_A8_neuropil]
+                A6_A7, A7_A8, neuropil_max]
 
 def plot_pair_split(num, neurons, min_z, max_z, bin_num, draw_boundaries):
     cut1 = pymaid.cut_neuron(neurons[0], 'mw axon split')
@@ -214,5 +235,6 @@ asc_pairs = [pairs[pairs.leftid==x].loc[:, ['leftid', 'rightid']].values for x i
 for i, pair in enumerate(asc_pairs):
     neurons = pymaid.get_neurons(pair)
     plot_pair_split(i, neurons, min_z = cns.bbox[2,0], max_z = cns.bbox[2,1], bin_num = 50, draw_boundaries = boundary_z)
-    
+
+
 # %%
