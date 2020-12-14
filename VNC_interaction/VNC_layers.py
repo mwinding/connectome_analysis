@@ -56,8 +56,8 @@ threshold = 0.01
 ######
 
 # manual add neuron groups of interest here and names
-names = ['us-MN', 'ds-Proprio', 'ds-Chord', 'ds-Noci', 'ds-ClassII_III', 'ds-ES']
-general_names = ['pre-MN', 'Proprio', 'Chord', 'Noci', 'ClassII_III', 'ES']
+names = ['us-MN', 'ds-Proprio', 'ds-Noci', 'ds-Chord', 'ds-ClassII_III', 'ds-ES']
+general_names = ['pre-MN', 'Proprio', 'Noci', 'Chord', 'ClassII_III', 'ES']
 all_source = A1_MN + A1_proprio + A1_chordotonal + A1_noci + A1_classII_III + A1_external
 min_members = 4
 
@@ -69,8 +69,8 @@ ds_noci = VNC_adj.downstream_multihop(A1_noci, threshold, min_members=min_member
 ds_classII_III = VNC_adj.downstream_multihop(A1_classII_III, threshold, min_members=min_members, exclude = all_source)
 ds_external = VNC_adj.downstream_multihop(A1_external, threshold, min_members=min_members, exclude = all_source)
 
-VNC_layers = [us_A1_MN, ds_proprio, ds_classII_III, ds_chord, ds_noci, ds_external]
-cat_order = ['pre-MN', 'Proprio', 'ClassII_III', 'Chord', 'Noci', 'ES']
+VNC_layers = [us_A1_MN, ds_proprio, ds_noci, ds_chord, ds_classII_III, ds_external]
+cat_order = ['pre-MN', 'Proprio', 'Noci', 'Chord', 'ClassII_III', 'ES']
 
 ########
 ########
@@ -94,7 +94,7 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_similarity_between_VNC
 
 # %%
 # number of VNC neurons per layer
-VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_chordotonal] + ds_chord, [A1_noci] + ds_noci, [A1_classII_III] + ds_classII_III, [A1_external] + ds_external]
+VNC_layers = [[A1_MN] + us_A1_MN, [A1_proprio] + ds_proprio, [A1_noci] + ds_noci, [A1_chordotonal] + ds_chord, [A1_classII_III] + ds_classII_III, [A1_external] + ds_external]
 all_layers, all_layers_skids = VNC_adj.layer_id(VNC_layers, general_names, A1)
 
 fig, axs = plt.subplots(
@@ -220,7 +220,7 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_A1_structure.pdf', bbo
 plt.rcParams['font.size'] = 6
 
 # %%
-# upset plot of VNC types (MN, Proprio, Somato) with certain number of hops (hops_included)
+# upset plot of VNC types (MN, Proprio, etc.) with certain number of hops (hops_included)
 
 from upsetplot import plot
 from upsetplot import from_contents
@@ -264,9 +264,14 @@ for celltype in VNC_layers:
     coverage = coverage + celltype_list
 coverage = np.unique(coverage)
 
-# order categories
-upset = from_memberships(np.unique(cats_simple), data = counts)
-upset.index = upset.index.reorder_levels(cat_order)
+# threhold small categories (<=4 neurons) to simplify the plot
+upset_thres = [x>4 for x in counts]
+cats_simple_cut = [x for i, x in enumerate(np.unique(cats_simple)) if upset_thres[i]]
+counts_cut = [x for i, x in enumerate(counts) if upset_thres[i]]
+
+# set up the data variable
+upset = from_memberships(np.unique(cats_simple_cut), data = counts_cut)
+upset.index = upset.index.reorder_levels(cat_order) # order categories
 
 plot(upset, sort_categories_by = None)
 plt.title(f'{len(np.intersect1d(A1, coverage))/len(A1)*100:.2f}% of A1 neurons covered')
@@ -409,6 +414,7 @@ for layer_type in ds_dVNC_layers.T.columns:
 
 # %%
 # locations of basins/goro/A00c
+# not working in this version of the script for some reason
 
 # basin locations
 upset_types_layers = []
@@ -474,7 +480,7 @@ noci_pairs = Promat.extract_pairs_from_list(A1_noci, pairs)[0]
 classII_III_pairs = Promat.extract_pairs_from_list(A1_classII_III, pairs)[0]
 external_pairs = Promat.extract_pairs_from_list(A1_external, pairs)[0]
 
-sens_pairs = pd.concat([proprio_pairs, chord_pairs, noci_pairs, classII_III_pairs, external_pairs])
+sens_pairs = pd.concat([proprio_pairs, noci_pairs, chord_pairs, classII_III_pairs, external_pairs])
 sens_pairs.index = range(0, len(sens_pairs))
 
 # determining hops from each sensory modality for each ascending neuron (using all hops)
@@ -767,15 +773,21 @@ proprio_2o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, pro
 somato_1o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, somato_1o)
 somato_2o_layers,_ = VNC_adj.layer_id(pair_paths, source_dVNC_pairs.leftid, somato_2o)
 
+# order manually identified for figure
+dVNC_order = [15639294, 18305433, 10553248, 10728328, # type-1: only to MN
+                19361427, 11013583, 19298644, 5690425, 6446394, # type-2: immediately to ascending
+                17777031, 10609443,                             # type-3: ascending on the way to MN
+                20556072, 10728333, 19298625, 10018150,          # type-4: ascending after MN
+                3979181,                                        # other: gorogoro first order
+                7227010, 16851496, 17053270]                    # supplemental: terminates in A1
 
-order = [16, 0, 2, 11, 1, 5, 7, 12, 13, 8, 3, 9, 10, 15, 4, 6, 14, 17, 18]
-all_simple_layers = all_simple_layers.iloc[order, :]
-motor_simple_layers = motor_simple_layers.iloc[order, :]
-ascending_simple_layers = ascending_simple_layers.iloc[order, :]
-proprio_1o_layers = proprio_1o_layers.iloc[order, :]
-proprio_2o_layers = proprio_2o_layers.iloc[order, :]
-somato_1o_layers = somato_1o_layers.iloc[order, :]
-somato_2o_layers = somato_2o_layers.iloc[order, :]
+all_simple_layers = all_simple_layers.loc[dVNC_order, :]
+motor_simple_layers = motor_simple_layers.loc[dVNC_order, :]
+ascending_simple_layers = ascending_simple_layers.loc[dVNC_order, :]
+proprio_1o_layers = proprio_1o_layers.loc[dVNC_order, :]
+proprio_2o_layers = proprio_2o_layers.loc[dVNC_order, :]
+somato_1o_layers = somato_1o_layers.loc[dVNC_order, :]
+somato_2o_layers = somato_2o_layers.loc[dVNC_order, :]
 
 fig, axs = plt.subplots(
     1, 7, figsize=(7, 2.25)
@@ -867,7 +879,7 @@ for i, dVNC in enumerate(dVNC_list):
         mask_list.append(mask)
 
     fig, axs = plt.subplots(
-        1, 1, figsize=(.8, 1.5)
+        1, 1, figsize=(.8, 1.25)
     )
     for j, mask in enumerate(mask_list):
         if((j in [0,1])):
@@ -884,6 +896,79 @@ for i, dVNC in enumerate(dVNC_list):
         sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
 
     plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/{i}_dVNC-{dVNC_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+
+# %%
+# main figure summary of individual dVNC paths
+
+MN_exclusive= [15639294, 18305433, 10553248, 10728328]
+ascending1 = [19361427, 11013583, 19298644, 5690425, 6446394]
+ascending2 = [17777031, 10609443]
+ascending_postMN = [20556072, 10728333, 19298625, 10018150]
+dVNC_types_name = ['MN-exclusive', 'Ascending-1o', 'Ascending-2o', 'Ascending-postMN']
+
+dVNC_types = [MN_exclusive, ascending1, ascending2, ascending_postMN]
+dVNC_types = [[Promat.get_paired_skids(x, pairs) for x in sublist] for sublist in dVNC_types] # convert leftid's to both skids from each pair
+dVNC_types = [sum(x, []) for x in dVNC_types] # unlist nested lists
+
+# multihop downstream
+type_paths = []
+for index in tqdm(range(0, len(dVNC_types))):
+    ds_dVNC = VNC_adj.downstream_multihop(list(dVNC_types[index]), threshold, min_members = 0, hops=5)
+    type_paths.append(ds_dVNC)
+
+# identifying different cell types in dVNC pathways
+all_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, VNC_adj.adj.index) # include all neurons to get total number of neurons per layer
+motor_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, A1_MN)
+ascending_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, A1_ascending) 
+goro_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, gorogoro)
+basins_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, basins)
+A00c_simple_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, A00c) # no contact
+proprio_1o_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, proprio_1o)
+proprio_2o_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, proprio_2o)
+somato_1o_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, somato_1o)
+somato_2o_layers_type,_ = VNC_adj.layer_id(type_paths, dVNC_types_name, somato_2o)
+
+# split plot types by dVNC pair
+layer_types = [all_simple_layers_type, motor_simple_layers_type, ascending_simple_layers_type, proprio_1o_layers_type, proprio_2o_layers_type, 
+                somato_1o_layers_type, somato_2o_layers_type, goro_simple_layers_type, basins_simple_layers_type, A00c_simple_layers_type]
+col = ['Greens', 'Reds', 'Blues', 'Purples', 'Purples', 'GnBu', 'GnBu', 'Reds', 'Purples', 'Blues']
+
+dVNC_type_list = []
+for name in dVNC_types_name:
+    mat = np.zeros(shape=(len(layer_types), len(all_simple_layers.columns)))
+    for i, layer_type in enumerate(layer_types):
+        mat[i, :] = layer_type.loc[name]
+
+    dVNC_type_list.append(mat)
+
+# loop through pairs to plot
+for i, dVNC in enumerate(dVNC_type_list):
+
+    data = pd.DataFrame(dVNC, index = ['All', 'Motor', 'Ascend', 'Proprio-1', 'Proprio-2', 'Somato-1', 'Somato-2', 'Gorogoro', 'Basins', 'A00c'])
+    mask_list = []
+    for i_iter in range(0, len(data.index)):
+        mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+        mask[i_iter, :] = [False]*len(data.columns)
+        mask_list.append(mask)
+
+    fig, axs = plt.subplots(
+        1, 1, figsize=(.8, 1.25)
+    )
+    for j, mask in enumerate(mask_list):
+        if((j in [0,1])):
+            vmax = 60
+        if((j in [2])):
+            vmax = 20
+        if((j in [3, 4, 5, 6])):
+            vmax = 40
+        if((j in [7, 8, 9])):
+            vmax = 10
+        ax = axs
+        annotations = data.astype(int).astype(str)
+        annotations[annotations=='0']=''
+        sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
+
+    plt.savefig(f'VNC_interaction/plots/individual_dVNC_paths/Type_{i}_dVNC-{dVNC_types_name[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
 
 # %%
 # export different neuron types at each VNC layer
