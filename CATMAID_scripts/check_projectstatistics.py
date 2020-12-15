@@ -17,10 +17,10 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 
 # %%
 
-def timeTracing(user, interval, start_date):
+def timeTracing(user, interval, start_date, end_date=None):
     time_interval = pd.Timestamp(year=2020, month=1, day=1, hour=12, minute=interval) - pd.Timestamp(year=2020, month=1, day=1, hour=12, minute=0)
 
-    userstats = pymaid.get_user_actions(users=user, start_date=start_date)
+    userstats = pymaid.get_user_actions(users=user, start_date=start_date, end_date=end_date)
 
     time_chunks = []
     chunk = []
@@ -48,29 +48,29 @@ def timeTracing(user, interval, start_date):
 #ana = ['ana', 'andrey', 'marc']
 #ana_time = [timeTracing(user, 3, datetime.date(2020, 3, 27)) for user in users]
 # %%
-marc = timeTracing('marc', 3, datetime.date(2020, 6, 5))
+marc = timeTracing('marc', 3, datetime.date(2020, 11, 23))
 print(marc)
 # %%
-keira = timeTracing('keira', 3, datetime.date(2020, 6, 5))
+keira = timeTracing('keira', 3, datetime.date(2020, 11, 23))
 print(keira)
 # %%
-andy = timeTracing('andrey', 3, datetime.date(2020, 6, 5))
+andy = timeTracing('andrey', 3, datetime.date(2020, 11, 23))
 print(andy)
 # %%
-xinyu = timeTracing('xinyu', 3, datetime.date(2020, 6, 5))
+xinyu = timeTracing('xinyu', 3, datetime.date(2020, 11, 23))
 print(xinyu)
 # %%
-michael = timeTracing('michael', 3, datetime.date(2020, 6, 5))
+michael = timeTracing('michael', 3, datetime.date(2020, 12, 4), datetime.date(2020,12,15))
 print(michael)
 # %%
-nadine = timeTracing('nadine', 3, datetime.date(2020, 6, 5))
+nadine = timeTracing('nadine', 3, datetime.date(2020, 11, 23))
 print(nadine)
 # %%
-ana = timeTracing('ana', 3, datetime.date(2020, 6, 5))
+ana = timeTracing('ana', 3, datetime.date(2020, 11, 23))
 print(ana)
 
 # %%
-elizabeth = timeTracing('ebarsotti', 3, datetime.date(2020, 11, 20))
+elizabeth = timeTracing('ebarsotti', 3, datetime.date(2020, 12, 4), datetime.date(2020, 12, 15))
 print(elizabeth)
 # %%
 #correspondences = pd.DataFrame(data = correspondences, columns = ['old_name', 'new_name'])
