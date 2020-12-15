@@ -24,7 +24,7 @@ adj.columns = adj.columns.astype(int) #convert column names to int for easier in
 
 inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
 inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-09-22.csv', header = 0) # import pairs
+pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
 
 # %%
 from connectome_tools.process_matrix import Adjacency_matrix, Promat
@@ -35,6 +35,9 @@ pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC')
 A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
 A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+RGN = pymaid.get_skids_by_annotation('mw RGN')
+dVNC_to_A1 = pymaid.get_skids_by_annotation('mw dVNC to A1')
 br = pymaid.get_skids_by_annotation('mw brain neurons')
 
 A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
@@ -50,6 +53,7 @@ from tqdm import tqdm
 threshold = 0.01
 hops = 3
 
+A1_ascending = A1_ascending + Promat.get_paired_skids(2511238, pairs) # added A00c A4 as well
 A1_ascending_pairs = Promat.extract_pairs_from_list(A1_ascending, pairs)[0]
 
 ascending_pair_paths = []
@@ -57,10 +61,12 @@ for index in tqdm(range(0, len(A1_ascending_pairs))):
     ds_ascending = VNC_adj.downstream_multihop(list(A1_ascending_pairs.loc[index]), threshold, min_members = 0, hops=hops)
     ascending_pair_paths.append(ds_ascending)
 
+#A00c_path = VNC_adj.downstream_multihop(Promat.get_paired_skids(2511238, pairs), threshold, min_members=0, hops=hops) # added A00c A4 in (connectivity with A1 sensories/basins)
+#ascending_pair_paths.append(A00c_path)
+
 # %%
 # plotting ascending paths
 
-dVNC_to_A1 = pymaid.get_skids_by_annotation('mw dVNC to A1')
 all_type_layers,all_type_layers_skids = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, br)
 dVNC_A1_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, dVNC_to_A1)
 dVNC_type_layers,_ = VNC_adj.layer_id(ascending_pair_paths, A1_ascending_pairs.leftid, dVNC)
@@ -116,17 +122,21 @@ plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_individual_ascending_p
 
 # %%
 # plot by individual ascending
-plt.rcParams['font.size'] = 6
+plt.rcParams['font.size'] = 5
 
 # split plot types by ascending pair
-asc_pairs = all_type_layers.index
-#layer_types = [all_type_layers, dVNC_type_layers, dVNC_A1_type_layers, predVNC_type_layers]
-#col = ['Greens', 'Reds', 'Purples', 'Blues']
-layer_types = [all_type_layers, dVNC_type_layers, dSEZ_type_layers, RGN_type_layers]
-col = ['Greens', 'Reds', 'Purples', 'Oranges']
+
+asc_pairs_order = [21250110, 4206755, 4595609, 2511238, 8059283, # direct to dVNCs
+                3571478, 10929797, 3220616, 10949382, 8057753, 2123422, 4555763, 7766016] # indirect to dVNCs
+
+layer_types = [all_type_layers, dVNC_type_layers, dVNC_A1_type_layers, dSEZ_type_layers, RGN_type_layers]
+col = ['Greens', 'Reds', 'Oranges', 'Purples', 'GnBu']
+#asc_pairs = all_type_layers.index
+#layer_types = [all_type_layers, dVNC_type_layers, dSEZ_type_layers, RGN_type_layers]
+#col = ['Greens', 'Reds', 'Purples', 'Oranges']
 
 asc_list = []
-for pair in asc_pairs:
+for pair in asc_pairs_order:
     mat = np.zeros(shape=(len(layer_types), len(all_type_layers.columns)))
     for i, layer_type in enumerate(layer_types):
         mat[i, :] = layer_type.loc[pair]
@@ -136,8 +146,8 @@ for pair in asc_pairs:
 # loop through pairs to plot
 for i, asc in enumerate(asc_list):
 
-    #data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dVNC-A1', 'pre-dVNC'])
-    data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dSEZ', 'RGN']).iloc[:, 0:2]
+    data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dVNC-A1', 'dSEZ', 'RGN'])
+    #data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dSEZ', 'RGN']).iloc[:, 0:2]
     mask_list = []
     for i_iter in range(0, len(data.index)):
         mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
@@ -145,21 +155,93 @@ for i, asc in enumerate(asc_list):
         mask_list.append(mask)
 
     fig, axs = plt.subplots(
-        1, 1, figsize=(.4, .5)
+        1, 1, figsize=(.5, .6)
     )
     for j, mask in enumerate(mask_list):
         if((j == 0)):
-            vmax = 200
-        if(j == 3):
-            vmax = 8
-        if((j == 1) | (j == 2)):
-            vmax = 40
+            vmax = 500
+        if((j == 2)):
+            vmax = 30
+        if((j in [1,3,4])):
+            vmax = 60
         ax = axs
         annotations = data.astype(int).astype(str)
         annotations[annotations=='0']=''
         sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
 
-    plt.savefig(f'VNC_interaction/plots/individual_asc_paths/{i}_asc-{asc_pairs[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+    plt.savefig(f'VNC_interaction/plots/individual_asc_paths/{i}_asc-{asc_pairs_order[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+
+plt.rcParams['font.size'] = 6
+
+#%%
+# summary plots for main figure
+
+dVNC_direct = [21250110, 4206755, 4595609, 2511238, 8059283]
+dVNC_indirect = [3571478, 10929797, 3220616, 10949382, 8057753, 2123422, 4555763, 7766016]
+
+asc_types_name = ['dVNC-direct', 'dVNC-indirect']
+
+asc_types = [dVNC_direct, dVNC_indirect]
+asc_types = [[Promat.get_paired_skids(x, pairs) for x in sublist] for sublist in asc_types] # convert leftid's to both skids from each pair
+asc_types = [sum(x, []) for x in asc_types] # unlist nested lists
+
+# multihop downstream
+type_paths = []
+for index in tqdm(range(0, len(asc_types))):
+    ds_asc = VNC_adj.downstream_multihop(list(asc_types[index]), threshold, min_members = 0, hops=hops)
+    type_paths.append(ds_asc)
+
+#%%
+# summary plot continued
+
+# identifying different cell types in ascending pathways
+all_type_layers_types,all_type_layers_skids_types = VNC_adj.layer_id(type_paths, asc_types_name, br) # include all neurons to get total number of neurons per layer
+dVNC_type_layers_types,_ = VNC_adj.layer_id(type_paths, asc_types_name, dVNC) 
+dVNC_A1_type_layers_types,_ = VNC_adj.layer_id(type_paths, asc_types_name, dVNC_to_A1)
+dSEZ_type_layers_types,_ = VNC_adj.layer_id(type_paths, asc_types_name, dSEZ)
+RGN_type_layers_types,_ = VNC_adj.layer_id(type_paths, asc_types_name, RGN)
+
+# split plot types by dVNC pair
+layer_types_types = [all_type_layers_types, dVNC_type_layers_types, dVNC_A1_type_layers_types, dSEZ_type_layers_types, RGN_type_layers_types]
+col = ['Greens', 'Reds', 'Oranges', 'Purples', 'GnBu']
+
+asc_list_types = []
+for types in asc_types_name:
+    mat = np.zeros(shape=(len(layer_types_types), len(all_type_layers_types.columns)))
+    for i, layer_type in enumerate(layer_types_types):
+        mat[i, :] = layer_type.loc[types]
+
+    asc_list_types.append(mat)
+
+plt.rcParams['font.size'] = 5
+
+# loop through pairs to plot
+for i, asc in enumerate(asc_list_types):
+
+    data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dVNC-A1', 'dSEZ', 'RGN'])
+    #data = pd.DataFrame(asc, index = ['Total', 'dVNC', 'dSEZ', 'RGN']).iloc[:, 0:2]
+    mask_list = []
+    for i_iter in range(0, len(data.index)):
+        mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+        mask[i_iter, :] = [False]*len(data.columns)
+        mask_list.append(mask)
+
+    fig, axs = plt.subplots(
+        1, 1, figsize=(.5, .6)
+    )
+    for j, mask in enumerate(mask_list):
+        if((j == 0)):
+            vmax = 800
+        if((j in [2,4])):
+            vmax = 60
+        if((j in [1,3])):
+            vmax = 100
+        ax = axs
+        annotations = data.astype(int).astype(str)
+        annotations[annotations=='0']=''
+        sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
+
+    plt.savefig(f'VNC_interaction/plots/individual_asc_paths/Type_{i}_asc-{asc_types_name[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
 
 #%%
 # export ds-ascending brain neurons
