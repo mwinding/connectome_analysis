@@ -189,9 +189,9 @@ class Adjacency_matrix():
 
         return(us_neurons_skids, edges)
 
-    def downstream_multihop(self, source, threshold, min_members=0, hops=10, exclude = [], strict=False, use_edges=True):
+    def downstream_multihop(self, source, threshold, min_members=0, hops=10, exclude = [], strict=False):
         _, ds, edges = self.downstream(source, threshold, exclude=(source + exclude))
-        _, ds = self.edge_threshold(source, ds, threshold, direction='downstream', edges=edges, strict=strict, use_edges=use_edges)
+        _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict)
 
         before = source + ds
 
@@ -201,7 +201,7 @@ class Adjacency_matrix():
         for i in range(0,(hops-1)):
             source = ds
             _, ds, edges = self.downstream(source, threshold, exclude=before) 
-            _, ds = self.edge_threshold(source, ds, threshold, direction='downstream', edges=edges, strict=strict, use_edges=use_edges)
+            _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict)
 
             if((len(ds)!=0) & (len(ds)>=min_members)):
                 layers.append(ds)
@@ -209,9 +209,9 @@ class Adjacency_matrix():
 
         return(layers)
 
-    def upstream_multihop(self, source, threshold, min_members=10, hops=10, exclude=[], strict=False, use_edges=True):
+    def upstream_multihop(self, source, threshold, min_members=10, hops=10, exclude=[], strict=False):
         us, edges = self.upstream(source, threshold, exclude=(source+exclude))
-        _, us = self.edge_threshold(source, us, threshold, direction='upstream', edges=edges, strict=strict, use_edges=use_edges)
+        _, us = self.edge_threshold(edges, threshold, direction='upstream', strict=strict)
 
         before = source + us
 
@@ -221,7 +221,7 @@ class Adjacency_matrix():
         for i in range(0,(hops-1)):
             source = us
             us, edges = self.upstream(source, threshold, exclude = before)
-            _, us = self.edge_threshold(source, us, threshold, direction='upstream', edges=edges, strict=strict, use_edges=use_edges)
+            _, us = self.edge_threshold(edges, threshold, direction='upstream', strict=strict)
 
             if((len(us)!=0) & (len(us)>=min_members)):
                 layers.append(us)
@@ -230,111 +230,51 @@ class Adjacency_matrix():
         return(layers)
 
     # checking additional threshold criteria after identifying neurons over summed threshold
-    # can also just input all possible downstream neurons, but it will be slow
-    # still is super slow because it queries all edges between source and ds neurons, not just ones that passed last threshold
-    def edge_threshold(self, source_skids, partner_neurons_skids, threshold, direction, edges, strict=False, use_edges=True):
+    def edge_threshold(self, edges, threshold, direction, strict=False):
 
-        if(use_edges==False):
-            adj = self.adj_inter.copy()
+        adj = self.adj_inter.copy()
 
-            source_pair_id = np.unique([x[1] for x in adj.loc[(slice(None), slice(None), source_skids), :].index])
-            partner_pair_id = np.unique([x[1] for x in adj.loc[(slice(None), slice(None), partner_neurons_skids), :].index])
+        all_edges = []
+        for edge in edges:
+            specific_edges = adj.loc[(slice(None), edge[0]), (slice(None), edge[1])]
 
-            all_edges = []
-            for source in source_pair_id:
-                for partner in partner_pair_id:
-                    if(direction=='downstream'):
-                        edges = adj.loc[(slice(None), source), (slice(None), partner)]
-                    if(direction=='upstream'):
-                        edges = adj.loc[(slice(None), partner), (slice(None), source)]
+            # check if it's a paired connection
+            if((len(specific_edges.index)==2) & (len(specific_edges.columns)==2)): 
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0,0], specific_edges.iloc[1,1], False, 'ipsilateral'],
+                                        [edge[0], edge[1], specific_edges.iloc[1,0], specific_edges.iloc[0,1], False, 'contralateral']], 
+                                        columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
 
-                    if((len(edges.index)==2) & (len(edges.columns)==2)): #paired
-                        if(direction=='downstream'):
-                            edges = pd.DataFrame([[source, partner, edges.iloc[0,0], edges.iloc[1,1], False, 'ipsilateral'],
-                                                [source, partner, edges.iloc[1,0], edges.iloc[0,1], False, 'contralateral']], 
-                                                columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
-
-                        if(direction=='upstream'):
-                            edges = pd.DataFrame([[partner, source, edges.iloc[0,0], edges.iloc[1,1], False, 'ipsilateral'],
-                                                [partner, source, edges.iloc[1,0], edges.iloc[0,1], False, 'contralateral']], 
-                                                columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
-
-                        if(strict==True):
-                            # is each edge weight over threshold?
-                            for index in edges.index:
-                                if((edges.loc[index].left>threshold) & (edges.loc[index].right>threshold)):
-                                    edges.loc[index, 'overthres'] = True
-
-                        if(strict==False):
-                            # is average edge weight over threshold
-                            for index in edges.index:
-                                if(((edges.loc[index].left + edges.loc[index].right)/2) > threshold):
-                                    edges.loc[index, 'overthres'] = True
-
-                        # are both edges present?
-                        for index in edges.index:
-                            if((edges.loc[index].left==0) | (edges.loc[index].right==0)):
-                                edges.loc[index, 'overthres'] = False
-
-                        all_edges.append(edges.values[0])
-                        all_edges.append(edges.values[1])
-
-                    ''' # not currently implemented non-paired connections
-                    if(len(edges)==1): #unpaired
-                        edges = pd.DataFrame([[edges.iloc[0,0], edges.iloc[0,1], False, 'unpaired'], 
-                                            columns = ['left', 'right', 'overthres', 'type'])
-                    '''
-
-            all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
-            
-            if(direction=='downstream'):
-                partner_skids = np.unique(all_edges[all_edges.overthres==True].downstream_pair_id) # identify downstream pairs
-            if(direction=='upstream'):
-                partner_skids = np.unique(all_edges[all_edges.overthres==True].upstream_pair_id) # identify upstream pairs
-            
-            partner_skids = [x[2] for x in adj.loc[(slice(None), partner_skids), :].index] # convert from pair_id to skids
-
-        if(use_edges): # added specific edges to check
-            adj = self.adj_inter.copy()
-
-            all_edges = []
-            for edge in edges:
-                specific_edges = adj.loc[(slice(None), edge[0]), (slice(None), edge[1])]
-
-                # check if it's a paired connection
-                if((len(specific_edges.index)==2) & (len(specific_edges.columns)==2)): 
-                        specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0,0], specific_edges.iloc[1,1], False, 'ipsilateral'],
-                                            [edge[0], edge[1], specific_edges.iloc[1,0], specific_edges.iloc[0,1], False, 'contralateral']], 
-                                            columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
-
-                        if(strict==True):
-                            # is each edge weight over threshold?
-                            for index in specific_edges.index:
-                                if((specific_edges.loc[index].left>threshold) & (specific_edges.loc[index].right>threshold)):
-                                    specific_edges.loc[index, 'overthres'] = True
-
-                        if(strict==False):
-                            # is average edge weight over threshold
-                            for index in specific_edges.index:
-                                if(((specific_edges.loc[index].left + specific_edges.loc[index].right)/2) > threshold):
-                                    specific_edges.loc[index, 'overthres'] = True
-
-                        # are both edges present?
+                    if(strict==True):
+                        # is each edge weight over threshold?
                         for index in specific_edges.index:
-                            if((specific_edges.loc[index].left==0) | (specific_edges.loc[index].right==0)):
-                                specific_edges.loc[index, 'overthres'] = False
-                                
-                        all_edges.append(specific_edges.values[0])
-                        all_edges.append(specific_edges.values[1])
+                            if((specific_edges.loc[index].left>threshold) & (specific_edges.loc[index].right>threshold)):
+                                specific_edges.loc[index, 'overthres'] = True
 
-            all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
+                    if(strict==False):
+                        # is average edge weight over threshold
+                        for index in specific_edges.index:
+                            if(((specific_edges.loc[index].left + specific_edges.loc[index].right)/2) > threshold):
+                                specific_edges.loc[index, 'overthres'] = True
+
+                    # are both edges present?
+                    for index in specific_edges.index:
+                        if((specific_edges.loc[index].left==0) | (specific_edges.loc[index].right==0)):
+                            specific_edges.loc[index, 'overthres'] = False
+                                
+                    all_edges.append(specific_edges.values[0])
+                    all_edges.append(specific_edges.values[1])
+
+            #if(unpaired)
+            #if(unipolar)
+
+        all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
             
-            if(direction=='downstream'):
-                partner_skids = np.unique(all_edges[all_edges.overthres==True].downstream_pair_id) # identify downstream pairs
-            if(direction=='upstream'):
-                partner_skids = np.unique(all_edges[all_edges.overthres==True].upstream_pair_id) # identify upstream pairs
+        if(direction=='downstream'):
+            partner_skids = np.unique(all_edges[all_edges.overthres==True].downstream_pair_id) # identify downstream pairs
+        if(direction=='upstream'):
+            partner_skids = np.unique(all_edges[all_edges.overthres==True].upstream_pair_id) # identify upstream pairs
             
-            partner_skids = [x[2] for x in adj.loc[(slice(None), partner_skids), :].index] # convert from pair_id to skids
+        partner_skids = [x[2] for x in adj.loc[(slice(None), partner_skids), :].index] # convert from pair_id to skids
         
         return(all_edges, partner_skids)
 
@@ -362,7 +302,7 @@ class Adjacency_matrix():
 
         return(id_layers, id_layers_skids)
 
-    def plot_layer_types(self, layer_types, layer_names, layer_colors, layer_vmax, pair_ids, figsize, save_path, threshold):
+    def plot_layer_types(self, layer_types, layer_names, layer_colors, layer_vmax, pair_ids, figsize, save_path, threshold, hops):
 
         col = layer_colors
 
@@ -394,7 +334,7 @@ class Adjacency_matrix():
                 annotations[annotations=='0']=''
                 sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
 
-            plt.savefig(f'{save_path}{i}_{pair_ids[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
+            plt.savefig(f'{save_path}hops{hops}_{i}_{pair_ids[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
 
 
     # generate a binary connectivity matrix that displays number of hops between neuron types
