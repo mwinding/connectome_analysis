@@ -123,7 +123,7 @@ ax.set_title('Ascending Neurons')
 plt.savefig(f'VNC_interaction/plots/Threshold-{threshold}_ascending_neuron_layers.pdf', bbox_inches='tight')
 # %%
 # number of neurons downstream of dVNC at each VNC layer
-source_dVNC, ds_dVNC = VNC_adj.downstream(dVNC, threshold, exclude=dVNC)
+source_dVNC, ds_dVNC = VNC_adj.downstream(source=dVNC, threshold=threshold, exclude=dVNC)
 edges, ds_dVNC = VNC_adj.edge_threshold(source_dVNC, ds_dVNC, threshold, direction='downstream')
 
 ds_dVNC_layers, ds_dVNC_layers_skids = VNC_adj.layer_id(VNC_layers, general_names, ds_dVNC)
@@ -509,9 +509,9 @@ unknown = list(sens_asc_mat_thresh.index[(sens_asc_mat_thresh!=0).sum(axis=1)==0
 
 # manual reordering based on secondary sensory partners
 proprio_order1 = [proprio_order1[i] for i in [1,2,0]]
-chord_order1_2 = [chord_order1_2[i] for i in [1,2,0,5,3,4]]
+#chord_order1_2 = [chord_order1_2[i] for i in [1,2,0,5,3,4]] #lost 11455472
 noci_order2 = [noci_order2[i] for i in [3,1,2,0]]
-unknown = [unknown[i] for i in [2, 0, 1, 3, 4, 5]]
+unknown = [unknown[i] for i in [2, 3, 0, 1, 4, 5, 6]]
 
 sens_asc_order = proprio_order1 + chord_order1_2 + classII_III_order1 + noci_order2 + unknown
 annotations = sens_asc_mat.loc[:, sens_asc_order].astype(int).astype(str)
