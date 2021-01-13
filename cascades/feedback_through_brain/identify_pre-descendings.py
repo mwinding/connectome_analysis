@@ -253,6 +253,7 @@ brain_adj = Adjacency_matrix(adj, adj.index, pairs, inputs,'axo-dendritic')
 pre_dVNC, pre_dVNC_edges = brain_adj.upstream(dVNC, threshold, exclude = dVNC)
 _, pre_dVNC = brain_adj.edge_threshold(pre_dVNC_edges, threshold, direction='upstream')
 
+# compare to other cell types
 MBON = pymaid.get_skids_by_annotation('mw MBON')
 MBIN = pymaid.get_skids_by_annotation('mw MBIN')
 LHN = pymaid.get_skids_by_annotation('mw LHN')
