@@ -476,8 +476,59 @@ ax.set(xlim=(-1, max_value+1), xticks=(range(0, max_value, 1)))
 ax = axs[1,1] 
 ax.hist(data_2o, bins=bins_2o)
 ax.set(xlim=(-1, max_value+1), xticks=(range(0, max_value, 1)))
+
+# %%
+# 3D Plot
+
+ct_1o_us = cell_types_1o_us.T/2
+ct_2o_us = cell_types_2o_us.T/2
+
+data_1o_3d_list = []
+for i in range(0, len(ct_1o_us.columns)):
+    data_1o = ct_1o_us.iloc[:, i]
+    data_1o_3d = [[i, sum(data_1o==i)] for i in range(int(max(data_1o+1)))]
+    data_1o_3d = pd.DataFrame(data_1o_3d, columns=['number', 'height'])
+    data_1o_3d_list.append(data_1o_3d)
+
+data_2o_3d_list = []
+for i in range(0, len(ct_2o_us.columns)):
+    data_2o = ct_2o_us.iloc[:, i]
+    data_2o_3d = [[i, sum(data_2o==i)] for i in range(int(max(data_2o+1)))]
+    data_2o_3d = pd.DataFrame(data_2o_3d, columns=['number', 'height'])
+    data_2o_3d_list.append(data_2o_3d)
+
+fig = plt.figure(figsize=plt.figaspect(0.4))
+ax = fig.add_subplot(1, 2, 1, projection='3d')
+for zs_values, i in zip([0, 10, 20, 30, 40, 50, 60, 70, 80, 90], range(len(data_1o_3d_list))):
+    ax.bar(data_1o_3d_list[i].number, data_1o_3d_list[i].height, zs = zs_values, zdir='y')
+
+fig = plt.figure(figsize=plt.figaspect(0.4))
+ax = fig.add_subplot(1, 2, 1, projection='3d')
+for zs_values, i in zip([0,1,3,4,6,7,9,10,12,13], range(len(data_2o_3d_list))):
+    ax.bar(data_2o_3d_list[i].number, data_2o_3d_list[i].height, zs = zs_values, zdir='y')
+
+# %%
+# violinplot
+cell_types_1o_us_scatter['order']=['1st-order']*len(cell_types_1o_us_scatter)
+cell_types_2o_us_scatter['order']=['2nd-order']*len(cell_types_2o_us_scatter)
+
+celltypes_1o_2o_us = cell_types_1o_us_scatter.append(cell_types_2o_us_scatter)
+
+fig, axs = plt.subplots(figsize=(10,5))
+sns.boxenplot(y='counts', x='cell_type', hue='order', data =celltypes_1o_2o_us, ax=axs, outlier_prop=0)
+#sns.boxenplot(y='counts', x='cell_type', data=celltypes_1o_2o_us, ax=axs)
+plt.savefig('VNC_interaction/plots/dVNC_upstream/boxenplot.pdf', bbox_inches='tight', transparent = True)
+
+# %%
+# Ridgeline plot
+import joypy
+#fig, axes = joypy.joyplot(cell_types_2o_us_scatter, by="cell_type", overlap=4) #, hist=True, bins=int(max(cell_types_2o_us_scatter.counts)))
+joypy.joyplot(fraction_cell_types_1o_us_scatter, by="cell_type", overlap=4)
+#fig, axes = joypy.joyplot(cell_types_1o_us_scatter, by="cell_type")
+
 # %%
 # multi-hop matrix of all cell types to dVNCs
+# incomplete
 
 threshold = 0.01
 all_type_layers,all_type_layers_skids = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, br)
@@ -495,4 +546,50 @@ PN_type_layers,PN_type_skids = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.lefti
 #sns.barplot(x = [1, 2], y = [sum(MBON_type_layers.iloc[:, 0]>0)/len(MBON_type_layers.iloc[:, 0]), sum(MBON_type_layers.iloc[:, 1]>0)/len(MBON_type_layers.iloc[:, 1])])
 MBON_dVNC, MBON_dVNC_plotting = br_adj.hop_matrix(MBON_type_skids.T, dVNC_pairs.leftid, Promat.extract_pairs_from_list(MBON, pairs)[0].leftid)
 
+# %%
+# specific interactions between dVNCs with phenotypes and a couple selected dVNCs
+
+from connectome_tools.cascade_analysis import Celltype, Celltype_Analyzer
+
+dVNC_important = [[17353986, np.where(dVNC_pairs.leftid==17353986)[0][0], 'backup', 'unpublished', 'dVNC'],
+                    [10728328, np.where(dVNC_pairs.leftid==10728328)[0][0], 'backup', 'published', 'dVNC'],
+                    [10728333, np.where(dVNC_pairs.leftid==10728333)[0][0], 'backup', 'published', 'dVNC'],
+                    [6446394, np.where(dVNC_pairs.leftid==6446394)[0][0], 'stop', 'published', 'dVNC'],
+                    [10382686, 'nan', 'stop', 'unpublished', 'dSEZ'],
+                    [16851496, np.where(dVNC_pairs.leftid==16851496)[0][0], 'cast', 'unpublished', 'dVNC'],
+                    [10553248, np.where(dVNC_pairs.leftid==10553248)[0][0], 'cast', 'unpublished', 'dVNC'],
+                    [3044500, np.where(dVNC_pairs.leftid==3044500)[0][0], 'cast_onset_offset', 'unpublished', 'dVNC'],
+                    [3946166, np.where(dVNC_pairs.leftid==3946166)[0][0], 'cast_onset_offset', 'unpublished', 'dVNC']]
+
+dVNC_important = pd.DataFrame(dVNC_important, columns=['leftid', 'index', 'behavior', 'status', 'celltype'])
+dVNC_exclusive = dVNC_important.loc[dVNC_important.celltype=='dVNC']
+dVNC_exclusive.reset_index(inplace=True, drop=True)
+dVNC_important_us = all_type_layers_skids.loc[:, dVNC_exclusive.leftid]
+
+dVNC_important_us.iloc[0, :]
+
+# check overlap between us networks
+us_cts = []
+for i in range(len(dVNC_important_us.index)):
+    for j in range(len(dVNC_important_us.columns)):
+        cts = Celltype(f'{dVNC_exclusive.behavior[j]} {dVNC_important_us.columns[j]} {i+1}-order', dVNC_important_us.iloc[i, j])
+        us_cts.append(cts)
+
+cta = Celltype_Analyzer(us_cts)
+sns.heatmap(cta.compare_membership(), annot=True, fmt='.0%')
+
+# number of neurons in us networks
+us_1order = [x for sublist in dVNC_important_us.loc[0] for x in sublist]
+us_2order = [x for sublist in dVNC_important_us.loc[1] for x in sublist]
+
+us_1order_unique = np.unique(us_1order)
+us_2order_unique = np.unique(us_2order)
+
+pymaid.add_annotations(dVNC_important.leftid.values, 'mw dVNC important')
+pymaid.add_annotations([pairs[pairs.leftid==x].rightid.values[0] for x in dVNC_important.leftid.values], 'mw dVNC important')
+pymaid.add_annotations(us_1order_unique, 'mw dVNC important 1st-order upstream')
+
+for i, us in enumerate(dVNC_important_us.loc[0]):
+    pymaid.add_annotations(us, f'mw dVNC upstream-1o {dVNC_important_us.columns[i]}')
+    pymaid.add_meta_annotations(f'mw dVNC upstream-1o {dVNC_important_us.columns[i]}', 'mw dVNC upstream-1o')
 # %%
