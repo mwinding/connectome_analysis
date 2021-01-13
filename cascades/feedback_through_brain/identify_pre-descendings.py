@@ -34,7 +34,15 @@ rm = pymaid.CatmaidInstance(url, name, password, token)
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 mg.calculate_degrees(inplace=True)
 
-adj = mg.adj  # adjacency matrix from the "mg" object
+adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
+adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
+
+A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
+A1_sens = [val for sublist in list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw A1 sensories').name)) for val in sublist]
+brain_only = np.setdiff1d(adj.index.values, A1 + A1_sens)
+
+adj = adj.loc[brain_only, brain_only]
+#adj = mg.adj  # adjacency matrix from the "mg" object
 
 # pull skids of different output types
 output_order = [1, 0, 2]
@@ -148,7 +156,7 @@ def index_to_skid(index, mg):
     return(mg.meta.iloc[index, :].name)
 
 # import pairs
-pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
+pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0)
 
 dVNC_pairs = Promat.extract_pairs_from_list(output_skids_list_reordered[0], pairs)
 dSEZ_pairs = Promat.extract_pairs_from_list(output_skids_list_reordered[1], pairs)
@@ -233,24 +241,45 @@ from connectome_tools.process_matrix import Adjacency_matrix, Promat
 from datetime import date
 
 threshold = 0.01
+inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
+inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 RGN = pymaid.get_skids_by_annotation('mw RGN')
 
-brain_adj = Adjacency_matrix(adj, mg.meta.index, pairs, mg.meta.loc[:, ['dendrite_input', 'axon_input']],'axo-dendritic')
+brain_adj = Adjacency_matrix(adj, adj.index, pairs, inputs,'axo-dendritic')
 
-pre_dVNC = brain_adj.upstream(dVNC, threshold, exclude = dVNC)
-_, pre_dVNC = brain_adj.edge_threshold(dVNC, pre_dVNC, threshold, direction='upstream')
-pd.DataFrame(pre_dVNC).to_csv(f'cascades/feedback_through_brain/plots/pre_dVNC_Threshold_{threshold}.csv', index = False, header = False)
+pre_dVNC, pre_dVNC_edges = brain_adj.upstream(dVNC, threshold, exclude = dVNC)
+_, pre_dVNC = brain_adj.edge_threshold(pre_dVNC_edges, threshold, direction='upstream')
 
-pre_dSEZ = brain_adj.upstream(dSEZ, threshold, exclude = dSEZ)
-_, pre_dSEZ = brain_adj.edge_threshold(dSEZ, pre_dSEZ, threshold, direction='upstream')
-pd.DataFrame(pre_dSEZ).to_csv(f'cascades/feedback_through_brain/plots/pre_dSEZ_Threshold_{threshold}.csv', index = False, header = False)
+MBON = pymaid.get_skids_by_annotation('mw MBON')
+MBIN = pymaid.get_skids_by_annotation('mw MBIN')
+LHN = pymaid.get_skids_by_annotation('mw LHN')
+CN = pymaid.get_skids_by_annotation('mw CN')
+KC = pymaid.get_skids_by_annotation('mw KC')
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+uPN = pymaid.get_skids_by_annotation('mw uPN')
+tPN = pymaid.get_skids_by_annotation('mw tPN')
+vPN = pymaid.get_skids_by_annotation('mw vPN')
+mPN = pymaid.get_skids_by_annotation('mw mPN')
+PN = uPN + tPN + vPN + mPN
+FBN = pymaid.get_skids_by_annotation('mw FBN')
+FB2N = pymaid.get_skids_by_annotation('mw FB2N')
+FBN_all = FBN + FB2N
 
-pre_RGN = brain_adj.upstream(RGN, threshold, exclude = RGN)
-_, pre_RGN = brain_adj.edge_threshold(RGN, pre_RGN, threshold, direction='upstream')
-pd.DataFrame(pre_RGN).to_csv(f'cascades/feedback_through_brain/plots/pre_RGN_Threshold_{threshold}.csv', index = False, header = False)
+CN = list(np.setdiff1d(CN, LHN + FBN_all)) # 'CN' means exclusive CNs that are not FBN or LHN
+pre_dVNC2 = list(np.setdiff1d(pre_dVNC, MBON + MBIN + LHN + CN + KC + dSEZ + dVNC + PN + FBN_all)) # 'pre_dVNC' must have no other category assignment
+#pymaid.add_annotations(pre_dVNC, 'mw pre-dVNC 1%')
+
+pre_dSEZ, pre_dSEZ_edges = brain_adj.upstream(dSEZ, threshold, exclude = dSEZ)
+_, pre_dSEZ = brain_adj.edge_threshold(pre_dSEZ_edges, threshold, direction='upstream')
+#pymaid.add_annotations(pre_dSEZ, 'mw pre-dSEZ 1%')
+
+pre_RGN, pre_RGN_edges = brain_adj.upstream(RGN, threshold, exclude = RGN)
+_, pre_RGN = brain_adj.edge_threshold(pre_RGN_edges, threshold, direction='upstream')
+#pymaid.add_annotations(pre_RGN, 'mw pre-RGN 1%')
 
 # %%
 # plotting number of connections to and from descendings
