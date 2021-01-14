@@ -39,7 +39,7 @@ LHN = pymaid.get_skids_by_annotation('mw LHN')
 CN = pymaid.get_skids_by_annotation('mw CN')
 KC = pymaid.get_skids_by_annotation('mw KC')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC')
+pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC 1%')
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 uPN = pymaid.get_skids_by_annotation('mw uPN')
 tPN = pymaid.get_skids_by_annotation('mw tPN')
@@ -74,6 +74,8 @@ br_adj = Adjacency_matrix(adj.values, adj.index, pairs, inputs,'axo-dendritic')
 
 # %%
 # projectome plot and ordering
+# needs work; lots of conflicting ordering sections added for testing purposes
+
 import cmasher as cmr
 
 projectome = pd.read_csv('descending_neurons_analysis/data/projectome_adjacency.csv', index_col = 0, header = 0)
@@ -107,9 +109,57 @@ for i in np.arange(0, len(output_projectome.index), 2):
 dVNC_projectome_pairs_summed_output = pd.DataFrame(dVNC_projectome_pairs_summed_output, index = indices, columns = ['SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])
 dVNC_projectome_pairs_summed_output = dVNC_projectome_pairs_summed_output.iloc[:, 1:len(dVNC_projectome_pairs_summed_output)]
 
-cluster = sns.clustermap(dVNC_projectome_pairs_summed_output, col_cluster = False, figsize=(10,10))
-row_order = cluster.dendrogram_row.reordered_ind
+#normalize # of presynaptic sites
+dVNC_projectome_pairs_summed_output_norm = dVNC_projectome_pairs_summed_output.copy()
+for i in range(len(dVNC_projectome_pairs_summed_output)):
+    sum_row = sum(dVNC_projectome_pairs_summed_output_norm.iloc[i, :])
+    for j in range(len(dVNC_projectome_pairs_summed_output.columns)):
+        dVNC_projectome_pairs_summed_output_norm.iloc[i, j] = dVNC_projectome_pairs_summed_output_norm.iloc[i, j]/sum_row
 
+# order based on clustering raw data
+cluster = sns.clustermap(dVNC_projectome_pairs_summed_output, col_cluster = False, figsize=(6,4), rasterized=True)
+row_order = cluster.dendrogram_row.reordered_ind
+#fig, ax = plt.subplots(figsize=(6,4))
+#sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], rasterized=True, ax=ax)
+plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_raw.pdf', bbox_inches='tight')
+
+# order based on clustering normalized data
+cluster = sns.clustermap(dVNC_projectome_pairs_summed_output_norm, col_cluster = False, figsize=(6,4), rasterized=True)
+row_order = cluster.dendrogram_row.reordered_ind
+#fig, ax = plt.subplots(figsize=(6,4))
+#sns.heatmap(dVNC_projectome_pairs_summed_output_norm.iloc[row_order, :], rasterized=True, ax=ax)
+plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_normalized.pdf', bbox_inches='tight')
+
+# order based on counts per column
+for i in range(1, 51):
+    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output_norm.copy()
+    dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<(i/100)]=0
+    dVNC_projectome_pairs_summed_output_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
+    row_order = dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)>0].index
+
+    second_sort = dVNC_projectome_pairs_summed_output_norm[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)==0]
+    second_sort[second_sort<.1]=0
+    second_sort.sort_values(by=[i for i in reversed(['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])], ascending=False, inplace=True)
+    row_order = list(row_order) + list(second_sort.index)
+    fig, ax = plt.subplots(figsize=(6,4))
+    sns.heatmap(dVNC_projectome_pairs_summed_output_norm.loc[row_order, :], ax=ax, rasterized=True)
+    plt.savefig(f'VNC_interaction/plots/projectome/projectome_0.{i}-sort-threshold.pdf', bbox_inches='tight')
+
+for i in range(1, 51):
+    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output.copy()
+    dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<(i)]=0
+    dVNC_projectome_pairs_summed_output_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
+    row_order = dVNC_projectome_pairs_summed_output_sort.index
+
+    second_sort = dVNC_projectome_pairs_summed_output[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)==0]
+    second_sort[second_sort<10]=0
+    second_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
+    row_order = list(row_order) + list(second_sort.index)
+
+    fig, ax = plt.subplots(figsize=(6,4))
+    sns.heatmap(dVNC_projectome_pairs_summed_output.loc[row_order, :], ax=ax, rasterized=True)
+    plt.savefig(f'VNC_interaction/plots/projectome/projectome_{i}-sort-threshold.pdf', bbox_inches='tight')
+'''
 fig, ax = plt.subplots(figsize=(3,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], ax=ax)
 plt.savefig('VNC_interaction/plots/projectome/output_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
@@ -134,10 +184,11 @@ dVNC_projectome_pairs_summed_input = dVNC_projectome_pairs_summed_input.iloc[:, 
 fig, ax = plt.subplots(figsize=(3,2))
 sns.heatmap(dVNC_projectome_pairs_summed_input.iloc[row_order, :], cmap=cmr.freeze, ax=ax)
 plt.savefig('VNC_interaction/plots/projectome/input_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
+'''
 # %%
-# dVNC skeletons with associated split-GAL4 lines
-
-dVNC_pairs_line = [[18604097, 17353986, pymaid.get_names(18604097)[str(18604097)]],
+# load dVNC pairs
+'''
+dVNC_pairs_line = [[18604097, 17353986, pymaid.get_names(18604097)[str(18604097)]], # skids that have associated splits/phenotypes
                     [3979181, 5794678, pymaid.get_names(3979181)[str(3979181)]],
                     [10382686, 16100103, pymaid.get_names(10382686)[str(10382686)]],
                     [3044500, 6317793, pymaid.get_names(3044500)[str(3044500)]],
@@ -147,10 +198,15 @@ dVNC_pairs_line = [[18604097, 17353986, pymaid.get_names(18604097)[str(18604097)
                     [16851496, 16339338, pymaid.get_names(16851496)[str(16851496)]]]
 
 dVNC_pairs_line = pd.DataFrame(dVNC_pairs_line, columns = ['leftid', 'rightid', 'leftname'])
-
+'''
 dVNC_pairs = Promat.extract_pairs_from_list(dVNC, pairs)[0]
-dVNC_pairs = dVNC_pairs.loc[row_order]
-dVNC_pairs.reset_index(inplace=True, drop=True)
+#dVNC_pairs = dVNC_pairs.loc[row_order]
+#dVNC_pairs.reset_index(inplace=True, drop=True)
+
+# add a single dSEZ neuron associated with a split-GAL4 and phenotype
+dVNC_pairs = dVNC_pairs.append(pd.DataFrame([[10382686, 16100103]], index=[len(dVNC_pairs)], columns = ['leftid', 'rightid']))
+dVNC_pairs = dVNC_pairs.append(pd.DataFrame([[3044500, 6317793]], index=[len(dVNC_pairs)], columns = ['leftid', 'rightid']))
+
 # %%
 # paths 2-hop upstream of each dVNC
 from tqdm import tqdm
@@ -309,6 +365,78 @@ plt.bar(ind, remaining, bottom = bottom, color = 'tab:grey')
 plt.ylim(0,1)
 plt.savefig('VNC_interaction/plots/dVNC_upstream/downstream_summary_plot_2nd_order.pdf', format='pdf', bbox_inches='tight')
 
+# %%
+# combine all data types for dVNCs: us1o, us2o, ds1o, ds2o, projectome
+
+fraction_cell_types_1o_us = pd.DataFrame([x.iloc[:, 0] for x in fraction_types], index = fraction_types_names).T
+fraction_cell_types_1o_us.columns = [f'1o_us_{x}' for x in fraction_cell_types_1o_us.columns]
+unk_col = 1-fraction_cell_types_1o_us.sum(axis=1)
+unk_col[unk_col==11]=0
+fraction_cell_types_1o_us['1o_us_unk']=unk_col
+
+fraction_cell_types_2o_us = pd.DataFrame([x.iloc[:, 1] for x in fraction_types], index = fraction_types_names).T
+fraction_cell_types_2o_us.columns = [f'2o_us_{x}' for x in fraction_cell_types_2o_us.columns]
+unk_col = 1-fraction_cell_types_2o_us.sum(axis=1)
+unk_col[unk_col==11]=0
+fraction_cell_types_2o_us['2o_us_unk']=unk_col
+
+fraction_cell_types_1o_ds = pd.DataFrame([x.iloc[:, 0] for x in fraction_types_ds], index = fraction_types_names).T
+fraction_cell_types_1o_ds.columns = [f'1o_ds_{x}' for x in fraction_cell_types_1o_ds.columns]
+unk_col = 1-fraction_cell_types_1o_ds.sum(axis=1)
+unk_col[unk_col==11]=0
+fraction_cell_types_1o_ds['1o_ds_unk']=unk_col
+fraction_cell_types_1o_ds[fraction_cell_types_1o_ds==-1]=0
+
+fraction_cell_types_2o_ds = pd.DataFrame([x.iloc[:, 1] for x in fraction_types_ds], index = fraction_types_names).T
+fraction_cell_types_2o_ds.columns = [f'2o_ds_{x}' for x in fraction_cell_types_2o_ds.columns]
+unk_col = 1-fraction_cell_types_2o_ds.sum(axis=1)
+unk_col[unk_col==11]=0
+fraction_cell_types_2o_ds['2o_ds_unk']=unk_col
+fraction_cell_types_2o_ds[fraction_cell_types_2o_ds==-1]=0
+
+all_data = dVNC_projectome_pairs_summed_output_norm.copy()
+all_data.index = [int(x) for x in all_data.index]
+
+all_data = pd.concat([fraction_cell_types_1o_us, fraction_cell_types_2o_us, all_data, fraction_cell_types_1o_ds, fraction_cell_types_2o_ds], axis=1)
+all_data.fillna(0, inplace=True)
+
+# clustered version of all_data combined
+cluster = sns.clustermap(all_data, col_cluster = False, figsize=(30,30), rasterized=True)
+plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_all_data.pdf', bbox_inches='tight')
+order = cluster.dendrogram_row.reordered_ind
+fig,ax=plt.subplots(1,1,figsize=(6,4))
+sns.heatmap(all_data.iloc[order, :].drop(list(fraction_cell_types_1o_us.columns) + list(fraction_cell_types_2o_us.columns) + list(fraction_cell_types_1o_ds.columns) + list(fraction_cell_types_2o_ds.columns), axis=1), ax=ax, rasterized=True)
+plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_all_data_same_size.pdf', bbox_inches='tight')
+
+cluster = sns.clustermap(all_data.drop(['1o_us_pre-dVNC', '2o_us_pre-dVNC'], axis=1), col_cluster = False, figsize=(20,15), rasterized=True)
+plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_all_data_removed_us-pre-dVNCs.pdf', bbox_inches='tight')
+
+# decreasing sort of all_data but with feedback and non-feedback dVNC clustered
+for i in range(1, 50):
+    dVNCs_with_FB = all_data.loc[:, list(fraction_cell_types_1o_ds.columns) + list(fraction_cell_types_2o_ds.columns)].sum(axis=1)
+    dVNCs_FB_true_skids = dVNCs_with_FB[dVNCs_with_FB>0].index
+    dVNCs_FB_false_skids = dVNCs_with_FB[dVNCs_with_FB==0].index
+
+    dVNC_projectome_pairs_summed_output_sort = all_data.copy()
+    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output_sort.loc[:, ['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']]
+    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output_sort.loc[dVNCs_FB_true_skids]
+    dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<(i/100)]=0
+    dVNC_projectome_pairs_summed_output_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
+    row_order_FB_true = dVNC_projectome_pairs_summed_output_sort.index
+
+    second_sort = all_data.copy()
+    second_sort = second_sort.loc[:, ['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']]
+    second_sort = second_sort.loc[dVNCs_FB_false_skids]
+    second_sort[second_sort<(i/100)]=0
+    second_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
+    row_order_FB_false = second_sort.index
+    row_order = list(row_order_FB_true) + list(row_order_FB_false)
+    fig, ax = plt.subplots(figsize=(20, 15))
+    sns.heatmap(all_data.loc[row_order, :], ax=ax, rasterized=True)
+    plt.savefig(f'VNC_interaction/plots/projectome/splitFB_projectome_0.{i}-sort-threshold.pdf', bbox_inches='tight')
+    fig, ax = plt.subplots(figsize=(6,4))
+    sns.heatmap(all_data.loc[row_order, ['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']], ax=ax, rasterized=True)
+    plt.savefig(f'VNC_interaction/plots/projectome/splitFB_same-size_projectome_0.{i}-sort-threshold.pdf', bbox_inches='tight')
 # %%
 # what fraction of us and ds neurons are from different cell types per hop?
 
