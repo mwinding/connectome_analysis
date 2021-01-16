@@ -187,18 +187,7 @@ plt.savefig('VNC_interaction/plots/projectome/input_projectome_cluster.pdf', bbo
 '''
 # %%
 # load dVNC pairs
-'''
-dVNC_pairs_line = [[18604097, 17353986, pymaid.get_names(18604097)[str(18604097)]], # skids that have associated splits/phenotypes
-                    [3979181, 5794678, pymaid.get_names(3979181)[str(3979181)]],
-                    [10382686, 16100103, pymaid.get_names(10382686)[str(10382686)]],
-                    [3044500, 6317793, pymaid.get_names(3044500)[str(3044500)]],
-                    [3946166, 3620633, pymaid.get_names(3946166)[str(3946166)]],
-                    [6446394, 5462159, pymaid.get_names(6446394)[str(6446394)]],
-                    [10553248, 8496618, pymaid.get_names(10553248)[str(10553248)]],
-                    [16851496, 16339338, pymaid.get_names(16851496)[str(16851496)]]]
 
-dVNC_pairs_line = pd.DataFrame(dVNC_pairs_line, columns = ['leftid', 'rightid', 'leftname'])
-'''
 dVNC_pairs = Promat.extract_pairs_from_list(dVNC, pairs)[0]
 #dVNC_pairs = dVNC_pairs.loc[row_order]
 #dVNC_pairs.reset_index(inplace=True, drop=True)
@@ -224,7 +213,6 @@ for i in tqdm(range(0, len(dVNC_pairs))):
     ds_dVNC = br_adj.downstream_multihop(list(dVNC_pairs.loc[i]), threshold, min_members = 0, hops=hops, strict=False)
     dVNC_pair_paths_output.append(ds_dVNC)
 
-#dVNC_pair_paths.pop(81) # removes one descending neuron with no inputs from the brain
 # %%
 # plotting individual dVNC paths
 
@@ -683,18 +671,18 @@ dVNC_important = [[17353986, np.where(dVNC_pairs.leftid==17353986)[0][0], 'backu
                     [10728328, np.where(dVNC_pairs.leftid==10728328)[0][0], 'backup', 'published', 'dVNC'],
                     [10728333, np.where(dVNC_pairs.leftid==10728333)[0][0], 'backup', 'published', 'dVNC'],
                     [6446394, np.where(dVNC_pairs.leftid==6446394)[0][0], 'stop', 'published', 'dVNC'],
-                    [10382686, 'nan', 'stop', 'unpublished', 'dSEZ'],
+                    [10382686, np.where(dVNC_pairs.leftid==10382686)[0][0], 'stop', 'unpublished', 'dSEZ'],
                     [16851496, np.where(dVNC_pairs.leftid==16851496)[0][0], 'cast', 'unpublished', 'dVNC'],
                     [10553248, np.where(dVNC_pairs.leftid==10553248)[0][0], 'cast', 'unpublished', 'dVNC'],
-                    [3044500, np.where(dVNC_pairs.leftid==3044500)[0][0], 'cast_onset_offset', 'unpublished', 'dVNC'],
+                    [3044500, np.where(dVNC_pairs.leftid==3044500)[0][0], 'cast_onset_offset', 'unpublished', 'dSEZ'],
                     [3946166, np.where(dVNC_pairs.leftid==3946166)[0][0], 'cast_onset_offset', 'unpublished', 'dVNC']]
 
 dVNC_important = pd.DataFrame(dVNC_important, columns=['leftid', 'index', 'behavior', 'status', 'celltype'])
-dVNC_exclusive = dVNC_important.loc[dVNC_important.celltype=='dVNC']
-dVNC_exclusive.reset_index(inplace=True, drop=True)
-dVNC_important_us = all_type_layers_skids.loc[:, dVNC_exclusive.leftid]
+#dVNC_exclusive = dVNC_important.loc[dVNC_important.celltype=='dVNC']
+#dVNC_exclusive.reset_index(inplace=True, drop=True)
+#dVNC_important_us = all_type_layers_skids.loc[:, dVNC_exclusive.leftid]
 
-dVNC_important_us.iloc[0, :]
+#dVNC_important_us.iloc[0, :]
 
 # check overlap between us networks
 us_cts = []
