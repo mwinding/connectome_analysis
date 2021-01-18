@@ -17,7 +17,10 @@ import matplotlib.pyplot as plt
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+
+# font settings
 plt.rcParams['font.size'] = 5
+plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
