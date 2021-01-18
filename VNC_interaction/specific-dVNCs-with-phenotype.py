@@ -377,7 +377,6 @@ plt.savefig('VNC_interaction/plots/dVNC_phenotype/cosine_similar_upstream_feedba
 
 # %%
 # hop matrices per PN type, per MBON type
-# todo: rows colored by valence
 
 us = br_adj.hop_matrix(all_type_layers_skids.T, dVNC_important.leftid.values, all_skids_us_paired.leftid.values)
 us = us[0].T
@@ -473,21 +472,65 @@ cts_plot_2o = pd.concat(cts_plot_2o, axis=1).T
 cts_plot_1o.index = cts_names
 cts_plot_2o.index = cts_names
 
+
+# plot both types together
+def multicolor_heatmap(df, ax, list_rows, list_cmaps, list_vmaxs, annotations):
+
+    for i, row in enumerate(list_rows):
+        
+        mask = np.full((len(df.index), len(df.columns)), True, dtype=bool)
+        mask[row, :] = [False]*len(df.columns)
+        sns.heatmap(df, annot = annotations, fmt = 's', mask = mask, vmax = list_vmaxs[i], 
+                    cmap=list_cmaps[i], cbar=False, ax = ax, linewidths=0.1, linecolor='black')
+
+# create cmaps
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+
+N = 256
+vals = np.ones((256, 4))
+vals[:, 0] = np.linspace(1, .85, N)
+vals[:, 1] = np.linspace(1, 0, N)
+vals[:, 2] = np.linspace(1, 0, N)
+reds_cmap = ListedColormap(vals)
+'''
+reds_cmap = plt.get_cmap('Reds', 256)
+newcolors = reds_cmap(np.linspace(0, 1, 256))
+white = np.array([1, 1, 1, 1])
+newcolors[:1, :] = white
+reds_cmap = ListedColormap(newcolors)
+'''
+blues_cmap = plt.get_cmap('Blues', 256)
+newcolors = blues_cmap(np.linspace(0, 1, 256))
+white = np.array([1, 1, 1, 1])
+newcolors[:1, :] = white
+blues_cmap = ListedColormap(newcolors)
+
+list_rows = [[0,8,9], [1,2,4,6,10,11], [3,5,7,12]]
+list_cmaps = [blues_cmap, reds_cmap, 'Greys']
+list_vmaxs = [5, 3, 10]
+
 fig, axs = plt.subplots(1,2, figsize=(2, 1.5), sharey=True)
 ax = axs[0]
 annotations = cts_plot_1o.copy()
 annotations = annotations.astype(int).astype(str)
 annotations[annotations=='0']=''
-sns.heatmap(cts_plot_1o,  annot=annotations, fmt='s', ax=ax, cbar=False)
+multicolor_heatmap(df=cts_plot_1o, ax=ax, list_rows=list_rows, list_cmaps=list_cmaps, list_vmaxs=list_vmaxs, annotations=annotations)
+#sns.heatmap(cts_plot_1o,  annot=annotations, fmt='s', ax=ax, cbar=False)
 ax.set(title = 'First-order Upstream')
 
 ax = axs[1]
 annotations = cts_plot_2o.copy()
 annotations = annotations.astype(int).astype(str)
 annotations[annotations=='0']=''
-sns.heatmap(cts_plot_2o,  annot=annotations, fmt='s', ax=ax, cbar=False)
+multicolor_heatmap(df=cts_plot_2o, ax=ax, list_rows=list_rows, list_cmaps=list_cmaps, list_vmaxs=list_vmaxs, annotations=annotations)
 ax.set(title = 'Second-order Upstream')
 plt.savefig('VNC_interaction/plots/dVNC_phenotype/all_inputs_by_hops.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# interaction between dVNCs
+
+dVNC_mat, dVNC_mat_plotting = br_adj.hop_matrix(all_type_layers_skids_ds.T, dVNC_important.leftid.values, dVNC_important.leftid.values)
+sns.heatmap(dVNC_mat)
 
 # %%
 # cascades from each sensory modality
