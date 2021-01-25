@@ -72,7 +72,12 @@ class Celltype_Analyzer:
         self.known_types_names = []
         #self.mg = mg
         self.adj = adj
-        self.skids = skids
+
+        if(len(skids)>0):
+            self.skids = skids
+        if(len(skids)==0):
+            self.skids = list(np.unique([x for sublist in self.Celltypes for x in sublist.get_skids()]))
+
         self.adj_df = []
 
     def get_celltype_names(self):
@@ -129,12 +134,15 @@ class Celltype_Analyzer:
         return(iou_matrix)
 
     # calculate fraction of neurons in each cell type that have previously known cell type annotations
-    def memberships(self, by_celltype = True):
+    def memberships(self, by_celltype=True, raw_num=False): # raw_num=True outputs number of neurons in each category instead of fraction
         fraction_type = np.zeros((len(self.known_types), len(self.Celltypes)))
         for i, knowntype in enumerate(self.known_types):
             for j, celltype in enumerate(self.Celltypes):
                 if(by_celltype): # fraction of new cell type in each known category
-                    fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))/len(celltype.get_skids())
+                    if(raw_num==False):
+                        fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))/len(celltype.get_skids())
+                    if(raw_num==True):
+                        fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))
                     fraction_type[i, j] = fraction
                 if(by_celltype==False): # fraction of each known category that is in new cell type
                     fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))/len(knowntype.get_skids())
