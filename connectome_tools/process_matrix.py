@@ -6,6 +6,7 @@ import csv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pymaid
 
 class Adjacency_matrix():
 
@@ -491,6 +492,57 @@ class Promat():
                     binMat.iat[int(i/2), int(j/2)] = 1
             
         return(binMat)
+
+    # set of known celltypes, returned as skid lists
+    @staticmethod
+    def celltypes():
+        A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
+        A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
+        br = pymaid.get_skids_by_annotation('mw brain neurons')
+        MBON = pymaid.get_skids_by_annotation('mw MBON')
+        MBIN = pymaid.get_skids_by_annotation('mw MBIN')
+        LHN = pymaid.get_skids_by_annotation('mw LHN')
+        CN = pymaid.get_skids_by_annotation('mw CN')
+        KC = pymaid.get_skids_by_annotation('mw KC')
+        RGN = pymaid.get_skids_by_annotation('mw RGN')
+        dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+        pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC 1%')
+        pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ 1%')
+        pre_RGN = pymaid.get_skids_by_annotation('mw pre-RGN 1%')
+        dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+        uPN = pymaid.get_skids_by_annotation('mw uPN')
+        tPN = pymaid.get_skids_by_annotation('mw tPN')
+        vPN = pymaid.get_skids_by_annotation('mw vPN')
+        mPN = pymaid.get_skids_by_annotation('mw mPN')
+        PN = uPN + tPN + vPN + mPN
+        FBN = pymaid.get_skids_by_annotation('mw FBN')
+        FB2N = pymaid.get_skids_by_annotation('mw FB2N')
+        FBN_all = FBN + FB2N
+
+        input_names = pymaid.get_annotated('mw brain inputs').name
+        general_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd']
+        input_skids_list = list(map(pymaid.get_skids_by_annotation, input_names))
+        sens_all = [x for sublist in input_skids_list for x in sublist]
+
+        asc_noci = pymaid.get_skids_by_annotation('mw A1 ascending noci')
+        asc_mechano = pymaid.get_skids_by_annotation('mw A1 ascending mechano')
+        asc_proprio = pymaid.get_skids_by_annotation('mw A1 ascending proprio')
+        asc_classII_III = pymaid.get_skids_by_annotation('mw A1 ascending class II_III')
+        asc_all = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
+
+        LHN = list(np.setdiff1d(LHN, FBN_all + dVNC))
+        CN = list(np.setdiff1d(CN, LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN
+        pre_dVNC = list(np.setdiff1d(pre_dVNC, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
+        pre_dSEZ = list(np.setdiff1d(pre_dSEZ, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC)) # 'pre_dSEZ' must have no other category assignment
+        pre_RGN = list(np.setdiff1d(pre_RGN, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC + pre_RGN)) # 'pre_RGN' must have no other category assignment
+        dSEZ = list(np.setdiff1d(dSEZ, MBON + MBIN + LHN + CN + KC + dVNC + PN + FBN_all + dVNC))
+
+        few_synapses = pymaid.get_skids_by_annotation('mw brain few synapses')
+        A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
+
+        celltypes = [sens_all, PN, LHN, MBIN, list(np.setdiff1d(KC, few_synapses)), MBON, FBN_all, CN, pre_RGN, pre_dSEZ, pre_dVNC, RGN, dSEZ, dVNC]
+        celltype_names = ['Sens', 'PN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'pre-RGN', 'pre-dSEZ','pre-dVNC', 'RGN', 'dSEZ', 'dVNC']
+        return(celltypes, celltype_names)
 
     # summing input from a group of upstream neurons
     # generating DataFrame with sorted leftid, rightid, summed-input left, summed-input right
