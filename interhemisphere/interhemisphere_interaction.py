@@ -322,7 +322,7 @@ def sum_cluster_hit_hist(hit_hist_cluster):
 
 hops = 4
 
-interhemi_hit_hist_lvl7 = hit_hist_to_clusters([all_inputs_hit_hist_left, all_inputs_hit_hist_right], lvl7)
+interhemi_hit_hist_lvl7 = hit_hist_to_clusters([all_inputs_hit_hist_left, all_inputs_hit_hist_right], lvl7, adj)
 interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
 
 interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
@@ -341,17 +341,22 @@ plt.bar(ind, interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
 plt.bar(ind, interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
 fig.savefig('interhemisphere/plots/left-right-visits_clusters.pdf', format='pdf', bbox_inches='tight')
 
+control_raw_left = interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted]
+control_raw_right = interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted]
+
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 ind = [x for x in range(0, len(interhemi_hit_hist_lvl7_summed[0]))]
 plt.bar(ind, interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted])
 plt.bar(ind, interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted])
 fig.savefig('interhemisphere/plots/left-right-visits_clusters_norm.pdf', format='pdf', bbox_inches='tight')
 
+control_left = interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted]
+control_right = interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted]
 # %%
 # plot cluster flow by each sensory modality
 
 for i in range(len(inputs_hit_hist_list_left)):
-    interhemi_hit_hist_lvl7 = hit_hist_to_clusters([inputs_hit_hist_list_left[i], inputs_hit_hist_list_right[i]], lvl7)
+    interhemi_hit_hist_lvl7 = hit_hist_to_clusters([inputs_hit_hist_list_left[i], inputs_hit_hist_list_right[i]], lvl7, adj)
     interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
 
     interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
@@ -425,197 +430,244 @@ inter_summed_analyzer = casc.Celltype_Analyzer(inter_summed_celltypes)
 inter_summed_iou = inter_summed_analyzer.compare_membership('dice')
 sns.clustermap(inter_summed_iou, figsize=(5,5), annot=True, vmin=0)
 
-'''
-lvl7_intercolated = cluster_lvl7.loc[order_both_unlisted, :]
-
-fraction_integrator_list = []
-for skids in intersection_list:
-    cluster_intersection = []
-    for i in range(len(lvl7_intercolated)):
-        intersect = np.intersect1d(lvl7_intercolated.num_cluster.iloc[i], skids)
-        intersect = len(np.intersect1d(contra, intersect))
-        total = len(lvl7_intercolated.num_cluster.iloc[i])
-        cluster_intersection.append([lvl7_intercolated.index[i], intersect/total])
-
-    cluster_intersection = pd.DataFrame(cluster_intersection, columns = ['key', 'fraction_integrators'])
-    fraction_integrator_list.append(cluster_intersection)
-
-ind = [x for x in range(0, len(fraction_integrator_list[0][0]))]
-'''
-
 # %%
 # how much signal is transmissed to contralateral side by bilaterals vs contralaterals?
+
+def excise_cascade(excised_skids, input_skids, output_skids, brain_inputs_list, left, right, adj):
+    adj_excised = adj.loc[np.setdiff1d(adj.index, excised_skids), np.setdiff1d(adj.index, excised_skids)]
+    excised_input_indices_left, excised_input_indices_right, excised_input_left, excised_input_right = split_hemilateral_to_indices(input_skids, left, right, adj_excised.index)
+    excised_output_indices = np.where([x in output_skids for x in adj_excised.index])[0]
+    excised_inputs_split = [split_hemilateral_to_indices(skids, left, right, adj_excised.index) for skids in brain_inputs_list]
+
+    p = 0.05
+    max_hops = 6
+    n_init = 100
+    simultaneous = True
+
+    transition_probs = to_transmission_matrix(adj_excised.values, p)
+    cdispatch_excised = TraverseDispatcher(
+        Cascade,
+        transition_probs,
+        stop_nodes = excised_output_indices,
+        max_hops=max_hops,
+        allow_loops = False,
+        n_init=n_init,
+        simultaneous=simultaneous,
+    )
+
+    excised_all_inputs_hit_hist_left, excised_all_inputs_hit_hist_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch_excised) for i in [excised_input_indices_left, excised_input_indices_right])
+    excised_inputs_hit_hist_list_left = Parallel(n_jobs=-1)(delayed(run_cascade)(i[0], cdispatch_excised) for i in excised_inputs_split)
+    excised_inputs_hit_hist_list_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i[1], cdispatch_excised) for i in excised_inputs_split)
+
+    return(excised_all_inputs_hit_hist_left, excised_all_inputs_hit_hist_right, excised_inputs_hit_hist_list_left, excised_inputs_hit_hist_list_right, adj_excised)
 
 # make new adj matrices with excised nodes
 contra_br = list(np.setdiff1d(contra, input_skids + output_skids))
 bilateral_br = list(np.setdiff1d(bilateral, input_skids + output_skids))
 
-adj_dContra = adj.loc[np.setdiff1d(adj.index, contra_br), np.setdiff1d(adj.index, contra_br)]
-adj_dBi = adj.loc[np.setdiff1d(adj.index, bilateral_br), np.setdiff1d(adj.index, bilateral_br)]
-adj_dB_dC = adj.loc[np.setdiff1d(adj.index, contra_br + bilateral_br), np.setdiff1d(adj.index, contra_br + bilateral_br)]
+# random set of neurons corresponding to number of contra/bi removed
+br_interneurons = np.setdiff1d(adj.index, input_skids + output_skids + contra_br + bilateral_br)
+np.random.seed(0)
+random_nums = np.random.choice(len(br_interneurons), len(contra_br), replace = False)
+random_contra_set = list(br_interneurons[random_nums])
 
-# re-identify indices of input/output nodes now that contralateral have been excised
-dC_input_indices_left, dC_input_indices_right, dC_input_left, dC_input_right = split_hemilateral_to_indices(input_skids, left, right, adj_dContra.index)
-dC_output_indices = np.where([x in output_skids for x in adj_dContra.index])[0]
-dC_inputs_split = [split_hemilateral_to_indices(skids, left, right, adj_dContra.index) for skids in brain_inputs_list]
+np.random.seed(1)
+random_nums = np.random.choice(len(br_interneurons), len(bilateral_br), replace = False)
+random_bilateral_set = list(br_interneurons[random_nums])
 
-# re-identify indices of input/output nodes now that bilateral have been excised
-dB_input_indices_left, dB_input_indices_right, dB_input_left, dB_input_right = split_hemilateral_to_indices(input_skids, left, right, adj_dBi.index)
-dB_output_indices = np.where([x in output_skids for x in adj_dBi.index])[0]
-dB_inputs_split = [split_hemilateral_to_indices(skids, left, right, adj_dBi.index) for skids in brain_inputs_list]
+dC_all_inputs_hit_hist_left, dC_all_inputs_hit_hist_right, dC_inputs_hit_hist_list_left, dC_inputs_hit_hist_list_right, adj_dContra = excise_cascade(contra_br, input_skids, output_skids, brain_inputs_list, left, right, adj)
+dB_all_inputs_hit_hist_left, dB_all_inputs_hit_hist_right, dB_inputs_hit_hist_list_left, dB_inputs_hit_hist_list_right, adj_dBi = excise_cascade(bilateral_br, input_skids, output_skids, brain_inputs_list, left, right, adj)
+dB_dC_all_inputs_hit_hist_left, dB_dC_all_inputs_hit_hist_right, dB_dC_inputs_hit_hist_list_left, dB_dC_inputs_hit_hist_list_right, adj_dB_dC = excise_cascade(contra_br + bilateral_br, input_skids, output_skids, brain_inputs_list, left, right, adj)
+control_all_inputs_hit_hist_left, control_all_inputs_hit_hist_right, control_inputs_hit_hist_list_left, control_inputs_hit_hist_list_right, _ = excise_cascade([], input_skids, output_skids, brain_inputs_list, left, right, adj)
 
-# re-identify indices of input/output nodes now that bilateral and contralateral have been excised
-dB_dC_input_indices_left, dB_dC_input_indices_right, dB_dC_input_left, dB_dC_input_right = split_hemilateral_to_indices(input_skids, left, right, adj_dB_dC.index)
-dB_dC_output_indices = np.where([x in output_skids for x in adj_dB_dC.index])[0]
-dB_dC_inputs_split = [split_hemilateral_to_indices(skids, left, right, adj_dB_dC.index) for skids in brain_inputs_list]
-
-p = 0.05
-max_hops = 10
-n_init = 100
-simultaneous = True
-
-transition_probs = to_transmission_matrix(adj_dContra.values, p)
-cdispatch_dContra = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = dC_output_indices,
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-transition_probs = to_transmission_matrix(adj_dBi.values, p)
-cdispatch_dBi = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = dB_output_indices,
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-transition_probs = to_transmission_matrix(adj_dB_dC.values, p)
-cdispatch_dB_dC = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = dB_dC_output_indices,
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
-
-dC_all_inputs_hit_hist_left, dC_all_inputs_hit_hist_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch_dContra) for i in [dC_input_indices_left, dC_input_indices_right])
-dC_inputs_hit_hist_list_left = Parallel(n_jobs=-1)(delayed(run_cascade)(i[0], cdispatch_dContra) for i in dC_inputs_split)
-dC_inputs_hit_hist_list_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i[1], cdispatch_dContra) for i in dC_inputs_split)
-
-dB_all_inputs_hit_hist_left, dB_all_inputs_hit_hist_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch_dBi) for i in [dB_input_indices_left, dB_input_indices_right])
-dB_inputs_hit_hist_list_left = Parallel(n_jobs=-1)(delayed(run_cascade)(i[0], cdispatch_dBi) for i in dB_inputs_split)
-dB_inputs_hit_hist_list_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i[1], cdispatch_dBi) for i in dB_inputs_split)
-
-dB_dC_all_inputs_hit_hist_left, dB_dC_all_inputs_hit_hist_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch_dB_dC) for i in [dB_dC_input_indices_left, dB_dC_input_indices_right])
-dB_dC_inputs_hit_hist_list_left = Parallel(n_jobs=-1)(delayed(run_cascade)(i[0], cdispatch_dB_dC) for i in dB_dC_inputs_split)
-dB_dC_inputs_hit_hist_list_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i[1], cdispatch_dB_dC) for i in dB_dC_inputs_split)
+con_dC_all_inputs_hit_hist_left, con_dC_all_inputs_hit_hist_right, con_dC_inputs_hit_hist_list_left, con_dC_inputs_hit_hist_list_right, con_adj_dContra = excise_cascade(random_contra_set, input_skids, output_skids, brain_inputs_list, left, right, adj)
+con_dB_all_inputs_hit_hist_left, con_dB_all_inputs_hit_hist_right, con_dB_inputs_hit_hist_list_left, con_dB_inputs_hit_hist_list_right, con_adj_dBi = excise_cascade(random_bilateral_set, input_skids, output_skids, brain_inputs_list, left, right, adj)
+con_dB_dC_all_inputs_hit_hist_left, con_dB_dC_all_inputs_hit_hist_right, con_dB_dC_inputs_hit_hist_list_left, con_dB_dC_inputs_hit_hist_list_right, con_adj_dB_dC = excise_cascade(random_contra_set + random_bilateral_set, input_skids, output_skids, brain_inputs_list, left, right, adj)
 
 # %%
 # plot all sensory left/right cascades after removing contra or bilateral neurons
 
 # plot cascades with excised contralateral brain neurons
-hops = 4
+def plot_process_excise_cascades(all_inputs_hit_hist_left, all_inputs_hit_hist_right, adj_excised, lvl7, hops, path, order=order):
 
-interhemi_hit_hist_lvl7 = hit_hist_to_clusters([dC_all_inputs_hit_hist_left, dC_all_inputs_hit_hist_right], lvl7, adj_dContra)
-interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
+    interhemi_hit_hist_lvl7 = hit_hist_to_clusters([all_inputs_hit_hist_left, all_inputs_hit_hist_right], lvl7, adj_excised)
+    interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
 
-interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
+    interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
 
-interhemi_hit_hist_lvl7_summed_total = interhemi_hit_hist_lvl7_summed[0] + interhemi_hit_hist_lvl7_summed[1]
-interhemi_hit_hist_lvl7_norm = [(hit_hist/interhemi_hit_hist_lvl7_summed_total).fillna(0) for hit_hist in interhemi_hit_hist_lvl7_summed]
+    interhemi_hit_hist_lvl7_summed_total = interhemi_hit_hist_lvl7_summed[0] + interhemi_hit_hist_lvl7_summed[1]
+    interhemi_hit_hist_lvl7_norm = [(hit_hist/interhemi_hit_hist_lvl7_summed_total).fillna(0) for hit_hist in interhemi_hit_hist_lvl7_summed]
 
-order_left = [x + 'L' for x in order]
-order_right = [x + 'R' for x in order]
-order_both = [[x + 'R', x + 'L'] for x in order]
-order_both_unlisted = [x for sublist in order_both for x in sublist]
+    order_left = [x + 'L' for x in order]
+    order_right = [x + 'R' for x in order]
+    order_both = [[x + 'R', x + 'L'] for x in order]
+    order_both_unlisted = [x for sublist in order_both for x in sublist]
 
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(interhemi_hit_hist_lvl7_summed[0]))]
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-fig.savefig('interhemisphere/plots/excised-Contra_left-right-visits_clusters.pdf', format='pdf', bbox_inches='tight')
+    fig, ax = plt.subplots(1,1, figsize=(2,2))
+    ind = [x for x in range(0, len(interhemi_hit_hist_lvl7_summed[0]))]
+    plt.bar(ind, interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
+    plt.bar(ind, interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
+    fig.savefig(path + '.pdf', format='pdf', bbox_inches='tight')
 
-left_hits = interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted]
-right_hits = interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted]
-hits = (left_hits>0)|(right_hits>0)
+    excised_contra_raw_left = interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted]
+    excised_contra_raw_right = interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted]
 
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(left_hits[hits]))]
-plt.bar(ind, left_hits[hits])
-plt.bar(ind, right_hits[hits], bottom=left_hits[hits])
-fig.savefig('interhemisphere/plots/excised-Contra_left-right-visits_clusters_norm.pdf', format='pdf', bbox_inches='tight')
+    left_hits = interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted]
+    right_hits = interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted]
+    hits = (left_hits>0)|(right_hits>0)
 
-# plot cascades with excised contralateral brain neurons
+    fig, ax = plt.subplots(1,1, figsize=(2,2))
+    ind = [x for x in range(0, len(left_hits[hits]))]
+    plt.bar(ind, left_hits[hits])
+    plt.bar(ind, right_hits[hits], bottom=left_hits[hits])
+    fig.savefig(path + '_norm.pdf', format='pdf', bbox_inches='tight')
 
-interhemi_hit_hist_lvl7 = hit_hist_to_clusters([dB_all_inputs_hit_hist_left, dB_all_inputs_hit_hist_right], lvl7, adj_dBi)
-interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
+    excised_contra_data_left = left_hits[hits]
+    excised_contra_data_right = right_hits[hits]
 
-interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
+    return(excised_contra_raw_left, excised_contra_raw_right, excised_contra_data_left, excised_contra_data_right)
 
-interhemi_hit_hist_lvl7_summed_total = interhemi_hit_hist_lvl7_summed[0] + interhemi_hit_hist_lvl7_summed[1]
-interhemi_hit_hist_lvl7_norm = [(hit_hist/interhemi_hit_hist_lvl7_summed_total).fillna(0) for hit_hist in interhemi_hit_hist_lvl7_summed]
+hops=4
 
-order_left = [x + 'L' for x in order]
-order_right = [x + 'R' for x in order]
-order_both = [[x + 'R', x + 'L'] for x in order]
-order_both_unlisted = [x for sublist in order_both for x in sublist]
+excised_contra_raw_left, excised_contra_raw_right, excised_contra_data_left, excised_contra_data_right = plot_process_excise_cascades(dC_all_inputs_hit_hist_left, dC_all_inputs_hit_hist_right, adj_dContra, lvl7, hops, 'interhemisphere/plots/excised-Contra_left-right-visits_clusters')
+excised_bi_raw_left, excised_bi_raw_right, excised_bi_data_left, excised_bi_data_right = plot_process_excise_cascades(dB_all_inputs_hit_hist_left, dB_all_inputs_hit_hist_right, adj_dBi, lvl7, hops, 'interhemisphere/plots/excised-bilateral_left-right-visits_clusters')
+excised_bi_contra_raw_left, excised_bi_contra_raw_right, excised_bi_contra_data_left, excised_bi_contra_data_right = plot_process_excise_cascades(dB_dC_all_inputs_hit_hist_left, dB_dC_all_inputs_hit_hist_right, adj_dB_dC, lvl7, hops, 'interhemisphere/plots/excised-bilateral-contralateral_left-right-visits_clusters')
+excised_control2_raw_left, excised_control2_raw_right, excised_control2_data_left, excised_control2_data_right = plot_process_excise_cascades(control_all_inputs_hit_hist_left, control_all_inputs_hit_hist_right, adj, lvl7, hops, 'interhemisphere/plots/excised-control_left-right-visits_clusters')
 
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(interhemi_hit_hist_lvl7_summed[0]))]
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-fig.savefig('interhemisphere/plots/excised-bilateral_left-right-visits_clusters.pdf', format='pdf', bbox_inches='tight')
+excised_controlContra_raw_left, excised_controlContra_raw_right, excised_controlContra_data_left, excised_controlContra_data_right = plot_process_excise_cascades(con_dC_all_inputs_hit_hist_left, con_dC_all_inputs_hit_hist_right, con_adj_dContra, lvl7, hops, 'interhemisphere/plots/excised-control-Contra_left-right-visits_clusters')
+excised_controlBi_raw_left, excised_controlBi_raw_right, excised_controlBi_data_left, excised_controlBi_data_right = plot_process_excise_cascades(con_dB_all_inputs_hit_hist_left, con_dB_all_inputs_hit_hist_right, con_adj_dBi, lvl7, hops, 'interhemisphere/plots/excised-control-Bilateral_left-right-visits_clusters')
+excised_controlBiContra_raw_left, excised_controlBiContra_raw_right, excised_controlBiContra_data_left, excised_controlBiContra_data_right = plot_process_excise_cascades(con_dB_dC_all_inputs_hit_hist_left, con_dB_dC_all_inputs_hit_hist_right, con_adj_dB_dC, lvl7, hops, 'interhemisphere/plots/excised-control-Bilateral-Contra_left-right-visits_clusters')
 
-left_hits = interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted]
-right_hits = interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted]
-hits = (left_hits>0)|(right_hits>0)
+# %%
+# Difference in signal between L/R clusters
 
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(left_hits[hits]))]
-plt.bar(ind, left_hits[hits])
-plt.bar(ind, right_hits[hits], bottom=left_hits[hits])
-fig.savefig('interhemisphere/plots/excised-bilateral_left-right-visits_clusters_norm.pdf', format='pdf', bbox_inches='tight')
+diff_contra = abs(excised_contra_data_left - excised_contra_data_right)
+diff_bi = abs(excised_bi_data_left - excised_bi_data_right)
+diff_bi_contra = abs(excised_bi_contra_data_left - excised_bi_contra_data_right)
+diff_control = abs(control_left - control_right)
+diff_contra_control = abs(excised_controlContra_data_left - excised_controlContra_data_right)
+diff_bi_control = abs(excised_controlBi_data_left - excised_controlBi_data_right)
+diff_bi_contra_control = abs(excised_controlBiContra_data_left - excised_controlBiContra_data_right)
+
+diff_contra = pd.DataFrame(zip(diff_contra, ['contra']*len(diff_contra)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_bi = pd.DataFrame(zip(diff_bi, ['bi']*len(diff_bi)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_bi_contra = pd.DataFrame(zip(diff_bi_contra, ['contra-bi']*len(diff_bi_contra)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_control = pd.DataFrame(zip(diff_control, ['control']*len(diff_control)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_contra_control = pd.DataFrame(zip(diff_contra_control, ['control_contra']*len(diff_contra_control)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_bi_control = pd.DataFrame(zip(diff_bi_control, ['control_bi']*len(diff_bi_control)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_bi_contra_control = pd.DataFrame(zip(diff_bi_contra_control, ['control_contra-bi']*len(diff_bi_contra_control)), columns = ['hemisphere_segregation', 'excised_type'])
+
+data = pd.concat([diff_control, diff_contra_control, diff_contra, diff_bi_control, diff_bi, diff_bi_contra_control, diff_bi_contra])
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='hemisphere_segregation', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+fig.savefig('interhemisphere/plots/hemisphere_segregation_Excised-neurons_expanded.pdf', format='pdf', bbox_inches='tight')
+
+data = pd.concat([diff_control, diff_contra, diff_bi, diff_bi_contra])
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='hemisphere_segregation', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+fig.savefig('interhemisphere/plots/hemisphere_segregation_Excised-neurons.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# Effect on total signal transmission
+
+excised_bi_transmission = list(excised_bi_raw_right/control_raw_right) + list(excised_bi_raw_left/control_raw_left)
+excised_contra_transmission = list(excised_contra_raw_right/control_raw_right) + list(excised_contra_raw_left/control_raw_left)
+excised_bi_contra_transmission = list(excised_bi_contra_raw_right/control_raw_right) + list(excised_bi_contra_raw_left/control_raw_left)
+control_transmission = list(excised_control2_raw_right/control_raw_right) + list(excised_control2_raw_left/control_raw_left)
+control_bi_transmission = list(excised_controlBi_raw_right/control_raw_right) + list(excised_controlBi_raw_left/control_raw_left)
+control_contra_transmission = list(excised_controlContra_raw_right/control_raw_right) + list(excised_controlContra_raw_left/control_raw_left)
+control_bi_contra_transmission = list(excised_controlBiContra_raw_right/control_raw_right) + list(excised_controlBiContra_raw_left/control_raw_left)
+
+excised_contra_transmission = pd.DataFrame(zip(excised_contra_transmission, ['contra']*len(excised_contra_transmission)), columns = ['transmission', 'excised_type'])
+excised_bi_transmission = pd.DataFrame(zip(excised_bi_transmission, ['bi']*len(excised_bi_transmission)), columns = ['transmission', 'excised_type'])
+excised_bi_contra_transmission = pd.DataFrame(zip(excised_bi_contra_transmission, ['bi_contra']*len(excised_bi_contra_transmission)), columns = ['transmission', 'excised_type'])
+control_transmission = pd.DataFrame(zip(control_transmission, ['control']*len(control_transmission)), columns = ['transmission', 'excised_type'])
+control_bi_transmission = pd.DataFrame(zip(control_bi_transmission, ['control-bi']*len(control_bi_transmission)), columns = ['transmission', 'excised_type'])
+control_contra_transmission = pd.DataFrame(zip(control_contra_transmission, ['control-contra']*len(excised_bi_contra_transmission)), columns = ['transmission', 'excised_type'])
+control_bi_contra_transmission = pd.DataFrame(zip(control_bi_contra_transmission, ['control-bi-contra']*len(excised_bi_contra_transmission)), columns = ['transmission', 'excised_type'])
+
+data = pd.concat([control_contra_transmission, excised_contra_transmission, control_bi_transmission, excised_bi_transmission, control_bi_contra_transmission, excised_bi_contra_transmission])
+
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='transmission', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+ax.set(ylim=(-0.05, 1.5))
+fig.savefig('interhemisphere/plots/transmission_strength_Excised-neurons_expanded.pdf', format='pdf', bbox_inches='tight')
+
+data = pd.concat([control_transmission, excised_contra_transmission, excised_bi_transmission, excised_bi_contra_transmission])
+
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='transmission', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+#sns.barplot(x='excised_type', y='transmission', data=data, ax=ax, linewidth = 0.5, ci='sd')
+
+# %%
+# block bilateral neurons ipsi or contra connections
+
+bilateral_br_left = list(np.intersect1d(bilateral_br, left))
+bilateral_br_right = list(np.intersect1d(bilateral_br, right))
+
+adj_left = list(np.intersect1d(adj.index, left))
+adj_right = list(np.intersect1d(adj.index, right))
+
+excised_bi_ipsi_adj = adj.copy()
+excised_bi_ipsi_adj.loc[bilateral_br_left, adj_left] = 0
+excised_bi_ipsi_adj.loc[bilateral_br_right, adj_right] = 0
+
+excised_bi_contra_adj = adj.copy()
+excised_bi_contra_adj.loc[bilateral_br_left, adj_right] = 0
+excised_bi_contra_adj.loc[bilateral_br_right, adj_left] = 0
+
+bi_dIpsi_all_inputs_left, bi_dIpsi_all_inputs_right, bi_dIpsi_hit_list_left, bi_dIpsi_hit_list_right, _ = excise_cascade([], input_skids, output_skids, brain_inputs_list, left, right, excised_bi_ipsi_adj)
+bi_dContra_all_inputs_left, bi_dContra_all_inputs_right, bi_dContra_hit_list_left, bi_dContra_hit_list_right, _ = excise_cascade([], input_skids, output_skids, brain_inputs_list, left, right, excised_bi_contra_adj)
+con_bi_dIpsi_all_inputs_left, con_bi_dIpsi_all_inputs_right, con_bi_dIpsi_hit_list_left, con_bi_dIpsi_hit_list_right, con_excised_bi_ipsi_adj = excise_cascade(contra_br, input_skids, output_skids, brain_inputs_list, left, right, excised_bi_ipsi_adj)
+con_bi_dContra_all_inputs_left, con_bi_dContra_all_inputs_right, con_bi_dContra_hit_list_left, con_bi_dContra_hit_list_right, con_excised_bi_contra_adj = excise_cascade(contra_br, input_skids, output_skids, brain_inputs_list, left, right, excised_bi_contra_adj)
+
+excised_bi_dIpsi_raw_left, excised_bi_dIpsi_raw_right, excised_bi_dIpsi_data_left, excised_bi_dIpsi_data_right = plot_process_excise_cascades(bi_dIpsi_all_inputs_left, bi_dIpsi_all_inputs_right, excised_bi_ipsi_adj, lvl7, hops, 'interhemisphere/plots/excised-ipsi-edges_Bilateral_left-right-visits_clusters')
+excised_bi_dContra_raw_left, excised_bi_dContra_raw_right, excised_bi_dContra_data_left, excised_bi_dContra_data_right = plot_process_excise_cascades(bi_dContra_all_inputs_left, bi_dContra_all_inputs_right, excised_bi_contra_adj, lvl7, hops, 'interhemisphere/plots/excised-contra-edges_Bilateral_left-right-visits_clusters')
+excised_con_bi_dIpsi_raw_left, excised_con_bi_dIpsi_raw_right, excised_con_bi_dIpsi_data_left, excised_con_bi_dIpsi_data_right = plot_process_excise_cascades(con_bi_dIpsi_all_inputs_left, con_bi_dIpsi_all_inputs_right, con_excised_bi_ipsi_adj, lvl7, hops, 'interhemisphere/plots/excised-Contra_ipsi-edges_Bilateral_left-right-visits_clusters')
+excised_con_bi_dContra_raw_left, excised_con_bi_dContra_raw_right, excised_con_bi_dContra_data_left, excised_con_bi_dContra_data_right = plot_process_excise_cascades(con_bi_dContra_all_inputs_left, con_bi_dContra_all_inputs_right, con_excised_bi_contra_adj, lvl7, hops, 'interhemisphere/plots/excised-Contra_contra-edges_Bilateral_left-right-visits_clusters')
+
+# additional plots
+
+diff_bi_dIpsi = abs(excised_bi_dIpsi_data_left - excised_bi_dIpsi_data_right)
+diff_bi_dContra = abs(excised_bi_dContra_data_left - excised_bi_dContra_data_right)
+diff_con_bi_dIpsi = abs(excised_con_bi_dIpsi_data_left - excised_con_bi_dIpsi_data_right)
+diff_con_bi_dContra = abs(excised_con_bi_dContra_data_left - excised_con_bi_dContra_data_right)
+
+diff_bi_dIpsi = pd.DataFrame(zip(diff_bi_dIpsi, ['bi-dIpsi']*len(diff_bi_dIpsi)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_bi_dContra = pd.DataFrame(zip(diff_bi_dContra, ['bi-dContra']*len(diff_bi_dContra)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_con_bi_dIpsi = pd.DataFrame(zip(diff_con_bi_dIpsi, ['con + bi-dIpsi']*len(diff_con_bi_dIpsi)), columns = ['hemisphere_segregation', 'excised_type'])
+diff_con_bi_dContra = pd.DataFrame(zip(diff_con_bi_dContra, ['con + bi-dContra']*len(diff_con_bi_dContra)), columns = ['hemisphere_segregation', 'excised_type'])
+
+data = pd.concat([diff_control, diff_bi_dIpsi, diff_bi_dContra, 
+                diff_contra, diff_con_bi_dIpsi, diff_con_bi_dContra, diff_bi])
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='hemisphere_segregation', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+fig.savefig('interhemisphere/plots/hemisphere_segregation_excised-ipsi-contra-edges_Bilateral.pdf', format='pdf', bbox_inches='tight')
 
 
-# plot cascades with excised contralateral and bilateral brain neurons
+excised_bi_dIpsi_transmission = list(excised_bi_dIpsi_raw_right/control_raw_right) + list(excised_bi_dIpsi_raw_left/control_raw_left)
+excised_bi_dContra_transmission = list(excised_bi_dContra_raw_right/control_raw_right) + list(excised_bi_dContra_raw_left/control_raw_left)
+excised_con_bi_dIpsi_transmission = list(excised_con_bi_dIpsi_raw_right/control_raw_right) + list(excised_con_bi_dIpsi_raw_left/control_raw_left)
+excised_con_bi_dContra_transmission = list(excised_con_bi_dContra_raw_right/control_raw_right) + list(excised_con_bi_dContra_raw_left/control_raw_left)
+excised_bi_dIpsi_transmission = pd.DataFrame(zip(excised_bi_dIpsi_transmission, ['bi-dIpsi']*len(excised_bi_dIpsi_transmission)), columns = ['transmission', 'excised_type'])
+excised_bi_dContra_transmission = pd.DataFrame(zip(excised_bi_dContra_transmission, ['bi-dContra']*len(excised_bi_dContra_transmission)), columns = ['transmission', 'excised_type'])
+excised_con_bi_dIpsi_transmission = pd.DataFrame(zip(excised_con_bi_dIpsi_transmission, ['con + bi-dIpsi']*len(excised_con_bi_dIpsi_transmission)), columns = ['transmission', 'excised_type'])
+excised_con_bi_dContra_transmission = pd.DataFrame(zip(excised_con_bi_dContra_transmission, ['con + bi-dContra']*len(excised_con_bi_dContra_transmission)), columns = ['transmission', 'excised_type'])
 
-interhemi_hit_hist_lvl7 = hit_hist_to_clusters([dB_dC_all_inputs_hit_hist_left, dB_dC_all_inputs_hit_hist_right], lvl7, adj_dB_dC)
-interhemi_hit_hist_lvl7_summed = sum_cluster_hit_hist(interhemi_hit_hist_lvl7)
+data = pd.concat([control_transmission, excised_bi_dIpsi_transmission, excised_bi_dContra_transmission, 
+                    excised_contra_transmission, excised_con_bi_dIpsi_transmission, excised_con_bi_dContra_transmission, excised_bi_transmission])
 
-interhemi_hit_hist_lvl7_summed = [hit_hist.iloc[:, 0:hops+1].sum(axis=1) for hit_hist in interhemi_hit_hist_lvl7_summed]
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.boxplot(x='excised_type', y='transmission', data=data, ax=ax, fliersize = 0.1, linewidth = 0.5)
+plt.xticks(rotation=45, ha='right')
+ax.set(ylim=(-0.05, 1.5))
+fig.savefig('interhemisphere/plots/transmission_strength_Excised-neurons_expanded.pdf', format='pdf', bbox_inches='tight')
 
-interhemi_hit_hist_lvl7_summed_total = interhemi_hit_hist_lvl7_summed[0] + interhemi_hit_hist_lvl7_summed[1]
-interhemi_hit_hist_lvl7_norm = [(hit_hist/interhemi_hit_hist_lvl7_summed_total).fillna(0) for hit_hist in interhemi_hit_hist_lvl7_summed]
-
-order_left = [x + 'L' for x in order]
-order_right = [x + 'R' for x in order]
-order_both = [[x + 'R', x + 'L'] for x in order]
-order_both_unlisted = [x for sublist in order_both for x in sublist]
-
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(interhemi_hit_hist_lvl7_summed[0]))]
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-plt.bar(ind, interhemi_hit_hist_lvl7_summed[1].loc[order_both_unlisted], bottom=interhemi_hit_hist_lvl7_summed[0].loc[order_both_unlisted])
-fig.savefig('interhemisphere/plots/excised-bilateral-contralateral_left-right-visits_clusters.pdf', format='pdf', bbox_inches='tight')
-
-left_hits = interhemi_hit_hist_lvl7_norm[0].loc[order_both_unlisted]
-right_hits = interhemi_hit_hist_lvl7_norm[1].loc[order_both_unlisted]
-hits = (left_hits>0)|(right_hits>0)
-
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-ind = [x for x in range(0, len(left_hits[hits]))]
-plt.bar(ind, left_hits[hits])
-plt.bar(ind, right_hits[hits], bottom=left_hits[hits])
-fig.savefig('interhemisphere/plots/excised-bilateral-contralateral_left-right-visits_clusters_norm.pdf', format='pdf', bbox_inches='tight')
 
 ## *** CONTINUE HERE
 
