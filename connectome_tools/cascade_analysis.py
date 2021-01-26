@@ -118,15 +118,42 @@ class Celltype_Analyzer:
         return(self.known_types)
 
     # determine membership similarity (intersection over union) between all pair-wise combinations of celltypes
-    def compare_membership(self):
+    def compare_membership(self, sim_type):
         iou_matrix = np.zeros((len(self.Celltypes), len(self.Celltypes)))
 
         for i in range(len(self.Celltypes)):
             for j in range(len(self.Celltypes)):
                 if(len(np.union1d(self.Celltypes[i].skids, self.Celltypes[j].skids)) > 0):
-                    intersection = len(np.intersect1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
-                    union = len(np.union1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
-                    iou_matrix[i, j] = intersection/union
+                    if(sim_type=='iou'):
+                        intersection = len(np.intersect1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
+                        union = len(np.union1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
+                        calculation = intersection/union
+                    
+                    if(sim_type=='dice'):
+                        intersection = len(np.intersect1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
+                        diff1 = len(np.setdiff1d(self.Celltypes[i].get_skids(), self.Celltypes[j].get_skids()))
+                        diff2 = len(np.setdiff1d(self.Celltypes[j].get_skids(), self.Celltypes[i].get_skids()))
+                        calculation = intersection*2/(intersection*2 + diff1 + diff2)
+                    
+                    if(sim_type=='cosine'):
+                            unique_skids = list(np.unique(list(self.Celltypes[i].get_skids()) + list(self.Celltypes[j].get_skids())))
+                            data = pd.DataFrame(np.zeros(shape=(2, len(unique_skids))), columns = unique_skids, index = [i,j])
+                            
+                            for k in range(len(data.columns)):
+                                if(data.columns[k] in self.Celltypes[i].get_skids()):
+                                    data.iloc[0,k] = 1
+                                if(data.columns[k] in self.Celltypes[j].get_skids()):
+                                    data.iloc[1,k] = 1
+
+                            a = list(data.iloc[0, :])
+                            b = list(data.iloc[1, :])
+
+                            dot = np.dot(a, b)
+                            norma = np.linalg.norm(a)
+                            normb = np.linalg.norm(b)
+                            calculation = dot / (norma * normb)
+
+                    iou_matrix[i, j] = calculation
 
         iou_matrix = pd.DataFrame(iou_matrix, index = [f'{x.get_name()} ({len(x.get_skids())})' for x in self.Celltypes], 
                                             columns = [f'{x.get_name()}' for x in self.Celltypes])
