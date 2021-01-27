@@ -6,23 +6,26 @@ sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
 from connectome_tools.process_matrix import Promat
 
 class Cascade_Analyzer:
-    def __init__(self, hit_hist, mg, pairs):
+    def __init__(self, hit_hist, adj_index, pairs): # changed mg to adj_index for custom/modified adj matrices
         self.hit_hist = hit_hist
-        self.mg = mg
+        self.adj_index = adj_index
         self.pairs = pairs
-        self.skid_hit_hist = pd.DataFrame(hit_hist, index = mg.meta.index) # convert indices to skids
+        self.skid_hit_hist = pd.DataFrame(hit_hist, index = self.adj_index) # convert indices to skids
 
     def get_hit_hist(self):
         return(self.hit_hist)
+
+    def get_skid_hit_hist(self):
+        return(self.skid_hit_hist)
 
     def set_pairs(self, pairs):
         self.pairs = pairs
 
     def index_to_skid(self, index):
-        return(self.mg.meta.iloc[index, :].name)
+        return(self.adj_index[index].name)
 
     def skid_to_index(self, skid):
-        index_match = np.where(self.mg.meta.index == skid)[0]
+        index_match = np.where(self.adj_index == skid)[0]
         if(len(index_match)==1):
             return(int(index_match[0]))
         if(len(index_match)!=1):
