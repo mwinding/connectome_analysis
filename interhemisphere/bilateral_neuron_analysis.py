@@ -52,7 +52,7 @@ projectome = pd.read_csv('interhemisphere/data/projectome_mw_brain_matrix_A1_spl
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 # %%
 # 
-from connectome_tools.process_matrix import Promat
+import connectome_tools.process_matrix as pm
 
 left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
@@ -278,7 +278,7 @@ is_left = pd.DataFrame(is_left, columns = ['skid', 'is_left'])
 
 projectome['is_left']=is_left.is_left.values
 
-from connectome_tools.process_matrix import Adjacency_matrix, Promat
+import connectome_tools.process_matrix as pm
 
 meshes_left = ['Brain Hemisphere left', 'SEZ_left', 'T1_left', 'T2_left', 'T3_left', 'A1_left', 'A2_left', 'A3_left', 'A4_left', 'A5_left', 'A6_left', 'A7_left', 'A8_left']
 meshes_right = ['Brain Hemisphere right', 'SEZ_right', 'T1_right', 'T2_right', 'T3_right', 'A1_right', 'A2_right', 'A3_right', 'A4_right', 'A5_right', 'A6_right', 'A7_right', 'A8_right']
@@ -288,7 +288,7 @@ projectome['summed_left'] = projectome[meshes_left].sum(axis=1)
 projectome['summed_right'] = projectome[meshes_right].sum(axis=1)
 proj_group = projectome.groupby(['skeleton', 'is_left','is_axon', 'is_input'])['summed_left', 'summed_right'].sum()
 #proj_group = projectome.groupby(['skeleton', 'is_left','is_axon', 'is_input'])['Brain Hemisphere left', 'Brain Hemisphere right'].sum()
-br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 
 right_contra_axon_outputs = proj_group.loc[(br, 0, 1, 0), :] # right side, axon outputs
 left_contra_axon_outputs = proj_group.loc[(br, 1, 1, 0), :] # left side, axon outputs
@@ -296,7 +296,7 @@ left_contra_axon_outputs = proj_group.loc[(br, 1, 1, 0), :] # left side, axon ou
 right_contra_axon_outputs['ratio'] = right_contra_axon_outputs['summed_left']/(right_contra_axon_outputs['summed_left'] + right_contra_axon_outputs['summed_right'])
 left_contra_axon_outputs['ratio'] = left_contra_axon_outputs['summed_right']/(left_contra_axon_outputs['summed_left'] + left_contra_axon_outputs['summed_right'])
 
-br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 
 contra_pairs = []
 for i in range(len(br_pairs)):
@@ -369,10 +369,9 @@ asymmetric_ipsi_contra = pd.DataFrame(asymmetric_ipsi_contra)
 
 # %%
 # plot ipsi_contra neuron networks
-from connectome_tools.process_matrix import Promat
 from connectome_tools.cascade_analysis import Celltype, Celltype_Analyzer
 
-celltypes, celltype_names = Promat.celltypes()
+celltypes, celltype_names = pm.Promat.celltypes()
 all_celltypes = list(map(lambda pair: Celltype(pair[0], pair[1]), zip(celltype_names, celltypes)))
 ct_analyzer = Celltype_Analyzer(all_celltypes)
 
@@ -511,3 +510,97 @@ for i in range(1, len(bilateral_cats_memberships.index)):
 plt.savefig('interhemisphere/plots/summary_bilateral_partners_3cats.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# plot simple 1-hop downstream of ipsi and contralateral partners
+# not very interesting
+
+ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
+bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
+contra = pymaid.get_skids_by_annotation('mw contralateral axon')
+
+ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0]
+bi_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
+contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
+
+adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
+hops=1
+threshold = 0.01
+
+# upstream ipsi, bi, contra
+
+us_ipsi_list = []
+for i in tqdm(range(len(ipsi_pairs))):
+    us = adj_mat.upstream_multihop(list(ipsi_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_us=True)
+    us_ipsi_list.append(us)
+
+us_bi_list = []
+for i in tqdm(range(len(bi_pairs))):
+    us = adj_mat.upstream_multihop(list(bi_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_us=True)
+    us_bi_list.append(us)
+
+us_contra_list = []
+for i in tqdm(range(len(contra_pairs))):
+    us = adj_mat.upstream_multihop(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_us=True)
+    us_contra_list.append(us)
+
+us_ipsi = list(np.unique([x for sublist in us_ipsi_list for x in sublist[0]]))
+us_bi = list(np.unique([x for sublist in us_bi_list for x in sublist[0]]))
+us_contra = list(np.unique([x for sublist in us_contra_list for x in sublist[0]]))
+
+us_ipsi_ipsi = len(np.intersect1d(us_ipsi, ipsi))/len(us_ipsi)
+us_ipsi_bilateral = len(np.intersect1d(us_ipsi, bilateral))/len(us_ipsi)
+us_ipsi_contra = len(np.intersect1d(us_ipsi, contra))/len(us_ipsi)
+
+us_bi_ipsi = len(np.intersect1d(us_bi, ipsi))/len(us_bi)
+us_bi_bilateral = len(np.intersect1d(us_bi, bilateral))/len(us_bi)
+us_bi_contra = len(np.intersect1d(us_bi, contra))/len(us_bi)
+
+us_contra_ipsi = len(np.intersect1d(us_contra, ipsi))/len(us_contra)
+us_contra_bilateral = len(np.intersect1d(us_contra, bilateral))/len(us_contra)
+us_contra_contra = len(np.intersect1d(us_contra, contra))/len(us_contra)
+
+# bilateral downstream
+iPartners = list(np.unique(ipsi_partners_all))
+iPartners_ipsi = len(np.intersect1d(iPartners, ipsi))/len(iPartners)
+iPartners_bilateral = len(np.intersect1d(iPartners, bilateral))/len(iPartners)
+iPartners_contra = len(np.intersect1d(iPartners, contra))/len(iPartners)
+
+cPartners = list(np.unique(contra_partners_all))
+cPartners_ipsi = len(np.intersect1d(cPartners, ipsi))/len(iPartners)
+cPartners_bilateral = len(np.intersect1d(cPartners, bilateral))/len(iPartners)
+cPartners_contra = len(np.intersect1d(cPartners, contra))/len(iPartners)
+
+# downstream ipsi, contra
+ds_ipsi_list = []
+for i in tqdm(range(len(ipsi_pairs))):
+    ds_ipsi = adj_mat.downstream_multihop(source = list(ipsi_pairs.loc[i]), threshold = threshold, min_members = 0, hops=hops, allow_source_ds=True)
+    ds_ipsi_list.append(ds_ipsi)
+    
+ds_contra_list = []
+for i in tqdm(range(len(contra_pairs))):
+    ds_contra = adj_mat.downstream_multihop(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_ds=True)
+    ds_contra_list.append(ds_contra)
+
+ds_ipsi = list(np.unique([x for sublist in ds_ipsi_list for x in sublist[0]]))
+ds_contra = list(np.unique([x for sublist in ds_contra_list for x in sublist[0]]))
+
+ds_ipsi_ipsi = len(np.intersect1d(ds_ipsi, ipsi))/len(ds_ipsi)
+ds_ipsi_bilateral = len(np.intersect1d(ds_ipsi, bilateral))/len(ds_ipsi)
+ds_ipsi_contra = len(np.intersect1d(ds_ipsi, contra))/len(ds_ipsi)
+
+ds_contra_ipsi = len(np.intersect1d(ds_contra, ipsi))/len(ds_contra)
+ds_contra_bilateral = len(np.intersect1d(ds_contra, bilateral))/len(ds_contra)
+ds_contra_contra = len(np.intersect1d(ds_contra, contra))/len(ds_contra)
+
+# barplot downstream
+ind = np.arange(0, 4)
+us_ipsi = np.array([ds_ipsi_ipsi, iPartners_ipsi, cPartners_ipsi, ds_contra_ipsi])
+us_bi = np.array([ds_ipsi_bilateral, iPartners_bilateral, cPartners_bilateral, ds_contra_bilateral])
+us_contra = np.array([ds_ipsi_contra, iPartners_contra, cPartners_contra, ds_ipsi_contra])
+
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+plt.bar(x=ind, height=us_ipsi)
+plt.bar(x=ind, height=us_bi, bottom=us_ipsi)
+plt.bar(x=ind, height=us_contra, bottom=us_ipsi+us_bi)
+
+# %%
+# plot simple 1-hop upstream/downstream of ipsi, bi, contra with known cell types
