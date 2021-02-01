@@ -190,11 +190,18 @@ class Adjacency_matrix():
 
         return(us_neurons_skids, edges)
 
-    def downstream_multihop(self, source, threshold, min_members=0, hops=10, exclude = [], strict=False):
-        _, ds, edges = self.downstream(source, threshold, exclude=(source + exclude))
+    def downstream_multihop(self, source, threshold, min_members=0, hops=10, exclude = [], strict=False, allow_source_ds=False):
+        if(allow_source_ds==False):
+            _, ds, edges = self.downstream(source, threshold, exclude=(source + exclude))
+        if(allow_source_ds):
+            _, ds, edges = self.downstream(source, threshold, exclude=(exclude))
+
         _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict)
 
-        before = source + ds
+        if(allow_source_ds==False):
+            before = source + ds
+        if(allow_source_ds):
+            before = ds
 
         layers = []
         layers.append(ds)
@@ -210,11 +217,18 @@ class Adjacency_matrix():
 
         return(layers)
 
-    def upstream_multihop(self, source, threshold, min_members=10, hops=10, exclude=[], strict=False):
-        us, edges = self.upstream(source, threshold, exclude=(source+exclude))
+    def upstream_multihop(self, source, threshold, min_members=10, hops=10, exclude=[], strict=False, allow_source_us=False):
+        if(allow_source_us==False):        
+            us, edges = self.upstream(source, threshold, exclude=(source + exclude))
+        if(allow_source_us):
+            us, edges = self.upstream(source, threshold, exclude=(exclude))
+
         _, us = self.edge_threshold(edges, threshold, direction='upstream', strict=strict)
 
-        before = source + us
+        if(allow_source_us==False):
+            before = source + us
+        if(allow_source_us):
+            before = us
 
         layers = []
         layers.append(us)
@@ -495,7 +509,7 @@ class Promat():
 
     # set of known celltypes, returned as skid lists
     @staticmethod
-    def celltypes():
+    def celltypes(more_celltypes=[], more_names=[]):
         A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
         A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
         br = pymaid.get_skids_by_annotation('mw brain neurons')
@@ -542,6 +556,16 @@ class Promat():
 
         celltypes = [sens_all, PN, LHN, MBIN, list(np.setdiff1d(KC, few_synapses)), MBON, FBN_all, CN, pre_RGN, pre_dSEZ, pre_dVNC, RGN, dSEZ, dVNC]
         celltype_names = ['Sens', 'PN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'pre-RGN', 'pre-dSEZ','pre-dVNC', 'RGN', 'dSEZ', 'dVNC']
+
+        if(len(more_celltypes)>0):
+            celltypes = celltypes + more_celltypes
+            celltype_names = celltype_names + more_names
+
+        # only use celltypes that have non-zero number of members
+        exists = [len(x)!=0 for x in celltypes]
+        celltypes = [x for i,x in enumerate(celltypes) if exists[i]==True]
+        celltype_names = [x for i,x in enumerate(celltype_names) if exists[i]==True]
+
         return(celltypes, celltype_names)
 
     # summing input from a group of upstream neurons
