@@ -86,7 +86,7 @@ bilateral_no_brain_input = projectome.groupby('skeleton')['Brain Hemisphere left
 exclude = list(bilateral_no_brain_input[(bilateral_no_brain_input.loc[:, 'Brain Hemisphere left']==0) & (bilateral_no_brain_input.loc[:, 'Brain Hemisphere right']==0)].index)
 bilateral = list(np.setdiff1d(bilateral, exclude + dVNC + dSEZ))
 
-bilateral_pairs = Promat.extract_pairs_from_list(bilateral, pairs)[0]
+bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
 
 def ad_edges(connector, projectome):
     connector_details = projectome[projectome.loc[:, 'connector']==connector]
@@ -158,7 +158,7 @@ def ipsi_contra_ds_partners(bilateral_leftid, bilateral_rightid, skeletons, inpu
     if(type(contra_right_partners)==pd.Series):
         contra_right_partners = list(contra_right_partners)
 
-    contra_pair_partners = Promat.extract_pairs_from_list(np.unique(contra_left_partners + contra_right_partners), pairs)[0] # added np.unique to deal with issues with the few bilateral dendrites (MBONs)
+    contra_pair_partners = pm.Promat.extract_pairs_from_list(np.unique(contra_left_partners + contra_right_partners), pairs)[0] # added np.unique to deal with issues with the few bilateral dendrites (MBONs)
 
     # identify and average contralateral inputs
     bi_ad_connect_index2 = bi_ad_connect.set_index(['connection_type', 'source', 'target'])
@@ -190,7 +190,7 @@ def ipsi_contra_ds_partners(bilateral_leftid, bilateral_rightid, skeletons, inpu
     if(type(ipsi_right_partners)==pd.Series):
         ipsi_right_partners = list(ipsi_right_partners)
 
-    ipsi_pair_partners = Promat.extract_pairs_from_list(np.unique(ipsi_left_partners + ipsi_right_partners), pairs)[0] # added np.unique to deal with issues with the few bilateral dendrites (MBONs)
+    ipsi_pair_partners = pm.Promat.extract_pairs_from_list(np.unique(ipsi_left_partners + ipsi_right_partners), pairs)[0] # added np.unique to deal with issues with the few bilateral dendrites (MBONs)
 
     # identify and average ipsilateral inputs
     bi_ad_connect_index2 = bi_ad_connect.set_index(['connection_type', 'source', 'target'])
@@ -604,3 +604,41 @@ plt.bar(x=ind, height=us_contra, bottom=us_ipsi+us_bi)
 
 # %%
 # plot simple 1-hop upstream/downstream of ipsi, bi, contra with known cell types
+
+# %%
+# types of self-loops
+
+threshold = 0.01
+
+CNs = pymaid.get_skids_by_annotation('mw CN')
+CN_pairs = pm.Promat.extract_pairs_from_list(CNs, pairs)[0]
+pairs = CN_pairs.iloc[0:5, :]
+
+all_edges_list=[]
+for pair_id in pairs.leftid:
+    _, ds, ds_edges = adj_mat.downstream(pair_id, threshold)
+    ds_edges, CN33_ds_partners = adj_mat.edge_threshold(ds_edges, threshold, 'downstream')
+    initial_overthres_ds_edges = ds_edges[ds_edges.overthres==True]
+    initial_overthres_ds_edges.reset_index(inplace=True)
+    ds_partners = initial_overthres_ds_edges.downstream_pair_id
+
+    all_edges = []
+    for i, partner in enumerate(ds_partners):
+        _, ds, edges = adj_mat.downstream(partner, threshold)
+        ds_edges, ds_partners = adj_mat.edge_threshold(edges, threshold, 'downstream')
+        overthres_ds_edges = ds_edges[ds_edges.overthres==True]
+        overthres_ds_edges.reset_index(inplace=True)
+
+        for j in range(len(overthres_ds_edges)):
+            path = pd.concat([initial_overthres_ds_edges.iloc[i, :], overthres_ds_edges.iloc[j, :]], axis=1).T
+            path.reset_index(inplace=True)
+            path = path.drop(labels=['index', 'level_0', 'overthres'], axis=1)
+            path['path'] = f'path-{pair_id}_{i}_{j}'
+            all_edges.append(path)
+
+    all_edges = pd.concat(all_edges, axis=0)
+    all_edges.set_index(['path'], inplace=True)
+    all_edges_list.append(all_edges)
+
+
+
