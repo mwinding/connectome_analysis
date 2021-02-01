@@ -93,18 +93,32 @@ adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendrit
 from tqdm import tqdm
 
 contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
+bi_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
+ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0]
+
 threshold = 0.01
-hops = 2
+hops = 3
 
 ds_contra_list = []
 for i in tqdm(range(len(contra_pairs))):
-    ds_contra = adj_mat.downstream_multihop(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops)
+    ds_contra = adj_mat.downstream_multihop(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_ds=True)
     ds_contra_list.append(ds_contra)
 
+ds_bi_list = []
+for i in tqdm(range(len(bi_pairs))):
+    ds_bi = adj_mat.downstream_multihop(list(bi_pairs.loc[i]), threshold, min_members = 0, hops=hops, allow_source_ds=True)
+    ds_bi_list.append(ds_bi)
+
+ds_ipsi_list = []
+for i in tqdm(range(len(ipsi_pairs))):
+    ds_ipsi = adj_mat.downstream_multihop(source = list(ipsi_pairs.loc[i]), threshold = threshold, min_members = 0, hops=hops, allow_source_ds=True)
+    ds_ipsi_list.append(ds_ipsi)
+'''
 us_contra_list = []
 for i in tqdm(range(len(contra_pairs))):
-    us_contra = adj_mat.downstream_multihop(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops)
-    us_contra_list.append(ds_contra)
+    us_contra = adj_mat.upstream(list(contra_pairs.loc[i]), threshold, min_members = 0, hops=hops)
+    us_contra_list.append(us_contra)
+'''
 # %%
 # group by cluster
 
@@ -316,9 +330,10 @@ plt.savefig('interhemisphere/plots/ipsi-contra-bilateral_interactions/number_dow
 # fraction of outputs ipsi/contra/bi
 
 # %%
-# self-loops? contra? bilateral?
+# self-loops? contra? bilateral? vs ipsi
 contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
 bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
+ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0]
 
 self_loop_contra = []
 for i in range(len(contra_pairs)):
@@ -328,6 +343,10 @@ self_loop_bilateral = []
 for i in range(len(bilateral_pairs)):
     self_loop_bilateral.append(adj_mat.adj_pairwise.loc[('pairs', bilateral_pairs.leftid[i]), ('pairs', bilateral_pairs.leftid[i])])
 
+self_loop_ipsi = []
+for i in range(len(ipsi_pairs)):
+    self_loop_ipsi.append(adj_mat.adj_pairwise.loc[('pairs', bilateral_pairs.leftid[i]), ('pairs', bilateral_pairs.leftid[i])])
+
 sum(np.array(self_loop_contra)>0.01)/len(self_loop_contra)
 sum(np.array(self_loop_bilateral)>0.01)/len(self_loop_bilateral)
 
@@ -335,6 +354,21 @@ sum(np.array(self_loop_bilateral)>0.01)/len(self_loop_bilateral)
 celltypes, celltype_names = pm.Promat.celltypes([ipsi, bilateral, contra], ['ipsi', 'bilateral', 'contra'])
 
 # identify types of neurons in each layer downstream of each contra-pair
+def self_loops(ds_source_list, source_pairs, type_cell):
+
+    self_loop_hops = []
+    for i, pair in enumerate(source_pairs.leftid):
+        hops=[pair, 0, type_cell]
+        for hop, ds in enumerate(ds_source_list[i]):
+            if(pair in ds):
+                hops=[pair, hop+1, type_cell]
+    
+        self_loop_hops.append(hops)
+
+    self_loop_hops = pd.DataFrame(self_loop_hops, columns =['pairid', 'hops', 'type'])
+    return(self_loop_hops)
+
+# contra
 contra_type_layers_list = []
 contra_type_layers_skids_list = []
 for celltype in celltypes:
@@ -342,17 +376,40 @@ for celltype in celltypes:
     contra_type_layers_list.append(type_layers)
     contra_type_layers_skids_list.append(type_layers_skids)
 
-self_loop_hops = []
-for skid in list(contra_type_layers_skids_list[-1].columns):
-    multihop_ds = contra_type_layers_skids_list[-1].loc[:, skid]
+# for bilaterals
+bi_type_layers_list = []
+bi_type_layers_skids_list = []
+for celltype in celltypes:
+    type_layers, type_layers_skids = adj_mat.layer_id(ds_bi_list, bi_pairs.leftid, celltype)
+    bi_type_layers_list.append(type_layers)
+    bi_type_layers_skids_list.append(type_layers_skids)
 
-    hops = [skid, 0]
-    for i in range(len(multihop_ds)):
-        if(skid in multihop_ds.loc[i]):
-            hops = [skid, i]
+# for ipsi
+ipsi_type_layers_list = []
+ipsi_type_layers_skids_list = []
+for celltype in celltypes:
+    type_layers, type_layers_skids = adj_mat.layer_id(ds_ipsi_list, ipsi_pairs.leftid, celltype)
+    ipsi_type_layers_list.append(type_layers)
+    ipsi_type_layers_skids_list.append(type_layers_skids)
 
-    self_loop_hops.append(hops)
-    
+contra_self_loops = self_loops(ds_contra_list, contra_pairs, 'contra')
+bi_self_loops = self_loops(ds_bi_list, bi_pairs, 'bilateral')
+ipsi_self_loops = self_loops(ds_ipsi_list, ipsi_pairs, 'ipsi')
+#data = pd.concat([ipsi_self_loops, bi_self_loops, contra_self_loops], axis=0)
+
+self_loop_hops = pd.DataFrame([[sum(ipsi_self_loops.hops==1)/len(ipsi_self_loops), sum(ipsi_self_loops.hops==2)/len(ipsi_self_loops)],
+                    [sum(bi_self_loops.hops==1)/len(bi_self_loops), sum(bi_self_loops.hops==2)/len(bi_self_loops)],
+                    [sum(contra_self_loops.hops==1)/len(contra_self_loops), sum(contra_self_loops.hops==2)/len(contra_self_loops)]],
+                    columns = ['Direct', '2-Hop'], index = ['Ipsilateral', 'Bilateral', 'Contralateral'])
+
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.heatmap(self_loop_hops, annot=True, fmt='.2', ax=ax, cbar=False, vmax=0.20, cmap='Blues')
+plt.savefig('interhemisphere/plots/self_loops.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# simple 1-hop upstream, 1-hop downstream of ipsi, bilateral, contra
+
+
 
 # %%
 # multihop matrix of contra -> contra, contra->bilateral, bilateral->bilateral, bilateral->contra
