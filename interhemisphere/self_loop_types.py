@@ -60,10 +60,10 @@ from joblib import Parallel, delayed
 
 adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
 
-def hop_edges(pair_id, threshold, adj_mat, edges_only=False):
+def hop_edges(pair_id, threshold, adj_mat, edges_only=False, include_nonpaired=[], left=[], right=[]):
 
     _, ds, ds_edges = adj_mat.downstream(pair_id, threshold)
-    ds_edges, _ = adj_mat.edge_threshold(ds_edges, threshold, 'downstream')
+    ds_edges, _ = adj_mat.edge_threshold(ds_edges, threshold, 'downstream', include_nonpaired=include_nonpaired, left=left, right=right)
     overthres_ds_edges = ds_edges[ds_edges.overthres==True]
     overthres_ds_edges.reset_index(inplace=True)
     overthres_ds_edges.drop(labels=['index', 'overthres'], axis=1, inplace=True)
@@ -73,10 +73,24 @@ def hop_edges(pair_id, threshold, adj_mat, edges_only=False):
     if(edges_only):
         return(overthres_ds_edges)
 
+#left = list(pd.read_json('interhemisphere/data/hemisphere-L-2020-3-9.json').skeleton_id)
+#right = list(pd.read_json('interhemisphere/data/hemisphere-R-2020-3-9.json').skeleton_id)
+left = pymaid.get_skids_by_annotation('mw left')
+right = pymaid.get_skids_by_annotation('mw right')
+
 matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)[0]
+#matrix_nonpaired = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)[2]
+#matrix_nonpaired = np.intersect1d(matrix_nonpaired, left+right)
+#matrix_nonpaired = [x for sublist in matrix_nonpaired.values for x in sublist]
+
+KCs = pymaid.get_skids_by_annotation('mw KC')
+sensories = pymaid.get_skids_by_annotation('mw AN sensories') + pymaid.get_skids_by_annotation('mw MN sensories') + pymaid.get_skids_by_annotation('mw photoreceptors')
+nonpaired = KCs + sensories
+
+all_sources = list(matrix_pairs.leftid) + nonpaired
 
 threshold = 0.01
-all_paths = Parallel(n_jobs=-1)(delayed(hop_edges)(pair, threshold, adj_mat, edges_only=True) for pair in tqdm(matrix_pairs.leftid))
+all_paths = Parallel(n_jobs=-1)(delayed(hop_edges)(pair, threshold, adj_mat, edges_only=True, include_nonpaired=nonpaired, left=left, right=right) for pair in tqdm(all_sources))
 all_paths_combined = [x for x in all_paths if type(x)==pd.DataFrame]
 all_paths_combined = pd.concat(all_paths_combined, axis=0)
 all_paths_combined.reset_index(inplace=True, drop=True)
@@ -443,3 +457,20 @@ contra_edges_combined = [x for x in contra_edges if type(x)==pd.DataFrame]
 contra_edges_combined = pd.concat(contra_edges_combined, axis=0)
 '''
 # %%
+adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
+
+KCs = list(pd.read_json('interhemisphere/data/KC-2020-01-14.json').skeleton_id)
+left = list(pd.read_json('interhemisphere/data/hemisphere-L-2020-3-9.json').skeleton_id)
+right = list(pd.read_json('interhemisphere/data/hemisphere-R-2020-3-9.json').skeleton_id)
+MBON = list(pd.read_json('interhemisphere/data/MBON-2019-12-9.json').skeleton_id)
+
+uPN_left = 7865696
+MBON_left = 16223537
+threshold = 0.01
+KC_oneside = 16630385
+
+_, ds, ds_edges = adj_mat.downstream(uPN_left, threshold)
+edges, skids = adj_mat.edge_threshold(ds_edges, threshold, 'downstream', include_nonpaired = KCs, left=left, right=right)
+
+_, ds, ds_edges = adj_mat.downstream(KC_oneside, threshold)
+edges, skids = adj_mat.edge_threshold(ds_edges, threshold, 'downstream', include_nonpaired = KCs, left=left, right=right)
