@@ -155,9 +155,15 @@ class Adjacency_matrix():
                     for edge in specific_ds_edges:
                         edges.append(edge)
 
-                # not implemented for nonpaired source neurons
-                #if(pair[0] == 'unpaired'):
-
+                if(pair[0] == 'nonpaired'):
+                    specific_ds = adj.loc[('nonpaired', pair[1]), bin_mat.loc[('nonpaired', pair[1]), :]].index
+                    if(exclude_unpaired):
+                        specific_ds_edges = [[pair[1], x[1]] for x in specific_ds if (x[0]=='pairs') & (x[1] not in exclude)]
+                    if(exclude_unpaired==False):
+                        specific_ds_edges = [[pair[1], x[1]] for x in specific_ds if (x[1] not in exclude)]
+                    for edge in specific_ds_edges:
+                        edges.append(edge)
+                        
             return(source_skids, ds_neurons_skids, edges)
 
 
@@ -245,7 +251,8 @@ class Adjacency_matrix():
         return(layers)
 
     # checking additional threshold criteria after identifying neurons over summed threshold
-    def edge_threshold(self, edges, threshold, direction, strict=False):
+    # left and right are only necessary when nonpaired neurons are included
+    def edge_threshold(self, edges, threshold, direction, strict=False, include_nonpaired=[], left=[], right=[]):
 
         adj = self.adj_inter.copy()
 
@@ -253,36 +260,83 @@ class Adjacency_matrix():
         for edge in edges:
             specific_edges = adj.loc[(slice(None), edge[0]), (slice(None), edge[1])]
 
-            # check if it's a paired connection
-            if((len(specific_edges.index)==2) & (len(specific_edges.columns)==2)): 
-                    specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0,0], specific_edges.iloc[1,1], False, 'ipsilateral'],
-                                        [edge[0], edge[1], specific_edges.iloc[1,0], specific_edges.iloc[0,1], False, 'contralateral']], 
-                                        columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
+            us_pair_status = adj.loc[(slice(None), slice(None), edge[0]), :].index[0][0]
+            ds_pair_status = adj.loc[(slice(None), slice(None), edge[1]), :].index[0][0]
 
-                    if(strict==True):
-                        # is each edge weight over threshold?
-                        for index in specific_edges.index:
-                            if((specific_edges.loc[index].left>threshold) & (specific_edges.loc[index].right>threshold)):
-                                specific_edges.loc[index, 'overthres'] = True
+            # check for paired connections
+            if((us_pair_status == 'pairs') & (ds_pair_status == 'pairs')): 
+                specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0,0], specific_edges.iloc[1,1], False, 'ipsilateral', 'paired','paired'],
+                                                [edge[0], edge[1], specific_edges.iloc[1,0], specific_edges.iloc[0,1], False, 'contralateral', 'paired','paired']], 
+                                                columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
 
-                    if(strict==False):
-                        # is average edge weight over threshold
-                        for index in specific_edges.index:
-                            if(((specific_edges.loc[index].left + specific_edges.loc[index].right)/2) > threshold):
-                                specific_edges.loc[index, 'overthres'] = True
-
-                    # are both edges present?
+                if(strict==True):
+                    # is each edge weight over threshold?
                     for index in specific_edges.index:
-                        if((specific_edges.loc[index].left==0) | (specific_edges.loc[index].right==0)):
-                            specific_edges.loc[index, 'overthres'] = False
+                        if((specific_edges.loc[index].left>threshold) & (specific_edges.loc[index].right>threshold)):
+                            specific_edges.loc[index, 'overthres'] = True
+
+                if(strict==False):
+                    # is average edge weight over threshold
+                    for index in specific_edges.index:
+                        if(((specific_edges.loc[index].left + specific_edges.loc[index].right)/2) > threshold):
+                            specific_edges.loc[index, 'overthres'] = True
+
+                # are both edges present?
+                for index in specific_edges.index:
+                    if((specific_edges.loc[index].left==0) | (specific_edges.loc[index].right==0)):
+                        specific_edges.loc[index, 'overthres'] = False
+                            
+                all_edges.append(specific_edges.values[0])
+                all_edges.append(specific_edges.values[1])
+
+            # check for edges to downstream nonpaired neurons
+            if((us_pair_status == 'pairs') & (ds_pair_status == 'nonpaired') & (edge[1] in include_nonpaired)):
+
+                if(edge[1] in left):
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0].values[0], 0, False, 'ipsilateral', 'paired', 'nonpaired'],
+                                                    [edge[0], edge[1], specific_edges.iloc[1].values[0], 0, False, 'contralateral', 'paired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                if(edge[1] in right):
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], 0, specific_edges.iloc[0].values[0], False, 'contralateral', 'paired', 'nonpaired'],
+                                                    [edge[0], edge[1], 0, specific_edges.iloc[1].values[0], False, 'ipsilateral', 'paired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                # is edge over threshold? 
+                # don't check both because one will be missing
+                # strict==True/False doesn't apply for the same reason
+                for index in specific_edges.index:
+                    if(((specific_edges.loc[index].left + specific_edges.loc[index].right)>threshold)):
+                        specific_edges.loc[index, 'overthres'] = True
                                 
-                    all_edges.append(specific_edges.values[0])
-                    all_edges.append(specific_edges.values[1])
+                all_edges.append(specific_edges.values[0])
+                all_edges.append(specific_edges.values[1])
 
-            #if(unpaired)
-            #if(unipolar)
 
-        all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type'])
+            # check for edges from upstream nonpaired neurons
+            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'pairs') & (edge[0] in include_nonpaired)):
+
+                if(edge[0] in left):
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0, 0], 0, False, 'ipsilateral', 'nonpaired', 'paired'],
+                                                    [edge[0], edge[1], specific_edges.iloc[0, 1], 0, False, 'contralateral', 'nonpaired', 'paired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                if(edge[0] in right):
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], 0, specific_edges.iloc[0, 0], False, 'contralateral', 'nonpaired', 'paired'],
+                                                    [edge[0], edge[1], 0, specific_edges.iloc[0, 1], False, 'ipsilateral', 'nonpaired', 'paired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                # is edge over threshold? 
+                # don't check both because one will be missing
+                # strict==True/False doesn't apply for the same reason
+                for index in specific_edges.index:
+                    if(((specific_edges.loc[index].left + specific_edges.loc[index].right)>threshold)):
+                        specific_edges.loc[index, 'overthres'] = True
+                                
+                all_edges.append(specific_edges.values[0])
+                all_edges.append(specific_edges.values[1])
+            
+        all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
             
         if(direction=='downstream'):
             partner_skids = np.unique(all_edges[all_edges.overthres==True].downstream_pair_id) # identify downstream pairs
