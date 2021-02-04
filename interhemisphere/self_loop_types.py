@@ -29,7 +29,6 @@ plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
-#adj = mg.adj  # adjacency matrix from the "mg" object
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
 
@@ -53,11 +52,13 @@ ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0]
 bi_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
 contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
 
-adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
 # %%
 # generate paths for whole brain
+# skip to save time
 from tqdm import tqdm
 from joblib import Parallel, delayed
+
+adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
 
 def hop_edges(pair_id, threshold, adj_mat, edges_only=False):
 
@@ -72,8 +73,6 @@ def hop_edges(pair_id, threshold, adj_mat, edges_only=False):
     if(edges_only):
         return(overthres_ds_edges)
 
-br = pymaid.get_skids_by_annotation('mw brain neurons')
-br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)[0]
 
 threshold = 0.01
@@ -85,6 +84,10 @@ all_paths_combined.reset_index(inplace=True, drop=True)
 all_paths_combined.to_csv('interhemisphere/csvs/all_paired_edges.csv')
 
 # %%
+# load previously generated paths
+all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
+
+# %%
 # load into network x object
 
 import networkx as nx 
@@ -94,70 +97,312 @@ dVNC_pairs = pm.Promat.extract_pairs_from_list(dVNC, pairs)[0]
 
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 dSEZ_pairs = pm.Promat.extract_pairs_from_list(dSEZ, pairs)[0]
+
+RGN = pymaid.get_skids_by_annotation('mw RGN')
+RGN_pairs = pm.Promat.extract_pairs_from_list(RGN, pairs)[0]
+
 # directed graph
 G = nx.DiGraph()
+G_no_commissure = nx.DiGraph()
+G_no_contra_edges = nx.DiGraph()
+G_no_bilateral_contra_edges = nx.DiGraph()
+G_no_bilateral_ipsi_edges = nx.DiGraph()
 
 # build the graph
-for i in range(len(all_paths_combined)):
-    G.add_edge(all_paths_combined.iloc[i].upstream_pair_id, all_paths_combined.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_paths_combined.iloc[i].left, all_paths_combined.iloc[i].right]), 
-                edge_type = all_paths_combined.iloc[i].type)
+for i in range(len(all_edges_combined)):
+    G.add_edge(all_edges_combined.iloc[i].upstream_pair_id, all_edges_combined.iloc[i].downstream_pair_id, 
+                weight = np.mean([all_edges_combined.iloc[i].left, all_edges_combined.iloc[i].right]), 
+                edge_type = all_edges_combined.iloc[i].type)
 
-#G.add_edges_from(all_paths_combined.loc[:, ['upstream_pair_id', 'downstream_pair_id']].values)
+all_ipsi_edges = all_edges_combined[all_edges_combined.type=='ipsilateral']
+all_ipsi_edges.reset_index(inplace=True, drop=True)
+for i in range(len(all_ipsi_edges)):
+    G_no_commissure.add_edge(all_ipsi_edges.iloc[i].upstream_pair_id, all_ipsi_edges.iloc[i].downstream_pair_id, 
+                weight = np.mean([all_ipsi_edges.iloc[i].left, all_ipsi_edges.iloc[i].right]), 
+                edge_type = all_ipsi_edges.iloc[i].type)
 
-def path_edge_attributes(path, attribute_name, include_skids=True):
+# %%
+# sensories to outputs
+from tqdm import tqdm
+from joblib import Parallel, delayed
+
+def path_edge_attributes(G_graph, path, attribute_name, include_skids=True):
     if(include_skids):
-        return [(u,v,G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
+        return [(u,v,G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
     if(include_skids==False):
-        return np.array([(G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
+        return np.array([(G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
 
-paths = nx.all_simple_paths(G, 3410499, dVNC_pairs.leftid.values, cutoff=6) # ORN-42b to dVNCs
-crossing_count = (sum(path_edge_attributes(path, 'edge_type', False)=='contralateral') for path in paths)
-sns.violinplot(list(crossing_count), orient='v')
+def crossing_counts(G_graph, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
 
-paths = nx.all_simple_paths(G, 3410499, dSEZ_pairs.leftid.values, cutoff=6) # ORN-42b to dSEZs
-crossing_count = (sum(path_edge_attributes(path, 'edge_type', False)=='contralateral') for path in paths)
-sns.violinplot(list(crossing_count), orient='v')
+    all_paths = [nx.all_simple_paths(G_graph, source, targets.leftid.values, cutoff=cutoff) for source in source_list]
+    paths_list = [x for sublist in all_paths for x in sublist]
+    paths_crossing_count = [sum(path_edge_attributes(G_graph, path, 'edge_type', False)=='contralateral') for path in paths_list]
+    if(plot):
+        # allows text to be editable in Illustrator
+        plt.rcParams['pdf.fonttype'] = 42
+        plt.rcParams['ps.fonttype'] = 42
+
+        # font settings
+        plt.rcParams['font.size'] = 5
+        plt.rcParams['font.family'] = 'arial'
+
+        binwidth = 1
+        x_range = list(range(0, 7))
+        data = paths_crossing_count
+        bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
+
+        fig,ax = plt.subplots(1,1, figsize=(1.5, 2))
+        sns.distplot(paths_crossing_count, bins=bins, kde=False, ax=ax, hist_kws={"rwidth":0.9,'alpha':0.75})
+        ax.set(xlim = (-0.75, 6.75), ylabel=f'Number of Paths ({source_name} to {target_name})', xlabel='Number of Interhemisphere Crossings', xticks=[i for i in range(7)])
+        plt.savefig(f'{save_path}/{source_name}-to-{target_name}_distribution.pdf', format='pdf', bbox_inches='tight')
+
+    return(paths_list, paths_crossing_count)
+
+sensories = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain inputs and ascending').name]
+sensories_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'asc-proprio', 'asc-mechano', 'asc-classII-III', 'asc-noci']
+sensories_pairs = [pm.Promat.extract_pairs_from_list(x, pairs)[0] for x in sensories]
+
+save_path = 'interhemisphere/plots/interhemisphere_crossings'
+
+target_names = ['dVNC', 'dSEZ', 'RGN']
+targets = [dVNC_pairs, dSEZ_pairs, RGN_pairs]
+all_paths_ORN = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
+                                                                source_name='ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+
+all_paths_thermo = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[1].leftid, targets[i], cutoff=6, plot=True, 
+                                                                source_name='thermo', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+
+all_paths_noci = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[-1].leftid, targets[i], cutoff=6, plot=True, 
+                                                                source_name='noci', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+
+all_paths_ORN_no_commissure = Parallel(n_jobs=-1)(delayed(crossing_counts)(G_no_commissure, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
+                                                                source_name='no-comissure_ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
 
 # %%
 # self-loop paths
+# modified some of the functions from networkx to check multi-hop self loops
+
+def empty_generator():
+    """ Return a generator with no members """
+    yield from ()
+
+def mod_all_simple_paths(G, source, target, cutoff=None):
+    if source not in G:
+        raise nx.NodeNotFound(f"source node {source} not in graph")
+    if target in G:
+        targets = {target}
+    else:
+        try:
+            targets = set(target)
+        except TypeError as e:
+            raise nx.NodeNotFound(f"target node {target} not in graph") from e
+    if cutoff is None:
+        cutoff = len(G) - 1
+    if cutoff < 1:
+        return empty_generator()
+    else:
+        return _mod_all_simple_paths_graph(G, source, targets, cutoff)
+
+def _mod_all_simple_paths_graph(G, source, targets, cutoff):
+    visited = dict.fromkeys([str(source)]) # convert to str so it's ignored
+    stack = [iter(G[source])]
+    while stack:
+        children = stack[-1]
+        child = next(children, None)
+        if child is None:
+            stack.pop()
+            visited.popitem()
+        elif len(visited) < cutoff:
+            if (child in visited):
+                continue
+            if child in targets:
+                yield list(visited) + [child]
+            visited[child] = None
+            if targets - set(visited.keys()):  # expand stack until find all targets
+                stack.append(iter(G[child]))
+            else:
+                visited.popitem()  # maybe other ways to child
+        else:  # len(visited) == cutoff:
+            for target in (targets & (set(children) | {child})) - set(visited.keys()):
+                yield list(visited) + [target]
+            stack.pop()
+            visited.popitem()
+
+#%%
+# generate self loop paths
+from tqdm import tqdm 
+
+ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
+contra = pymaid.get_skids_by_annotation('mw contralateral axon')
+bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
+
+ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0].leftid
+bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0].leftid
+contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0].leftid
+
+ipsi_pairs = np.intersect1d(ipsi_pairs, G.nodes)
+bilateral_pairs = np.intersect1d(bilateral_pairs, G.nodes)
+contra_pairs = np.intersect1d(contra_pairs, G.nodes)
+
+cutoff = 3
+
+ipsi_paths = []
+for i in range(len(ipsi_pairs)):
+    path = list(mod_all_simple_paths(G, ipsi_pairs[i], ipsi_pairs[i], cutoff=cutoff))
+    for i in range(len(path)):
+        path[i][0] = int(path[i][0]) # convert source str to int
+    ipsi_paths.append(path)
+
+bi_paths = []
+for i in range(len(bilateral_pairs)):
+    path = list(mod_all_simple_paths(G, bilateral_pairs[i], bilateral_pairs[i], cutoff=cutoff))
+    for i in range(len(path)):
+        path[i][0] = int(path[i][0]) # convert source str to int
+    bi_paths.append(path)
+
+contra_paths = []
+for i in tqdm(range(len(contra_pairs))):
+    path = list(mod_all_simple_paths(G, contra_pairs[i], contra_pairs[i], cutoff=cutoff))
+    for i in range(len(path)):
+        path[i][0] = int(path[i][0]) # convert source str to int
+    contra_paths.append(path)
 
 
+paths = [ipsi_paths, bi_paths, contra_paths]
+paths_names = ['ipsi', 'bilateral', 'contralateral']
+pair_types = [ipsi_pairs, bilateral_pairs, contra_pairs]
 
+paths_length = []
+for i, paths_list in enumerate(paths):
+    for j, path in enumerate(paths_list):
+        if(len(path)==0):
+            paths_length.append([paths_names[i], pair_types[i][j], 0, 'none'])
+        if(len(path)>0):
+            for subpath in path:
+                edge_types = path_edge_attributes(G, subpath, 'edge_type', include_skids=False)
+                if((sum(edge_types=='contralateral')%2)==0): # if there is an even number of contralateral edges
+                    paths_length.append([paths_names[i], pair_types[i][j], len(subpath)-1, 'self'])
+                if((sum(edge_types=='contralateral')%2)==1): # if there is an odd number of contralateral edges
+                    paths_length.append([paths_names[i], pair_types[i][j], len(subpath)-1, 'pair'])
+
+paths_length = pd.DataFrame(paths_length, columns = ['neuron_type', 'skid', 'path_length', 'loop_type'])
+loop_type_counts = paths_length.groupby(['neuron_type', 'skid', 'path_length', 'loop_type']).size()
+loop_type_counts.loc[('contralateral', 19298625, 1, 'self')]=False # added in this fake data so that the appropriate row appears with a 0.0 (instead of not appearing at all)
+loop_type_counts.loc[('ipsi', 40045, 1, 'pair')]=False # same as above
+loop_type_counts = loop_type_counts>0
+total_loop_types = loop_type_counts.groupby(['neuron_type', 'path_length','loop_type']).sum()
+total_loop_types.loc['bilateral'] = (total_loop_types.loc['bilateral']/len(bilateral_pairs)).values
+total_loop_types.loc['contralateral'] = (total_loop_types.loc['contralateral']/len(contra_pairs)).values
+total_loop_types.loc['ipsi'] = (total_loop_types.loc['ipsi']/len(ipsi_pairs)).values
+
+self_loops = total_loop_types.loc[(slice(None), [1,2], 'self')]
+pair_loops = total_loop_types.loc[(slice(None), [1,2], 'pair')]
+
+
+data_self = pd.DataFrame([total_loop_types.loc[('ipsi', slice(None), 'self')].values, 
+                            total_loop_types.loc[('bilateral', slice(None), 'self')].values, 
+                            total_loop_types.loc[('contralateral', slice(None), 'self')].values], 
+                            index=paths_names, columns=['Direct', '2-Hops', '3-Hops'])
+
+data_pair = pd.DataFrame([total_loop_types.loc[('ipsi', slice(None), 'pair')].values, 
+                            total_loop_types.loc[('bilateral', slice(None), 'pair')].values, 
+                            total_loop_types.loc[('contralateral', slice(None), 'pair')].values], 
+                            index=paths_names, columns=['Direct', '2-Hops', '3-Hops'])
+
+no_loops = pd.DataFrame([total_loop_types.loc[('ipsi', slice(None), 'none')].values, 
+                            total_loop_types.loc[('bilateral', slice(None), 'none')].values, 
+                            total_loop_types.loc[('contralateral', slice(None), 'none')].values], 
+                            index=paths_names, columns=[''])
+
+fig, axs = plt.subplots(1,2, figsize=(2,.75), sharey=True)
+
+ax = axs[0]
+sns.heatmap(data_self, annot=True, fmt = '.1%', cmap='Blues', ax=ax, cbar=False, vmax=0.3)
+ax.set(title='Self-Loop Prevalence')
+plt.yticks(rotation=45)
+
+ax = axs[1]
+sns.heatmap(data_pair, annot=True, fmt = '.1%', cmap='Purples', ax=ax, cbar=False, vmax=0.4)
+ax.set(title='Pair-Loop Prevalence')
+plt.savefig('interhemisphere/plots/interhemisphere_crossings/self_loops.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(2/6,.75), sharey=True)
+sns.heatmap(1-no_loops, annot=True, fmt = '.1%', cmap='Greens', ax=ax, cbar=False, vmax=.6, vmin=.2)
+ax.set(title='Displays Loop in 3-Hops')
+plt.savefig('interhemisphere/plots/interhemisphere_crossings/loops.pdf', format='pdf', bbox_inches='tight')
+
+
+# without contra edges
+
+paths_length_no_contra = []
+for i, paths_list in enumerate(paths):
+    for j, path in enumerate(paths_list):
+        if(len(path)==0):
+            paths_length_no_contra.append([paths_names[i], pair_types[i][j], 0, 'none'])
+        if(len(path)>0):
+            for subpath in path:
+                edge_types = path_edge_attributes(G, subpath, 'edge_type', include_skids=False)
+                if (sum(edge_types=='contralateral')>0):
+                    paths_length_no_contra.append([paths_names[i], pair_types[i][j], 0, 'none'])
+                if(sum(edge_types=='contralateral')==0): 
+                    paths_length_no_contra.append([paths_names[i], pair_types[i][j], len(subpath)-1, 'self'])
+
+paths_length_no_contra = pd.DataFrame(paths_length_no_contra, columns = ['neuron_type', 'skid', 'path_length', 'loop_type'])
+loop_type_counts = paths_length_no_contra.groupby(['neuron_type', 'skid', 'path_length', 'loop_type']).size()
+loop_type_counts.loc[('contralateral', 19298625, 1, 'self')]=False # added in this fake data so that the appropriate row appears with a 0.0 (instead of not appearing at all)
+loop_type_counts.loc[('contralateral', 19298625, 2, 'self')]=False # added in this fake data so that the appropriate row appears with a 0.0 (instead of not appearing at all)
+loop_type_counts.loc[('contralateral', 19298625, 3, 'self')]=False # added in this fake data so that the appropriate row appears with a 0.0 (instead of not appearing at all)
+loop_type_counts = loop_type_counts>0
+total_loop_types_no_contra = loop_type_counts.groupby(['neuron_type', 'path_length','loop_type']).sum()
+total_loop_types_no_contra.loc['bilateral'] = (total_loop_types_no_contra.loc['bilateral']/len(bilateral_pairs)).values
+total_loop_types_no_contra.loc['contralateral'] = (total_loop_types_no_contra.loc['contralateral']/len(contra_pairs)).values
+total_loop_types_no_contra.loc['ipsi'] = (total_loop_types_no_contra.loc['ipsi']/len(ipsi_pairs)).values
+
+data_self = pd.DataFrame([total_loop_types_no_contra.loc[('ipsi', slice(None), 'self')].values, 
+                            total_loop_types_no_contra.loc[('bilateral', slice(None), 'self')].values, 
+                            total_loop_types_no_contra.loc[('contralateral', slice(None), 'self')].values], 
+                            index=paths_names, columns=['Direct', '2-Hops', '3-Hops'])
+
+no_loops_no_contra = pd.DataFrame([total_loop_types_no_contra.loc[('ipsi', slice(None), 'none')].values, 
+                            total_loop_types_no_contra.loc[('bilateral', slice(None), 'none')].values, 
+                            total_loop_types_no_contra.loc[('contralateral', slice(None), 'none')].values], 
+                            index=paths_names, columns=[''])
+
+fig, ax = plt.subplots(1,1, figsize=(1,.75), sharey=True)
+sns.heatmap(data_self, annot=True, fmt = '.1%', cmap='Blues', ax=ax, cbar=False, vmax=0.3)
+ax.set(title='Self-Loop Prevalence')
+plt.yticks(rotation=45)
+plt.savefig('interhemisphere/plots/interhemisphere_crossings/self_loops_without_contra_edges.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(2/6,.75), sharey=True)
+sns.heatmap(1-no_loops_no_contra, annot=True, fmt = '.1%', cmap='Greens', ax=ax, cbar=False, vmax=.6, vmin=.2)
+ax.set(title='Displays Loop in 3-Hops')
+plt.savefig('interhemisphere/plots/interhemisphere_crossings/loops_without_contra_edges.pdf', format='pdf', bbox_inches='tight')
+
+#%%
+# plot loops with or without contra edges, bilateral-contra edges, all interhemisphere edges
+
+loops_no_contra = pd.DataFrame([[1-total_loop_types_no_contra.loc[('ipsi', slice(None), 'none')].values[0], 'no_inter', 'ipsi'], 
+                            [1-total_loop_types_no_contra.loc[('bilateral', slice(None), 'none')].values[0], 'no_inter', 'bilateral'], 
+                            [1-total_loop_types_no_contra.loc[('contralateral', slice(None), 'none')].values[0], 'no_inter', 'contralateral']], 
+                            index=paths_names, columns=['loop_fraction', 'condition', 'cell_type'])
+
+loops = pd.DataFrame([[1-total_loop_types.loc[('ipsi', slice(None), 'none')].values[0], 'control', 'ipsi'], 
+                            [1-total_loop_types.loc[('bilateral', slice(None), 'none')].values[0], 'control', 'bilateral'], 
+                            [1-total_loop_types.loc[('contralateral', slice(None), 'none')].values[0], 'control', 'contralateral']], 
+                            index=paths_names, columns=['loop_fraction', 'condition', 'cell_type'])
+
+data = pd.concat([loops, loops_no_contra], axis=0)
+
+height = 1.5
+width = 1.5
+sns.catplot(data=data, x='cell_type', y='loop_fraction', hue='condition', kind='bar', height=height, aspect=width/height)
+plt.xticks(rotation=45, ha='right')
+plt.savefig('interhemisphere/plots/interhemisphere_crossings/loops_without_contra_edges_barplot.pdf', format='pdf', bbox_inches='tight')
 # %%
-#
-'''
-def multi_hop_edges(pair_id, threshold, adj_mat):
-    
-    edges_list = []
-    edges_1, ds_pairs_1 = hop_edges(pair_id, threshold, adj_mat)
-    
-    for ds_pair_1 in tqdm(ds_pairs_1):
-        edges_2, ds_pairs_2 = hop_edges(ds_pair_1, threshold, adj_mat)
-        for ds_pair_2 in tqdm(ds_pairs_2):
-            edges_3, ds_pairs_3 = hop_edges(ds_pair_2, threshold, adj_mat)
-            for ds_pair_3 in ds_pairs_3:
-                edges_4, ds_pairs_4 = hop_edges(ds_pair_3, threshold, adj_mat)
-                for ds_pair_4 in ds_pairs_4:
-                    edges_5, ds_pairs_5 = hop_edges(ds_pair_4, threshold, adj_mat)
-                    for ds_pair_5 in ds_pairs_5:
-                        edges_6, _ = hop_edges(ds_pair_5, threshold, adj_mat)
-                        path = pd.concat([edges_1[edges_1.downstream_pair_id==ds_pair_1], 
-                                            edges_2[edges_2.downstream_pair_id==ds_pair_2], 
-                                            edges_3[edges_3.downstream_pair_id==ds_pair_3],
-                                            edges_4[edges_4.downstream_pair_id==ds_pair_4], 
-                                            edges_5[edges_5.downstream_pair_id==ds_pair_5]], 
-                                            axis=0)
-                        #path['path'] = f'path-{pair_id}_{i}_{j}'
-                        edges_list.append(path)
-    
-    return(edges_list)
-                    
-test = multi_hop_edges(CN33[0], 0.05, adj_mat)
-test_combined = [x for x in test if type(x)==pd.DataFrame]
-test_combined = pd.concat(test_combined, axis=0)
-'''
+# outdated 
 
+'''
 def two_hop_edges(pairs_list, threshold, adj_mat):
 
     all_edges_list=[]
@@ -196,6 +441,5 @@ threshold = 0.01
 contra_edges = two_hop_edges(contra_pairs.leftid, threshold, adj_mat)
 contra_edges_combined = [x for x in contra_edges if type(x)==pd.DataFrame]
 contra_edges_combined = pd.concat(contra_edges_combined, axis=0)
-
-
+'''
 # %%
