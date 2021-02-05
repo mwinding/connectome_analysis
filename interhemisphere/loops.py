@@ -19,6 +19,7 @@ import numpy.random as random
 import networkx as nx
 
 import connectome_tools.process_matrix as pm
+import connectome_tools.process_graph as pg
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -34,117 +35,13 @@ plt.rcParams['font.family'] = 'arial'
 all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
 
 # build networkx Graph
-G = nx.DiGraph()
-
-for i in range(len(all_edges_combined)):
-    G.add_edge(all_edges_combined.iloc[i].upstream_pair_id, all_edges_combined.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_edges_combined.iloc[i].left, all_edges_combined.iloc[i].right]), 
-                edge_type = all_edges_combined.iloc[i].type)
-
+graph = pg.Analyze_Nx_G(all_edges_combined)
 # %%
-# self-loop paths functions
-# modified some of the functions from networkx to check multi-hop self loops
-
-def empty_generator():
-    """ Return a generator with no members """
-    yield from ()
-
-def mod_all_simple_paths(G, source, target, cutoff=None):
-    if source not in G:
-        raise nx.NodeNotFound(f"source node {source} not in graph")
-    if target in G:
-        targets = {target}
-    else:
-        try:
-            targets = set(target)
-        except TypeError as e:
-            raise nx.NodeNotFound(f"target node {target} not in graph") from e
-    if cutoff is None:
-        cutoff = len(G) - 1
-    if cutoff < 1:
-        return empty_generator()
-    else:
-        return _mod_all_simple_paths_graph(G, source, targets, cutoff)
-
-def _mod_all_simple_paths_graph(G, source, targets, cutoff):
-    visited = dict.fromkeys([str(source)]) # convert to str so it's ignored
-    stack = [iter(G[source])]
-    while stack:
-        children = stack[-1]
-        child = next(children, None)
-        if child is None:
-            stack.pop()
-            visited.popitem()
-        elif len(visited) < cutoff:
-            if (child in visited):
-                continue
-            if child in targets:
-                yield list(visited) + [child]
-            visited[child] = None
-            if targets - set(visited.keys()):  # expand stack until find all targets
-                stack.append(iter(G[child]))
-            else:
-                visited.popitem()  # maybe other ways to child
-        else:  # len(visited) == cutoff:
-            for target in (targets & (set(children) | {child})) - set(visited.keys()):
-                yield list(visited) + [target]
-            stack.pop()
-            visited.popitem()
-
-def path_edge_attributes(G_graph, path, attribute_name, include_skids=True):
-    if(include_skids):
-        return [(u,v,G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
-    if(include_skids==False):
-        return np.array([(G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
-
-# %%
-
-def identify_loops(pairs, G):
-    paths = []
-    for i in range(len(pairs)):
-        path = list(mod_all_simple_paths(G, pairs[i], pairs[i], cutoff=cutoff))
-        for i in range(len(path)):
-            path[i][0] = int(path[i][0]) # convert source str to int
-        paths.append(path)
-
-    paths_length = []
-    for i, paths_list in enumerate(paths):
-        if(len(paths_list)==0):
-                paths_length.append([pairs[i], 0, 'none'])
-        if(len(paths_list)>0):
-            for subpath in paths_list:
-                edge_types = path_edge_attributes(G, subpath, 'edge_type', include_skids=False)
-                if((sum(edge_types=='contralateral')%2)==0): # if there is an even number of contralateral edges
-                    paths_length.append([pairs[i], len(subpath)-1, 'self'])
-                if((sum(edge_types=='contralateral')%2)==1): # if there is an odd number of contralateral edges
-                    paths_length.append([pairs[i], len(subpath)-1, 'pair'])
-
-    paths_length = pd.DataFrame(paths_length, columns = ['skid', 'path_length', 'loop_type'])
-    loop_type_counts = paths_length.groupby(['skid', 'path_length', 'loop_type']).size()
-    loop_type_counts = loop_type_counts>0
-    total_loop_types = loop_type_counts.groupby(['path_length','loop_type']).sum()
-    total_loop_types = total_loop_types/len(pairs)
-
-    # add 0 values in case one of the conditions didn't exist
-    if((1, 'pair') not in total_loop_types.index):
-        total_loop_types.loc[(1, 'pair')]=0
-    if((1, 'self') not in total_loop_types.index):
-        total_loop_types.loc[(1, 'self')]=0
-    if((2, 'pair') not in total_loop_types.index):
-        total_loop_types.loc[(2, 'pair')]=0
-    if((2, 'self') not in total_loop_types.index):
-        total_loop_types.loc[(2, 'self')]=0
-    if((3, 'pair') not in total_loop_types.index):
-        total_loop_types.loc[(3, 'pair')]=0
-    if((3, 'self') not in total_loop_types.index):
-        total_loop_types.loc[(3, 'self')]=0
-
-    return(total_loop_types)
+# types of loops observed in graph
 
 cutoff = 3
 pairs = list(np.unique(all_edges_combined.upstream_pair_id))
-
-observed_loops = identify_loops(pairs, G)
+observed_loops = graph.identify_loops(pairs, cutoff)
 
 # %%
 # shuffled graphs
@@ -152,42 +49,14 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 # build randomized networkx Graph
-def shuffled_graph(i, shuffle_contra=False):
-    pairs = list(np.unique(all_edges_combined.upstream_pair_id))
-
-    np.random.seed(i)
-    random_nums_us = np.random.choice(len(pairs), len(all_edges_combined.index))
-    np.random.seed(i+1)
-    random_nums_ds = np.random.choice(len(pairs), len(all_edges_combined.index))
-    np.random.seed(i+2)
-    random_type = np.random.choice(len(['contralateral', 'ipsilateral']), len(all_edges_combined.index))
-
-
-    all_edges_combined_randomized = all_edges_combined.copy()
-    all_edges_combined_randomized.upstream_pair_id = [pairs[i] for i in random_nums_us]
-    all_edges_combined_randomized.downstream_pair_id = [pairs[i] for i in random_nums_ds]
-    if(shuffle_contra==True):
-        all_edges_combined_randomized.type = [['contralateral', 'ipsilateral'][i] for i in random_type]
-
-    G_shuffled = nx.DiGraph()
-
-    for i in range(len(all_edges_combined)):
-        G_shuffled.add_edge(all_edges_combined_randomized.iloc[i].upstream_pair_id, all_edges_combined_randomized.iloc[i].downstream_pair_id, 
-                    weight = np.mean([all_edges_combined_randomized.iloc[i].left, all_edges_combined_randomized.iloc[i].right]), 
-                    edge_type = all_edges_combined_randomized.iloc[i].type)
-
-    return(G_shuffled)
-
-shuffled_graphs = Parallel(n_jobs=-1)(delayed(shuffled_graph)(i, shuffle_contra=False) for i in tqdm(range(0,100*3,3)))
-shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(identify_loops)(pairs, G) for G in tqdm(shuffled_graphs))
-#shuffled_graphs_loops[4][(1, 'self')]=0.0 # one interation doesn't have any direct selfs
-#shuffled_graphs_loops[31][(1, 'pair')]=0.0 # one interation doesn't have any direct selfs
+shuffled_graphs = graph.generate_shuffled_graphs(100)
+shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(shuffled_graph.identify_loops)(pairs, cutoff) for shuffled_graph in tqdm(shuffled_graphs))
 
 # %%
 # plot data
 
 contains_loop = [[1-x.iloc[0], 'shuffled'] for x in shuffled_graphs_loops]
-contains_loop.append([1-observed_loops.iloc[0], 'observed'])    
+contains_loop.append([1-observed_loops.iloc[0], 'observed'])
 
 contains_loop = pd.DataFrame(contains_loop, columns = ['Fraction Contains Loops', 'Condition'])
 
