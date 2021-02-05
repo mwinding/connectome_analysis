@@ -7,6 +7,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pymaid
+from tqdm import tqdm
+from joblib import Parallel, delayed
 
 class Adjacency_matrix():
 
@@ -165,7 +167,6 @@ class Adjacency_matrix():
                         edges.append(edge)
                         
             return(source_skids, ds_neurons_skids, edges)
-
 
     def upstream(self, source, threshold, exclude = []):
         adj = self.adj_pairwise
@@ -347,6 +348,28 @@ class Adjacency_matrix():
         
         return(all_edges, partner_skids)
 
+    # select edges from results of edge_threshold that are over threshold; include non_paired edges as specified by user
+    def select_edges(self, pair_id, threshold, edges_only=False, include_nonpaired=[], exclude_nonpaired=[], left=[], right=[]):
+
+        _, ds, ds_edges = self.downstream(pair_id, threshold)
+        ds_edges, _ = self.edge_threshold(ds_edges, threshold, 'downstream', include_nonpaired=include_nonpaired, left=left, right=right)
+        overthres_ds_edges = ds_edges[ds_edges.overthres==True]
+        overthres_ds_edges.reset_index(inplace=True)
+        overthres_ds_edges.drop(labels=['index', 'overthres'], axis=1, inplace=True)
+
+        if(edges_only==False):
+            return(overthres_ds_edges, np.unique(overthres_ds_edges.downstream_pair_id))
+        if(edges_only):
+            return(overthres_ds_edges)
+    
+    # generate edge list for whole matrix
+    def generate_edge_list(self, all_sources, matrix_nonpaired, threshold, left, right):
+        all_edges = Parallel(n_jobs=-1)(delayed(self.select_edges)(pair, threshold, edges_only=True, include_nonpaired=matrix_nonpaired, left=left, right=right) for pair in tqdm(all_sources))
+        all_edges_combined = [x for x in all_edges if type(x)==pd.DataFrame]
+        all_edges_combined = pd.concat(all_edges_combined, axis=0)
+        all_edges_combined.reset_index(inplace=True, drop=True)
+        return(all_edges_combined)
+
     def layer_id(self, layers, layer_names, celltype_skids):
         max_layers = max([len(layer) for layer in layers])
 
@@ -433,7 +456,6 @@ class Adjacency_matrix():
 
         return(mat, mat_plotting)
             
-       
 class Promat():
     # trim out neurons not currently in the brain matrix
     @staticmethod
@@ -503,6 +525,18 @@ class Promat():
         unpaired = pd.DataFrame(unpaired)
         nonpaired = pd.DataFrame(nonpaired)
         return(pairs, unpaired, nonpaired)
+
+    # loads neurons pairs from selected pymaid annotation
+    @staticmethod
+    def load_pairs_from_annotation(annot, pairList, return_type='pairs'):
+        skids = pymaid.get_skids_by_annotation(annot)
+        pairs = Promat.extract_pairs_from_list(skids, pairList)
+        if(return_type=='pairs'):
+            return(pairs[0])
+        if(return_type=='unpaired'):
+            return(pairs[1])
+        if(return_type=='nonpaired'):
+            return(pairs[2])
 
     # generates interlaced left-right pair adjacency matrix with nonpaired neurons at bottom and right
     @staticmethod
