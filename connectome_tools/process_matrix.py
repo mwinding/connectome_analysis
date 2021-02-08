@@ -362,13 +362,28 @@ class Adjacency_matrix():
         if(edges_only):
             return(overthres_ds_edges)
     
-    # generate edge list for whole matrix
-    def generate_edge_list(self, all_sources, matrix_nonpaired, threshold, left, right):
+    # generate edge list for whole matrix with some threshold
+    def threshold_edge_list(self, all_sources, matrix_nonpaired, threshold, left, right):
         all_edges = Parallel(n_jobs=-1)(delayed(self.select_edges)(pair, threshold, edges_only=True, include_nonpaired=matrix_nonpaired, left=left, right=right) for pair in tqdm(all_sources))
         all_edges_combined = [x for x in all_edges if type(x)==pd.DataFrame]
         all_edges_combined = pd.concat(all_edges_combined, axis=0)
         all_edges_combined.reset_index(inplace=True, drop=True)
         return(all_edges_combined)
+
+        # generate edge list for whole matrix
+    def edge_list(self, exclude_loops=False):
+        edges = []
+        for i in range(len(self.adj.index)):
+            for j in range(len(self.adj.columns)):
+                if(exclude_loops):
+                    if((self.adj.iloc[i, j]>0) & (i!=j)):
+                        edges.append([self.adj.index[i], self.adj.columns[j]])
+                if(exclude_loops==False):
+                    if(self.adj.iloc[i, j]>0):
+                        edges.append([self.adj.index[i], self.adj.columns[j]])
+
+        edges = pd.DataFrame(edges, columns = ['upstream_pair_id', 'downstream_pair_id'])
+        return(edges)
 
     def layer_id(self, layers, layer_names, celltype_skids):
         max_layers = max([len(layer) for layer in layers])
