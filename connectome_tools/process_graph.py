@@ -10,13 +10,17 @@ import pymaid
 from tqdm import tqdm
 from joblib import Parallel, delayed
 import networkx as nx
+import networkx.utils as nxu
 
 class Analyze_Nx_G():
 
-    def __init__(self, edges, graph_type='directed'):
-        self.edges = edges
-        self.G = self.generate_graph(graph_type)
-
+    def __init__(self, edges, graph_type='directed', graph=None):
+        if(graph==None):
+            self.edges = edges
+            self.G = self.generate_graph(graph_type)
+        if(graph!=None):
+            self.G = graph
+            self.edges = graph.edges
 
     def generate_graph(self, graph_type):
         edges = self.edges
@@ -138,32 +142,117 @@ class Analyze_Nx_G():
 
         return(total_loop_types)
 
-    def shuffled_graph(self, i, shuffle_contra=False):
+    # only works on undirected graph
+    def shuffled_graph(self, seed, Q=100):
+        R = self.G
+        E = R.number_of_edges()
+        nx.double_edge_swap(R,Q*E,max_tries=Q*E*10, seed=seed)
+        return(R)
+
+    # only works on undirected graph
+    def generate_shuffled_graphs(self, num, graph_type, Q=100):
+        
+        if(graph_type=='undirected'):
+            shuffled_graphs = Parallel(n_jobs=-1)(delayed(self.shuffled_graph)(seed=i, Q=Q) for i in tqdm(range(0,num)))
+            return(shuffled_graphs)
+        if(graph_type=='directed'):
+            shuffled_graphs = Parallel(n_jobs=-1)(delayed(self.directed_shuffled_graph)(seed=i, Q=Q) for i in tqdm(range(0,num)))
+            return(shuffled_graphs)
+
+    def directed_shuffled_graph(self, seed, Q=100):
+        R = self.G
+        E = R.number_of_edges()
+        self.directed_double_edge_swap(R, Q*E, max_tries=Q*E*10)
+        return(R)
+        
+    # works on directed graph, preserves input and output degree
+    # modified from networkx double_edge_swap()
+    def directed_double_edge_swap(self, G, nswap=1, max_tries=100, seed=None):
+        # u--v          u--y       instead of:      u--v            u   v
+        #       becomes                                    becomes  |   |
+        # x--y          x--v                        x--y            x   y
+
+        np.random.seed(0)
+        
+        if nswap > max_tries:
+            raise nx.NetworkXError("Number of swaps > number of tries allowed.")
+        if len(G) < 4:
+            raise nx.NetworkXError("Graph has less than four nodes.")
+        # Instead of choosing uniformly at random from a generated edge list,
+        # this algorithm chooses nonuniformly from the set of nodes with
+        # probability weighted by degree.
+        n = 0
+        swapcount = 0
+        keys, degrees = zip(*G.out_degree())  # keys, degree
+        cdf = nx.utils.cumulative_distribution(degrees)  # cdf of degree
+        discrete_sequence = nx.utils.discrete_sequence
+        while (swapcount < nswap):
+            #        if random.random() < 0.5: continue # trick to avoid periodicities?
+            # pick two random edges without creating edge list
+            # choose source node indices from discrete distribution
+            (ui, xi) = discrete_sequence(2, cdistribution=cdf)
+            if (ui == xi):
+                continue  # same source, skip
+            u = keys[ui]  # convert index to label
+            x = keys[xi]
+
+            # ignore nodes with no downstream partners
+            if((len(G[u])==0) | (len(G[x])==0)):
+                continue
+
+            # choose target uniformly from neighbors
+            v = np.random.choice(list(G[u]))
+            y = np.random.choice(list(G[x]))
+            if (v == y):
+                continue  # same target, skip
+            if (y not in G[u]) and (v not in G[x]):  # don't create parallel edges
+                G.add_edge(u, y, weight = G[u][v]['weight'], edge_type = G[u][v]['edge_type'])
+                G.add_edge(x, v, weight = G[x][y]['weight'], edge_type = G[x][y]['edge_type'])
+                G.remove_edge(u, v)
+                G.remove_edge(x, y)
+                swapcount += 1
+            if (n >= max_tries):
+                e = (
+                    f"Maximum number of swap attempts ({n}) exceeded "
+                    f"before desired swaps achieved ({nswap})."
+                )
+                raise nx.NetworkXAlgorithmError(e)
+            n += 1
+        return G
+
+    # works on directed graph, preserves output degree
+    def generate_shuffled_graphs_pod(self, num, shuffle_contra=False):
+        shuffled_graphs = Parallel(n_jobs=-1)(delayed(self.shuffled_graph_pod)(seed=i, shuffle_contra=shuffle_contra) for i in tqdm(range(0,num*3, 3)))
+        return(shuffled_graphs)
+
+    # works on directed graph, preserves output degree
+    def shuffled_graph_pod(self, seed, edges_only=True, shuffle_contra=False, preserve_output_degree = True):
         pairs = list(np.unique(self.edges.upstream_pair_id))
 
-        np.random.seed(i)
+        np.random.seed(seed)
         random_nums_us = np.random.choice(len(pairs), len(self.edges.index))
-        np.random.seed(i+1)
+        np.random.seed(seed+1)
         random_nums_ds = np.random.choice(len(pairs), len(self.edges.index))
-        np.random.seed(i+2)
+        np.random.seed(seed+2)
         random_type = np.random.choice(len(['contralateral', 'ipsilateral']), len(self.edges.index))
 
 
         all_edges_combined_randomized = self.edges.copy()
-        all_edges_combined_randomized.upstream_pair_id = [pairs[i] for i in random_nums_us]
+        if(preserve_output_degree==False):
+            all_edges_combined_randomized.upstream_pair_id = [pairs[i] for i in random_nums_us]
         all_edges_combined_randomized.downstream_pair_id = [pairs[i] for i in random_nums_ds]
         if(shuffle_contra==True):
             all_edges_combined_randomized.type = [['contralateral', 'ipsilateral'][i] for i in random_type]
 
-        G_shuffled = nx.DiGraph()
+        if(edges_only):
+            return(all_edges_combined_randomized)
 
-        for i in range(len(self.edges)):
-            G_shuffled.add_edge(all_edges_combined_randomized.iloc[i].upstream_pair_id, all_edges_combined_randomized.iloc[i].downstream_pair_id, 
-                        weight = np.mean([all_edges_combined_randomized.iloc[i].left, all_edges_combined_randomized.iloc[i].right]), 
-                        edge_type = all_edges_combined_randomized.iloc[i].type)
+        if(edges_only==False):
+            G_shuffled = nx.DiGraph()
 
-        return(G_shuffled)
+            for i in range(len(self.edges)):
+                G_shuffled.add_edge(all_edges_combined_randomized.iloc[i].upstream_pair_id, all_edges_combined_randomized.iloc[i].downstream_pair_id, 
+                            weight = np.mean([all_edges_combined_randomized.iloc[i].left, all_edges_combined_randomized.iloc[i].right]), 
+                            edge_type = all_edges_combined_randomized.iloc[i].type)
 
-    def generate_shuffled_graphs(self, num, shuffle_contra=False):
-        shuffled_graphs = Parallel(n_jobs=-1)(delayed(self.shuffled_graph)(i, shuffle_contra=False) for i in tqdm(range(0,num*3,3)))
-        return(shuffled_graphs)
+            return(G_shuffled)
