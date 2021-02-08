@@ -98,12 +98,6 @@ class Analyze_Nx_G():
             path[i][0] = int(path[i][0]) # convert source str to int
         return(path)
 
-    def path_edge_attributes(self, path, attribute_name, include_skids=True):
-        if(include_skids):
-            return [(u,v,self.G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
-        if(include_skids==False):
-            return np.array([(self.G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
-
     # identify loops in all sets of pairs
     def identify_loops(self, pairs, cutoff):
         paths = [self.all_simple_self_loop_paths(pair_id, cutoff) for pair_id in pairs]
@@ -114,7 +108,7 @@ class Analyze_Nx_G():
                     paths_length.append([pairs[i], 0, 'none'])
             if(len(paths_list)>0):
                 for subpath in paths_list:
-                    edge_types = self.path_edge_attributes(subpath, 'edge_type', include_skids=False)
+                    edge_types = self.path_edge_attributes(self.G, subpath, 'edge_type', include_skids=False)
                     if((sum(edge_types=='contralateral')%2)==0): # if there is an even number of contralateral edges
                         paths_length.append([pairs[i], len(subpath)-1, 'self'])
                     if((sum(edge_types=='contralateral')%2)==1): # if there is an odd number of contralateral edges
@@ -220,39 +214,42 @@ class Analyze_Nx_G():
             n += 1
         return G
 
-    # works on directed graph, preserves output degree
-    def generate_shuffled_graphs_pod(self, num, shuffle_contra=False):
-        shuffled_graphs = Parallel(n_jobs=-1)(delayed(self.shuffled_graph_pod)(seed=i, shuffle_contra=shuffle_contra) for i in tqdm(range(0,num*3, 3)))
-        return(shuffled_graphs)
 
-    # works on directed graph, preserves output degree
-    def shuffled_graph_pod(self, seed, edges_only=True, shuffle_contra=False, preserve_output_degree = True):
-        pairs = list(np.unique(self.edges.upstream_pair_id))
+class Prograph():
+    @staticmethod
+    def crossing_counts(G, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
 
-        np.random.seed(seed)
-        random_nums_us = np.random.choice(len(pairs), len(self.edges.index))
-        np.random.seed(seed+1)
-        random_nums_ds = np.random.choice(len(pairs), len(self.edges.index))
-        np.random.seed(seed+2)
-        random_type = np.random.choice(len(['contralateral', 'ipsilateral']), len(self.edges.index))
+        targets = np.intersect1d(targets, G.nodes)
+        source_list = np.intersect1d(source_list, G.nodes)
 
+        all_paths = [nx.all_simple_paths(G, source, targets, cutoff=cutoff) for source in source_list]
+        paths_list = [x for sublist in all_paths for x in sublist]
+        paths_crossing_count = [sum(Prograph.path_edge_attributes(G, path, 'edge_type', False)=='contralateral') for path in paths_list]
+        if(plot):
+            # allows text to be editable in Illustrator
+            plt.rcParams['pdf.fonttype'] = 42
+            plt.rcParams['ps.fonttype'] = 42
 
-        all_edges_combined_randomized = self.edges.copy()
-        if(preserve_output_degree==False):
-            all_edges_combined_randomized.upstream_pair_id = [pairs[i] for i in random_nums_us]
-        all_edges_combined_randomized.downstream_pair_id = [pairs[i] for i in random_nums_ds]
-        if(shuffle_contra==True):
-            all_edges_combined_randomized.type = [['contralateral', 'ipsilateral'][i] for i in random_type]
+            # font settings
+            plt.rcParams['font.size'] = 5
+            plt.rcParams['font.family'] = 'arial'
 
-        if(edges_only):
-            return(all_edges_combined_randomized)
+            binwidth = 1
+            x_range = list(range(0, 7))
+            data = paths_crossing_count
+            bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
 
-        if(edges_only==False):
-            G_shuffled = nx.DiGraph()
+            fig,ax = plt.subplots(1,1, figsize=(1.5, 2))
+            sns.distplot(paths_crossing_count, bins=bins, kde=False, ax=ax, hist_kws={"rwidth":0.9,'alpha':0.75})
+            ax.set(xlim = (-0.75, 6.75), ylabel=f'Number of Paths ({source_name} to {target_name})', xlabel='Number of Interhemisphere Crossings', xticks=[i for i in range(7)])
+            plt.savefig(f'{save_path}/{source_name}-to-{target_name}_distribution.pdf', format='pdf', bbox_inches='tight')
 
-            for i in range(len(self.edges)):
-                G_shuffled.add_edge(all_edges_combined_randomized.iloc[i].upstream_pair_id, all_edges_combined_randomized.iloc[i].downstream_pair_id, 
-                            weight = np.mean([all_edges_combined_randomized.iloc[i].left, all_edges_combined_randomized.iloc[i].right]), 
-                            edge_type = all_edges_combined_randomized.iloc[i].type)
+        return(paths_list, paths_crossing_count)
+    
+    @staticmethod
+    def path_edge_attributes(G, path, attribute_name, include_skids=True):
+        if(include_skids):
+            return [(u,v,G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
+        if(include_skids==False):
+            return np.array([(G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
 
-            return(G_shuffled)
