@@ -13,19 +13,29 @@ import networkx as nx
 
 class Analyze_Nx_G():
 
-    def __init__(self, edges):
+    def __init__(self, edges, graph_type='directed'):
         self.edges = edges
-        self.G = self.generate_graph()
+        self.G = self.generate_graph(graph_type)
 
 
-    def generate_graph(self):
+    def generate_graph(self, graph_type):
         edges = self.edges
 
-        graph = nx.DiGraph()
-        for i in range(len(edges)):
-            graph.add_edge(edges.iloc[i].upstream_pair_id, edges.iloc[i].downstream_pair_id, 
-                        weight = np.mean([edges.iloc[i].left, edges.iloc[i].right]), 
-                        edge_type = edges.iloc[i].type)
+        if(graph_type=='directed'):
+            graph = nx.DiGraph()
+            for i in range(len(edges)):
+                graph.add_edge(edges.iloc[i].upstream_pair_id, edges.iloc[i].downstream_pair_id, 
+                            weight = np.mean([edges.iloc[i].left, edges.iloc[i].right]), 
+                            edge_type = edges.iloc[i].type)
+
+        if(graph_type=='undirected'):
+            graph = nx.Graph()
+            for i in range(len(edges)):
+                if(edges.iloc[i].upstream_pair_id == edges.iloc[i].downstream_pair_id): # remove self-edges
+                    continue
+                if(edges.iloc[i].upstream_pair_id != edges.iloc[i].downstream_pair_id):
+                    if((edges.iloc[i].upstream_pair_id, edges.iloc[i].downstream_pair_id) not in graph.edges):
+                        graph.add_edge(edges.iloc[i].upstream_pair_id, edges.iloc[i].downstream_pair_id)
 
         return(graph)
 
