@@ -36,6 +36,7 @@ all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', in
 
 # build networkx Graph
 graph = pg.Analyze_Nx_G(all_edges_combined)
+
 # %%
 # types of loops observed in graph
 
@@ -49,8 +50,8 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 # build randomized networkx Graph
-shuffled_edges_list = graph.generate_shuffled_graphs_pod(8)
-shuffled_graphs = [pg.Analyze_Nx_G(x) for x in shuffled_edges_list]
+shuffled_graphs = graph.generate_shuffled_graphs(100, graph_type='directed')
+shuffled_graphs = [pg.Analyze_Nx_G(edges=x.edges, graph=x) for x in shuffled_graphs]
 shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(shuffled_graphs[i].identify_loops)(pairs, cutoff) for i in tqdm(range(len(shuffled_graphs))))
 
 # %%
