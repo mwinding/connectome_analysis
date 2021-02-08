@@ -49,8 +49,9 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 # build randomized networkx Graph
-shuffled_graphs = graph.generate_shuffled_graphs(100)
-shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(shuffled_graph.identify_loops)(pairs, cutoff) for shuffled_graph in tqdm(shuffled_graphs))
+shuffled_edges_list = graph.generate_shuffled_graphs_pod(8)
+shuffled_graphs = [pg.Analyze_Nx_G(x) for x in shuffled_edges_list]
+shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(shuffled_graphs[i].identify_loops)(pairs, cutoff) for i in tqdm(range(len(shuffled_graphs))))
 
 # %%
 # plot data
