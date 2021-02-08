@@ -54,6 +54,11 @@ shuffled_graphs = graph.generate_shuffled_graphs(100, graph_type='directed')
 shuffled_graphs = [pg.Analyze_Nx_G(edges=x.edges, graph=x) for x in shuffled_graphs]
 shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(shuffled_graphs[i].identify_loops)(pairs, cutoff) for i in tqdm(range(len(shuffled_graphs))))
 
+#nx.readwrite.graphml.write_graphml(graph.G, 'interhemisphere/csv/control_graph.graphml')
+#shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(nx.readwrite.graphml.write_graphml)(shuffled_graphs[i].G, f'interhemisphere/csv/shuffled_graphs/iteration-{i}.graphml') for i in tqdm(range(len(shuffled_graphs))))
+#graph2 = nx.readwrite.graphml.read_graphml('interhemisphere/csv/shuffled_graphs.graphml', node_type=int, edge_key_type=str)
+#shuffled_graphs_loops = Parallel(n_jobs=-1)(delayed(nx.readwrite.graphml.read_graphml)(f'interhemisphere/csv/shuffled_graphs/iteration-{i}.graphml', node_type=int, edge_key_type=str) for i in tqdm(range(len(100))))
+
 # %%
 # plot data
 
@@ -87,6 +92,7 @@ contains_loop_3self.append([observed_loops.loc[(3, 'self')], 'observed', 3])
 
 data_self = pd.DataFrame(np.concatenate((contains_loop_1self, contains_loop_2self, contains_loop_3self)), columns = ['fraction_loops', 'condition', 'path_length'])
 data_self.fraction_loops = [float(x) for x in data_self.fraction_loops]
+data_self.to_csv('interhemisphere/csv/self_loops_vs_shuffled.csv')
 
 # box plots
 height = 1.5
@@ -97,6 +103,7 @@ plt.savefig('interhemisphere/plots/loops/self_loops_vs_shuffled.pdf', format='pd
 
 data_pair = pd.DataFrame(np.concatenate((contains_loop_1pair, contains_loop_2pair, contains_loop_3pair)), columns = ['fraction_loops', 'condition', 'path_length'])
 data_pair.fraction_loops = [float(x) for x in data_pair.fraction_loops]
+data_pair.to_csv('interhemisphere/csv/pair_loops_vs_shuffled.csv')
 
 height = 1.5
 width = 1.25
