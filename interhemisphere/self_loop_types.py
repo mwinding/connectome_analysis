@@ -18,6 +18,9 @@ import pandas as pd
 import numpy.random as random
 
 import connectome_tools.process_matrix as pm
+import connectome_tools.process_graph as pg
+import networkx as nx 
+
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -28,6 +31,7 @@ plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
+MBON = pymaid.get_skids_by_annotation('mw MBON')
 
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
@@ -43,7 +47,7 @@ adj = adj.loc[pruned_index, pruned_index] # remove all local A1 skids from adjac
 inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
 inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
 pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
-
+pairs.drop(1121, inplace=True) # remove duplicate rightid
 ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 contra = pymaid.get_skids_by_annotation('mw contralateral axon')
@@ -55,47 +59,18 @@ contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
 # %%
 # generate paths for whole brain
 # skip to save time
-from tqdm import tqdm
-from joblib import Parallel, delayed
-
+threshold = 0.01
 adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
 
-def hop_edges(pair_id, threshold, adj_mat, edges_only=False, include_nonpaired=[], left=[], right=[]):
-
-    _, ds, ds_edges = adj_mat.downstream(pair_id, threshold)
-    ds_edges, _ = adj_mat.edge_threshold(ds_edges, threshold, 'downstream', include_nonpaired=include_nonpaired, left=left, right=right)
-    overthres_ds_edges = ds_edges[ds_edges.overthres==True]
-    overthres_ds_edges.reset_index(inplace=True)
-    overthres_ds_edges.drop(labels=['index', 'overthres'], axis=1, inplace=True)
-
-    if(edges_only==False):
-        return(overthres_ds_edges, np.unique(overthres_ds_edges.downstream_pair_id))
-    if(edges_only):
-        return(overthres_ds_edges)
-
-#left = list(pd.read_json('interhemisphere/data/hemisphere-L-2020-3-9.json').skeleton_id)
-#right = list(pd.read_json('interhemisphere/data/hemisphere-R-2020-3-9.json').skeleton_id)
 left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
 
-matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)[0]
-#matrix_nonpaired = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)[2]
-#matrix_nonpaired = np.intersect1d(matrix_nonpaired, left+right)
-#matrix_nonpaired = [x for sublist in matrix_nonpaired.values for x in sublist]
+matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)
+matrix_nonpaired = list(np.intersect1d(matrix_pairs[2].nonpaired, left+right)) # ignore unipolar neurons
+all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
 
-KCs = pymaid.get_skids_by_annotation('mw KC')
-sensories = pymaid.get_skids_by_annotation('mw AN sensories') + pymaid.get_skids_by_annotation('mw MN sensories') + pymaid.get_skids_by_annotation('mw photoreceptors')
-nonpaired = KCs + sensories
-
-all_sources = list(matrix_pairs.leftid) + nonpaired
-
-threshold = 0.01
-all_paths = Parallel(n_jobs=-1)(delayed(hop_edges)(pair, threshold, adj_mat, edges_only=True, include_nonpaired=nonpaired, left=left, right=right) for pair in tqdm(all_sources))
-all_paths_combined = [x for x in all_paths if type(x)==pd.DataFrame]
-all_paths_combined = pd.concat(all_paths_combined, axis=0)
-all_paths_combined.reset_index(inplace=True, drop=True)
-
-all_paths_combined.to_csv('interhemisphere/csvs/all_paired_edges.csv')
+all_edges_combined = adj_mat.threshold_edge_list(all_sources, matrix_nonpaired, threshold, left, right) # currently generates edge list for all paired -> paired/nonpaired, nonpaired -> paired/nonpaired
+all_edges_combined.to_csv('interhemisphere/csvs/all_paired_edges.csv')
 
 # %%
 # load previously generated paths
@@ -104,183 +79,28 @@ all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', in
 # %%
 # load into network x object
 
-import networkx as nx 
+dVNC_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs)
+dSEZ_pairs = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs)
+RGN_pairs = pm.Promat.load_pairs_from_annotation('mw RGN', pairs)
+ipsi_pairs = pm.Promat.load_pairs_from_annotation('mw ipsilateral axon', pairs).leftid
+bilateral_pairs = pm.Promat.load_pairs_from_annotation('mw bilateral axon', pairs).leftid
+contra_pairs = pm.Promat.load_pairs_from_annotation('mw contralateral axon', pairs).leftid
 
-dVNC = pymaid.get_skids_by_annotation('mw dVNC')
-dVNC_pairs = pm.Promat.extract_pairs_from_list(dVNC, pairs)[0]
+# build directed networkx graph
+graph = gp.Analyze_Nx_G(all_edges_combined)
 
-dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-dSEZ_pairs = pm.Promat.extract_pairs_from_list(dSEZ, pairs)[0]
-
-RGN = pymaid.get_skids_by_annotation('mw RGN')
-RGN_pairs = pm.Promat.extract_pairs_from_list(RGN, pairs)[0]
-
-# directed graph
-G = nx.DiGraph()
-G_no_commissure = nx.DiGraph()
-G_no_contra_edges = nx.DiGraph()
-G_no_bilateral_contra_edges = nx.DiGraph()
-G_no_bilateral_ipsi_edges = nx.DiGraph()
-
-# build the graph
-for i in range(len(all_edges_combined)):
-    G.add_edge(all_edges_combined.iloc[i].upstream_pair_id, all_edges_combined.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_edges_combined.iloc[i].left, all_edges_combined.iloc[i].right]), 
-                edge_type = all_edges_combined.iloc[i].type)
-
-all_ipsi_edges = all_edges_combined[all_edges_combined.type=='ipsilateral']
-all_ipsi_edges.reset_index(inplace=True, drop=True)
-for i in range(len(all_ipsi_edges)):
-    G_no_commissure.add_edge(all_ipsi_edges.iloc[i].upstream_pair_id, all_ipsi_edges.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_ipsi_edges.iloc[i].left, all_ipsi_edges.iloc[i].right]), 
-                edge_type = all_ipsi_edges.iloc[i].type)
-
-# %%
-# sensories to outputs
-from tqdm import tqdm
-from joblib import Parallel, delayed
-
-def path_edge_attributes(G_graph, path, attribute_name, include_skids=True):
-    if(include_skids):
-        return [(u,v,G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
-    if(include_skids==False):
-        return np.array([(G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
-
-def crossing_counts(G_graph, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
-
-    all_paths = [nx.all_simple_paths(G_graph, source, targets.leftid.values, cutoff=cutoff) for source in source_list]
-    paths_list = [x for sublist in all_paths for x in sublist]
-    paths_crossing_count = [sum(path_edge_attributes(G_graph, path, 'edge_type', False)=='contralateral') for path in paths_list]
-    if(plot):
-        # allows text to be editable in Illustrator
-        plt.rcParams['pdf.fonttype'] = 42
-        plt.rcParams['ps.fonttype'] = 42
-
-        # font settings
-        plt.rcParams['font.size'] = 5
-        plt.rcParams['font.family'] = 'arial'
-
-        binwidth = 1
-        x_range = list(range(0, 7))
-        data = paths_crossing_count
-        bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
-
-        fig,ax = plt.subplots(1,1, figsize=(1.5, 2))
-        sns.distplot(paths_crossing_count, bins=bins, kde=False, ax=ax, hist_kws={"rwidth":0.9,'alpha':0.75})
-        ax.set(xlim = (-0.75, 6.75), ylabel=f'Number of Paths ({source_name} to {target_name})', xlabel='Number of Interhemisphere Crossings', xticks=[i for i in range(7)])
-        plt.savefig(f'{save_path}/{source_name}-to-{target_name}_distribution.pdf', format='pdf', bbox_inches='tight')
-
-    return(paths_list, paths_crossing_count)
-
-sensories = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain inputs and ascending').name]
-sensories_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'asc-proprio', 'asc-mechano', 'asc-classII-III', 'asc-noci']
-sensories_pairs = [pm.Promat.extract_pairs_from_list(x, pairs)[0] for x in sensories]
-
-save_path = 'interhemisphere/plots/interhemisphere_crossings'
-
-target_names = ['dVNC', 'dSEZ', 'RGN']
-targets = [dVNC_pairs, dSEZ_pairs, RGN_pairs]
-all_paths_ORN = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
-
-all_paths_thermo = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[1].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='thermo', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
-
-all_paths_noci = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[-1].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='noci', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
-
-all_paths_ORN_no_commissure = Parallel(n_jobs=-1)(delayed(crossing_counts)(G_no_commissure, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='no-comissure_ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
-
-# %%
-# self-loop paths
-# modified some of the functions from networkx to check multi-hop self loops
-
-def empty_generator():
-    """ Return a generator with no members """
-    yield from ()
-
-def mod_all_simple_paths(G, source, target, cutoff=None):
-    if source not in G:
-        raise nx.NodeNotFound(f"source node {source} not in graph")
-    if target in G:
-        targets = {target}
-    else:
-        try:
-            targets = set(target)
-        except TypeError as e:
-            raise nx.NodeNotFound(f"target node {target} not in graph") from e
-    if cutoff is None:
-        cutoff = len(G) - 1
-    if cutoff < 1:
-        return empty_generator()
-    else:
-        return _mod_all_simple_paths_graph(G, source, targets, cutoff)
-
-def _mod_all_simple_paths_graph(G, source, targets, cutoff):
-    visited = dict.fromkeys([str(source)]) # convert to str so it's ignored
-    stack = [iter(G[source])]
-    while stack:
-        children = stack[-1]
-        child = next(children, None)
-        if child is None:
-            stack.pop()
-            visited.popitem()
-        elif len(visited) < cutoff:
-            if (child in visited):
-                continue
-            if child in targets:
-                yield list(visited) + [child]
-            visited[child] = None
-            if targets - set(visited.keys()):  # expand stack until find all targets
-                stack.append(iter(G[child]))
-            else:
-                visited.popitem()  # maybe other ways to child
-        else:  # len(visited) == cutoff:
-            for target in (targets & (set(children) | {child})) - set(visited.keys()):
-                yield list(visited) + [target]
-            stack.pop()
-            visited.popitem()
-
+# make sure pair_ids are in G
+ipsi_pairs = np.intersect1d(ipsi_pairs, graph.G.nodes)
+bilateral_pairs = np.intersect1d(bilateral_pairs, graph.G.nodes)
+contra_pairs = np.intersect1d(contra_pairs, graph.G.nodes)
 #%%
 # generate self loop paths
-from tqdm import tqdm 
-
-ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
-contra = pymaid.get_skids_by_annotation('mw contralateral axon')
-bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
-
-ipsi_pairs = pm.Promat.extract_pairs_from_list(ipsi, pairs)[0].leftid
-bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0].leftid
-contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0].leftid
-
-ipsi_pairs = np.intersect1d(ipsi_pairs, G.nodes)
-bilateral_pairs = np.intersect1d(bilateral_pairs, G.nodes)
-contra_pairs = np.intersect1d(contra_pairs, G.nodes)
 
 cutoff = 3
 
-ipsi_paths = []
-for i in range(len(ipsi_pairs)):
-    path = list(mod_all_simple_paths(G, ipsi_pairs[i], ipsi_pairs[i], cutoff=cutoff))
-    for i in range(len(path)):
-        path[i][0] = int(path[i][0]) # convert source str to int
-    ipsi_paths.append(path)
-
-bi_paths = []
-for i in range(len(bilateral_pairs)):
-    path = list(mod_all_simple_paths(G, bilateral_pairs[i], bilateral_pairs[i], cutoff=cutoff))
-    for i in range(len(path)):
-        path[i][0] = int(path[i][0]) # convert source str to int
-    bi_paths.append(path)
-
-contra_paths = []
-for i in tqdm(range(len(contra_pairs))):
-    path = list(mod_all_simple_paths(G, contra_pairs[i], contra_pairs[i], cutoff=cutoff))
-    for i in range(len(path)):
-        path[i][0] = int(path[i][0]) # convert source str to int
-    contra_paths.append(path)
-
+ipsi_paths = [graph.all_simple_self_loop_paths(pair_id, cutoff) for pair_id in ipsi_pairs]
+bi_paths = [graph.all_simple_self_loop_paths(pair_id, cutoff) for pair_id in bilateral_pairs]
+contra_paths = [graph.all_simple_self_loop_paths(pair_id, cutoff) for pair_id in contra_pairs]
 
 paths = [ipsi_paths, bi_paths, contra_paths]
 paths_names = ['ipsi', 'bilateral', 'contralateral']
