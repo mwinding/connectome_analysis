@@ -552,6 +552,11 @@ class Promat():
             return(pairs[1])
         if(return_type=='nonpaired'):
             return(pairs[2])
+        if(return_type=='all_pair_ids'):
+            pairs_pair_id = list(pairs[0].leftid)
+            nonpaired_pair_id = list(pairs[2].nonpaired)
+            combined = pairs_pair_id + nonpaired_pair_id
+            return(combined)
 
     # generates interlaced left-right pair adjacency matrix with nonpaired neurons at bottom and right
     @staticmethod
