@@ -18,6 +18,10 @@ import pandas as pd
 import numpy.random as random
 
 import connectome_tools.process_matrix as pm
+import connectome_tools.process_graph as pg
+from tqdm import tqdm
+from joblib import Parallel, delayed
+import networkx as nx 
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -27,9 +31,7 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-#url = 'https://neurophyla.mrc-lmb.cam.ac.uk/catmaid/drosophila/l1/seymour/'
 rm = pymaid.CatmaidInstance(url, name, password, token)
-MBON = pymaid.get_skids_by_annotation('mw MBON')
 
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
@@ -56,96 +58,70 @@ contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
 
 # %%
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
+all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
 
 # %%
 # load into network x object
 
-import networkx as nx 
+n_init = 100
 
-dVNC = pymaid.get_skids_by_annotation('mw dVNC')
-dVNC_pairs = pm.Promat.extract_pairs_from_list(dVNC, pairs)[0]
+graph = pg.Analyze_Nx_G(all_edges_combined, graph_type='directed')
+#shuffled_graphs = graph.generate_shuffled_graphs(n_init, graph_type='directed')
+shuffled_graphs = Parallel(n_jobs=-1)(delayed(nx.readwrite.graphml.read_graphml)(f'interhemisphere/csv/shuffled_graphs/iteration-{i}.graphml', node_type=int, edge_key_type=str) for i in tqdm(range(n_init)))
+shuffled_graphs = [pg.Analyze_Nx_G(edges=x.edges, graph=x) for x in shuffled_graphs]
 
-dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-dSEZ_pairs = pm.Promat.extract_pairs_from_list(dSEZ, pairs)[0]
-
-RGN = pymaid.get_skids_by_annotation('mw RGN')
-RGN_pairs = pm.Promat.extract_pairs_from_list(RGN, pairs)[0]
-
-# directed graph
-G = nx.DiGraph()
-G_no_commissure = nx.DiGraph()
-G_no_contra_edges = nx.DiGraph()
-G_no_bilateral_contra_edges = nx.DiGraph()
-G_no_bilateral_ipsi_edges = nx.DiGraph()
-
-# build the graph
-for i in range(len(all_edges_combined)):
-    G.add_edge(all_edges_combined.iloc[i].upstream_pair_id, all_edges_combined.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_edges_combined.iloc[i].left, all_edges_combined.iloc[i].right]), 
-                edge_type = all_edges_combined.iloc[i].type)
-
-all_ipsi_edges = all_edges_combined[all_edges_combined.type=='ipsilateral']
-all_ipsi_edges.reset_index(inplace=True, drop=True)
-for i in range(len(all_ipsi_edges)):
-    G_no_commissure.add_edge(all_ipsi_edges.iloc[i].upstream_pair_id, all_ipsi_edges.iloc[i].downstream_pair_id, 
-                weight = np.mean([all_ipsi_edges.iloc[i].left, all_ipsi_edges.iloc[i].right]), 
-                edge_type = all_ipsi_edges.iloc[i].type)
 
 # %%
 # sensories to outputs
-from tqdm import tqdm
-from joblib import Parallel, delayed
 
-def path_edge_attributes(G_graph, path, attribute_name, include_skids=True):
-    if(include_skids):
-        return [(u,v,G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
-    if(include_skids==False):
-        return np.array([(G_graph[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
-
-def crossing_counts(G_graph, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
-
-    all_paths = [nx.all_simple_paths(G_graph, source, targets.leftid.values, cutoff=cutoff) for source in source_list]
-    paths_list = [x for sublist in all_paths for x in sublist]
-    paths_crossing_count = [sum(path_edge_attributes(G_graph, path, 'edge_type', False)=='contralateral') for path in paths_list]
-    if(plot):
-        # allows text to be editable in Illustrator
-        plt.rcParams['pdf.fonttype'] = 42
-        plt.rcParams['ps.fonttype'] = 42
-
-        # font settings
-        plt.rcParams['font.size'] = 5
-        plt.rcParams['font.family'] = 'arial'
-
-        binwidth = 1
-        x_range = list(range(0, 7))
-        data = paths_crossing_count
-        bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
-
-        fig,ax = plt.subplots(1,1, figsize=(1.5, 2))
-        sns.distplot(paths_crossing_count, bins=bins, kde=False, ax=ax, hist_kws={"rwidth":0.9,'alpha':0.75})
-        ax.set(xlim = (-0.75, 6.75), ylabel=f'Number of Paths ({source_name} to {target_name})', xlabel='Number of Interhemisphere Crossings', xticks=[i for i in range(7)])
-        plt.savefig(f'{save_path}/{source_name}-to-{target_name}_distribution.pdf', format='pdf', bbox_inches='tight')
-
-    return(paths_list, paths_crossing_count)
-
-sensories = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain inputs and ascending').name]
-sensories_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'asc-proprio', 'asc-mechano', 'asc-classII-III', 'asc-noci']
-sensories_pairs = [pm.Promat.extract_pairs_from_list(x, pairs)[0] for x in sensories]
-
-save_path = 'interhemisphere/plots/interhemisphere_crossings'
+dVNC_pair_ids = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_ids')
+dSEZ_pair_ids = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='all_pair_ids')
+RGN_pair_ids = pm.Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='all_pair_ids')
 
 target_names = ['dVNC', 'dSEZ', 'RGN']
-targets = [dVNC_pairs, dSEZ_pairs, RGN_pairs]
-all_paths_ORN = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+targets = [dVNC_pair_ids, dSEZ_pair_ids, RGN_pair_ids]
 
-all_paths_thermo = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[1].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='thermo', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+sensories_pair_ids = [pm.Promat.load_pairs_from_annotation(x, pairs, return_type='all_pair_ids') for x in pymaid.get_annotated('mw brain inputs and ascending').name]
+sensories_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'asc-proprio', 'asc-mechano', 'asc-classII-III', 'asc-noci']
+all_sensories = [x for sublist in sensories_pair_ids for x in sublist]
 
-all_paths_noci = Parallel(n_jobs=-1)(delayed(crossing_counts)(G, sensories_pairs[-1].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='noci', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+save_path = 'interhemisphere/plots/interhemisphere_crossings'
+cutoff=6
 
-all_paths_ORN_no_commissure = Parallel(n_jobs=-1)(delayed(crossing_counts)(G_no_commissure, sensories_pairs[0].leftid, targets[i], cutoff=6, plot=True, 
-                                                                source_name='no-comissure_ORN', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
+all_paths = Parallel(n_jobs=-1)(delayed(pg.Prograph.crossing_counts)(graph.G, all_sensories, targets[i], cutoff=cutoff, plot=True, 
+                                                                source_name='Sensories', target_name=target_names[i], save_path=save_path) for i in (range(len(targets))))
 
+# comparison to random
+all_paths_shuffled_test = Parallel(n_jobs=-1)(delayed(pg.Prograph.crossing_counts)(G = shuffled_graphs[i].G, source_list = all_sensories, targets = dVNC_pair_ids, cutoff=cutoff) for i in (range(100)))
+
+shuffled_hists = []
+for shuffled in all_paths_shuffled_test:
+    binwidth = 1
+    x_range = list(range(0, 7))
+    data = shuffled[1]
+    bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
+    hist = np.histogram(data, bins=bins)
+    for hist_pair in zip(hist[0], [x for x in range(len(hist[0]))], ['shuffled']*len(hist[0])):
+        shuffled_hists.append(hist_pair)
+
+shuffled_hists = pd.DataFrame(shuffled_hists, columns = ['count', 'bin', 'condition'])
+
+control_hists = []
+binwidth = 1
+x_range = list(range(0, 7))
+data = all_paths[0][1]
+bins = np.arange(min(data), max(data) + binwidth + 0.5) - 0.5
+hist = np.histogram(data, bins=bins)
+for hist_pair in zip(hist[0], [x for x in range(len(hist[0]))], ['control']*len(hist[0])):
+    control_hists.append(hist_pair)
+
+control_hists = pd.DataFrame(control_hists, columns = ['count', 'bin', 'condition'])
+
+hists = pd.concat([shuffled_hists, control_hists], axis=0)
+fig, ax = plt.subplots(1,1, figsize=(3,3))
+sns.barplot(data=hists, x='bin', y='count', hue='condition', ax=ax)
+
+import pickle
+output = open('interhemisphere/csv/interhemisphere_crossings/crossings_all.txt','wb')
+data=hists
+pickle.dump(data, output)
