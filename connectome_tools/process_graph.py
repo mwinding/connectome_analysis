@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import csv
+import gzip
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -11,6 +12,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 import networkx as nx
 import networkx.utils as nxu
+
 
 class Analyze_Nx_G():
 
@@ -217,7 +219,7 @@ class Analyze_Nx_G():
 
 class Prograph():
     @staticmethod
-    def crossing_counts(G, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
+    def crossing_counts_old(G, source_list, targets, cutoff, plot=False, source_name=[], target_name=[], save_path = []):
 
         targets = np.intersect1d(targets, G.nodes)
         source_list = np.intersect1d(source_list, G.nodes)
@@ -247,9 +249,97 @@ class Prograph():
         return(paths_list, paths_crossing_count)
     
     @staticmethod
+    def generate_save_simple_paths(G, source_list, targets, cutoff, save_path):
+        targets = np.intersect1d(targets, G.nodes)
+        source_list = np.intersect1d(source_list, G.nodes)  
+
+        with gzip.open(save_path + '.csv.gz', 'wt') as f:
+            writer = csv.writer(f)
+            for source in source_list:
+                writer.writerows(nx.all_simple_paths(G, source, targets, cutoff=cutoff))
+
+    @staticmethod
+    def open_simple_paths(save_path):
+        with gzip.open(save_path, 'rt') as f:
+            reader = csv.reader(f, delimiter=',')
+            recovered_stuff = [list(map(int, row)) for row in reader]
+
+        return(recovered_stuff)
+
+    @staticmethod
+    def crossing_counts(G, paths_list, save_path=None):
+        if(save_path==None):
+            paths_crossing_count_list=[]
+            for path in paths_list:
+                paths_crossing_count = (sum(Prograph.path_edge_attributes(G, path, 'edge_type', False)=='contralateral'))
+                paths_crossing_count_list.append(paths_crossing_count)
+
+            return(paths_crossing_count_list)
+
+        if(save_path!=None):
+            with gzip.open(save_path + '.csv.gz', 'wt') as f:
+                writer = csv.writer(f)
+                writer.writerows([Prograph._sum_attribute(G, path) for path in paths_list])
+
+    @staticmethod
+    def _sum_attribute(G, path):
+        return(sum(Prograph.path_edge_attributes(G, path, 'edge_type', False)=='contralateral'))
+
+    @staticmethod
+    def crossing_counts_no_load(G, save_path, load_path):
+            with gzip.open(load_path + '.csv.gz', 'rt') as f:
+                reader = csv.reader(f, delimiter=',')
+                paths_list = [list(map(int, row)) for row in reader]
+
+                with gzip.open(save_path + '.csv.gz', 'wt') as f:
+                    writer = csv.writer(f)
+                    writer.writerows([sum(Prograph.path_edge_attributes(G, path, 'edge_type', False)=='contralateral') for path in paths_list])
+
+    @staticmethod
     def path_edge_attributes(G, path, attribute_name, include_skids=True):
         if(include_skids):
             return [(u,v,G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
         if(include_skids==False):
             return np.array([(G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
+
+    @staticmethod
+    def excise_edges(edges, nodes, edge_type):
+        identified_edges = [(edges.iloc[i].upstream_pair_id in nodes) & (edges.iloc[i].type==edge_type) for i in range(len(edges))]
+        count_edges = sum(identified_edges)
+        excised_edges = edges.loc[[not x for x in identified_edges]]
+
+        return(excised_edges, count_edges)
+
+    @staticmethod
+    def random_excise_edges(edges, count, n_init, seed, exclude_nodes=[]):
+        edges_list = []
+        for i in range(n_init):
+            np.random.seed(seed+i)
+            selected=0
+
+            r_index_list = []
+            while selected < count:
+                r_index = np.random.choice(len(edges.index))
+                if((r_index in r_index_list) | (edges.upstream_pair_id[r_index] in exclude_nodes)):
+                    continue
+                r_index_list.append(r_index)
+                selected += 1
+
+            edges_iter = edges.iloc[[x not in r_index_list for x in range(len(edges.index))], :].copy()
+            edges_iter.reset_index(inplace=True, drop=True)
+            edges_list.append(edges_iter)
+
+        return(edges_list)
+    
+    @staticmethod
+    def excise_edge_experiment(edges, nodes, edge_type, n_init, seed, exclude_nodes=[]):
+        # preparing edge lists
+        excised_edges, edge_count = Prograph.excise_edges(edges, nodes, edge_type)
+        excised_edges_control_list = Prograph.random_excise_edges(edges, edge_count, n_init, seed, exclude_nodes)
+
+        # loading into graphs
+        excised_graph = Analyze_Nx_G(excised_edges, graph_type='directed')
+        control_graphs = Parallel(n_jobs=-1)(delayed(Analyze_Nx_G)(excised_edges_control_list[i], graph_type='directed') for i in tqdm(range(len(excised_edges_control_list))))
+
+        return(excised_graph, control_graphs)
 
