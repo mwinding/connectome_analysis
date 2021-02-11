@@ -119,7 +119,7 @@ class Analyze_Nx_G():
                     paths_length.append([pairs[i], 0, 'none'])
             if(len(paths_list)>0):
                 for subpath in paths_list:
-                    edge_types = self.path_edge_attributes(self.G, subpath, 'edge_type', include_skids=False)
+                    edge_types = Prograph.path_edge_attributes(self.G, subpath, 'edge_type', include_skids=False)
                     if((sum(edge_types=='contralateral')%2)==0): # if there is an even number of contralateral edges
                         paths_length.append([pairs[i], len(subpath)-1, 'self'])
                     if((sum(edge_types=='contralateral')%2)==1): # if there is an odd number of contralateral edges
@@ -374,4 +374,21 @@ class Prograph():
         random_contra_graphs = Parallel(n_jobs=-1)(delayed(Analyze_Nx_G)(excised_random_contra_edges_list[i], graph_type='directed', split_pairs=split_pairs) for i in tqdm(range(len(excised_random_contra_edges_list))))
 
         return(random_ipsi_left_graphs, random_ipsi_right_graphs, random_contra_graphs)
+
+    @staticmethod
+    def self_loop_experiment(analyze_graph, ipsi_pair_ids, bilateral_pair_ids, contra_pair_ids, sens, cutoff):
+        
+        ipsi_pair_ids = np.setdiff1d(ipsi_pair_ids, sens)
+        bilateral_pair_ids = np.setdiff1d(bilateral_pair_ids, sens)
+        contra_pair_ids = np.setdiff1d(contra_pair_ids, sens)
+
+        ipsi_pair_ids = list(np.intersect1d(ipsi_pair_ids, analyze_graph.G.nodes))
+        bilateral_pair_ids = list(np.intersect1d(bilateral_pair_ids, analyze_graph.G.nodes))
+        contra_pair_ids = list(np.intersect1d(contra_pair_ids, analyze_graph.G.nodes))
+
+        ipsi_loops = analyze_graph.identify_loops(ipsi_pair_ids, cutoff)
+        bilateral_loops = analyze_graph.identify_loops(bilateral_pair_ids, cutoff)
+        contra_loops = analyze_graph.identify_loops(contra_pair_ids, cutoff)
+
+        return(ipsi_loops, bilateral_loops, contra_loops)
 
