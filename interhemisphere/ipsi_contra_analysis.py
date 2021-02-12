@@ -368,3 +368,43 @@ ax.set(xticklabels = celltype_names, xticks=np.arange(0, len(ipsi_contra_celltyp
 fig.savefig('interhemisphere/plots/ipsi_contra_makeup_celltypes.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# different types of cell types in each ipsi, bi, contra neuron types
+
+import connectome_tools.cascade_analysis as casc
+import connectome_tools.process_matrix as pm
+import pymaid as pymaid
+
+ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
+bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
+contra = pymaid.get_skids_by_annotation('mw contralateral axon')
+
+celltypes, celltype_names = pm.Promat.celltypes()
+all_celltypes = list(map(lambda pair: casc.Celltype(pair[0], pair[1]), zip(celltype_names, celltypes)))
+
+all_cats = [casc.Celltype('ipsi', ipsi), casc.Celltype('bilateral', bilateral), casc.Celltype('contra', contra)]
+all_cats_analyzer = casc.Celltype_Analyzer(all_cats)
+all_cats_analyzer.set_known_types(all_celltypes)
+cats_memberships = all_cats_analyzer.memberships()
+
+fraction_types_names = cats_memberships.index
+colors = ['#00753F', '#1D79B7', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#E0B1AD', 'tab:purple','#D88052', '#A52A2A', 'tab:grey']
+#plt.bar(x=fraction_types_names,height=[1]*len(colors),color=colors)
+
+plts=[]
+fig, ax = plt.subplots(figsize=(0.3,1.2))
+plt1 = plt.bar(cats_memberships.columns, cats_memberships.iloc[0, :], color=colors[0])
+bottom = cats_memberships.iloc[0, :]
+plt.xticks(rotation=45, ha='right')
+ax.set(ylim=(0,1))
+plts.append(plt1)
+
+for i in range(1, len(cats_memberships.iloc[:, 0])):
+    plt_next = plt.bar(cats_memberships.columns, cats_memberships.iloc[i, :], bottom = bottom, color = colors[i])
+    bottom = bottom + cats_memberships.iloc[i, :]
+    plts.append(plt_next)
+    ax.set(ylim=(0,1))
+    plt.xticks(rotation=45, ha='right')
+
+plt.savefig(f'interhemisphere/plots/ipsi_bi_contra_identities/ipsi_bi_contra_identities.pdf', format='pdf', bbox_inches='tight')
+
+# %%
