@@ -156,19 +156,21 @@ inputs_hit_hist_list_right = Parallel(n_jobs=-1)(delayed(run_cascade)(i[1], cdis
 
 # %%
 # signal through ipsilateral and contralateral structures
-ipsi = pymaid.get_skids_by_annotation('mw brain ipsilateral')
-contra = pymaid.get_skids_by_annotation('mw brain contralateral')
+ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
+bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
+contra = pymaid.get_skids_by_annotation('mw contralateral axon')
 
 ipsi_indices_left, ipsi_indices_right, ipsi_left, ipsi_right = split_hemilateral_to_indices(ipsi, left_annot, right_annot, adj.index)
 contra_indices_left, contra_indices_right, contra_left, contra_right = split_hemilateral_to_indices(contra, left_annot, right_annot, adj.index)
-
+bilateral_indices_left, bilateral_indices_right, bilateral_left, bilateral_right = split_hemilateral_to_indices(bilateral, left_annot, right_annot, adj.index)
+'''
 # add sensories to ipsi and contral as appropriate
 ipsi_indices_left = list(ipsi_indices_left) + [x for i, indices in enumerate(inputs_split) for x in indices[0] if i in [0,1,2,3,4,5,8]] + list(np.where([x in [2123422] for x in adj.index])[0])
 ipsi_indices_right = list(ipsi_indices_right) + [x for i, indices in enumerate(inputs_split) for x in indices[1] if i in [0,1,2,3,4,5,8]] + list(np.where([x in [2784471] for x in adj.index])[0])
 
 contra_indices_left = list(contra_indices_left) + list(np.where([x in neurons_to_flip_left for x in adj.index])[0])
 contra_indices_right = list(contra_indices_right) + list(np.where([x in neurons_to_flip_right for x in adj.index])[0])
-
+'''
 # %%
 # number of ipsi or contra neurons visited per hop
 # shows nicely the flow of information through two hemispheres
@@ -182,13 +184,15 @@ fig.tight_layout(pad=2.5)
 
 for i in range(len(inputs_hit_hist_list_left)):
     ipsi_same = (inputs_hit_hist_list_left[i][ipsi_indices_left]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][ipsi_indices_right]>threshold).sum(axis=0)
+    bilateral_same = (inputs_hit_hist_list_left[i][bilateral_indices_left]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][bilateral_indices_right]>threshold).sum(axis=0)
     contra_same = (inputs_hit_hist_list_left[i][contra_indices_left]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][contra_indices_right]>threshold).sum(axis=0)
     ipsi_opposite = (inputs_hit_hist_list_left[i][ipsi_indices_right]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][ipsi_indices_left]>threshold).sum(axis=0)
+    bilateral_opposite = (inputs_hit_hist_list_left[i][bilateral_indices_right]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][bilateral_indices_left]>threshold).sum(axis=0)
     contra_opposite = (inputs_hit_hist_list_left[i][contra_indices_right]>threshold).sum(axis=0) + (inputs_hit_hist_list_right[i][contra_indices_left]>threshold).sum(axis=0)
 
-    data = pd.DataFrame([ipsi_same, contra_same, ipsi_opposite, contra_opposite], 
-                        index = ['Ipsilateral same side', 'Contralateral same side', 
-                                'Ipsilateral opposite side', 'Contralateral opposite side'])
+    data = pd.DataFrame([ipsi_same, bilateral_same, contra_same, ipsi_opposite, bilateral_opposite, contra_opposite], 
+                        index = ['Ipsilateral same side', 'Bilateral same side', 'Contralateral same side', 
+                                'Ipsilateral opposite side', 'Bilateral opposite side', 'Contralateral opposite side'])
 
     ax = axs[i]
     ax.set_title(f'{input_names[i]}')
@@ -205,13 +209,15 @@ threshold = n_init/2
 fig.tight_layout(pad=2.5)
 
 ipsi_same = (all_inputs_hit_hist_left[ipsi_indices_left]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[ipsi_indices_right]>threshold).sum(axis=0)
+bilateral_same = (all_inputs_hit_hist_left[bilateral_indices_left]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[bilateral_indices_right]>threshold).sum(axis=0)
 contra_same = (all_inputs_hit_hist_left[contra_indices_left]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[contra_indices_right]>threshold).sum(axis=0)
 ipsi_opposite = (all_inputs_hit_hist_left[ipsi_indices_right]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[ipsi_indices_left]>threshold).sum(axis=0)
+contra_opposite = (all_inputs_hit_hist_left[bilateral_indices_right]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[bilateral_indices_left]>threshold).sum(axis=0)
 contra_opposite = (all_inputs_hit_hist_left[contra_indices_right]>threshold).sum(axis=0) + (all_inputs_hit_hist_right[contra_indices_left]>threshold).sum(axis=0)
 
-data = pd.DataFrame([ipsi_same, contra_same, ipsi_opposite, contra_opposite], 
-                    index = ['Ipsilateral same side', 'Contralateral same side', 
-                            'Ipsilateral opposite side', 'Contralateral opposite side'])
+data = pd.DataFrame([ipsi_same, bilateral_same, contra_same, ipsi_opposite, bilateral_opposite, contra_opposite], 
+                    index = ['Ipsilateral same side', 'Bilateral same side', 'Contralateral same side', 
+                            'Ipsilateral opposite side', 'Bilateral opposite side', 'Contralateral opposite side'])
 
 sns.heatmap(data, ax = ax, annot=True, fmt="d", cbar = False)
 fig.savefig('interhemisphere/plots/num_ipsicontra_all-sensory_folded-sides.pdf', format='pdf', bbox_inches='tight')
@@ -236,7 +242,7 @@ def intersect_stats(hit_hist1, hit_hist2, threshold, hops):
 
     return(np.array(intersect_hops), np.array(total_hops), percent)
 
-threshold = 50
+threshold = n_init*5/10
 hops = 10
 
 inputs_intersect_list = [intersect_stats(inputs_hit_hist_list_left[i], inputs_hit_hist_list_right[i], threshold, hops) for i in range(len(inputs_hit_hist_list_left))]
@@ -244,39 +250,155 @@ all_inputs_intersect, all_inputs_total, all_inputs_percent = intersect_stats(all
 
 # plot results
 fig, axs = plt.subplots(
-    3, 1, figsize=(1.5, 2.5), sharex=True
+    3, 1, figsize=(1, 1.75), sharex=True
 )
-threshold = n_init/2
-fig.tight_layout(pad=2.5)
+fig.tight_layout(pad=0.05)
 
 ax = axs[0]
 ipsi_left = (all_inputs_hit_hist_left[ipsi_indices_left]>threshold).sum(axis=0)
+bilateral_left = (all_inputs_hit_hist_left[bilateral_indices_left]>threshold).sum(axis=0)
 contra_left = (all_inputs_hit_hist_left[contra_indices_left]>threshold).sum(axis=0)
 ipsi_right = (all_inputs_hit_hist_left[ipsi_indices_right]>threshold).sum(axis=0)
+bilateral_right = (all_inputs_hit_hist_left[bilateral_indices_right]>threshold).sum(axis=0)
 contra_right = (all_inputs_hit_hist_left[contra_indices_right]>threshold).sum(axis=0)
 
-data_left = pd.DataFrame([ipsi_left, contra_left, contra_right, ipsi_right], index = ['Ipsi(L)', 'Contra(L)', 'Contra(R)', 'Ipsi(R)'])
-sns.heatmap(data_left.iloc[:, 0:6], ax = ax, annot=True, fmt="d", cbar = False)
+data_left = pd.DataFrame([ipsi_left, bilateral_left, contra_left, contra_right, bilateral_right, ipsi_right], index = ['Ipsi(L)', 'Bilateral(L)', 'Contra(L)', 'Contra(R)', 'Bilateral(R)', 'Ipsi(R)'])
+sns.heatmap(data_left.iloc[:, 0:5], ax = ax, annot=True, fmt="d", cbar = False)
+ax.tick_params(left=False, bottom=False)
 
 ax = axs[1]
 ipsi_right = (all_inputs_hit_hist_right[ipsi_indices_right]>threshold).sum(axis=0)
+bilateral_right = (all_inputs_hit_hist_right[bilateral_indices_right]>threshold).sum(axis=0)
 contra_right = (all_inputs_hit_hist_right[contra_indices_right]>threshold).sum(axis=0)
 ipsi_left = (all_inputs_hit_hist_right[ipsi_indices_left]>threshold).sum(axis=0)
+bilateral_left = (all_inputs_hit_hist_right[bilateral_indices_left]>threshold).sum(axis=0)
 contra_left = (all_inputs_hit_hist_right[contra_indices_left]>threshold).sum(axis=0)
 
-data_right = pd.DataFrame([ipsi_left, contra_left, contra_right, ipsi_right], index = ['Ipsi(R)', 'Contra(R)', 'Contra(L)', 'Ipsi(L)'])
-sns.heatmap(data_right.iloc[:, 0:6], ax = ax, annot=True, fmt="d", cbar = False)
+data_right = pd.DataFrame([ipsi_left, bilateral_left, contra_left, contra_right, bilateral_right, ipsi_right], index = ['Ipsi(L)', 'Bilateral(L)', 'Contra(L)', 'Contra(R)', 'Bilateral(R)', 'Ipsi(R)'])
+sns.heatmap(data_right.iloc[:, 0:5], ax = ax, annot=True, fmt="d", cbar = False)
+ax.tick_params(left=False, bottom=False)
 
 ax = axs[2]
 ipsi_left = all_inputs_intersect.T[ipsi_indices_left].sum(axis=0)/all_inputs_total.T[ipsi_indices_left].sum(axis=0)
+bilateral_left = all_inputs_intersect.T[bilateral_indices_left].sum(axis=0)/all_inputs_total.T[bilateral_indices_left].sum(axis=0)
 contra_left = all_inputs_intersect.T[contra_indices_left].sum(axis=0)/all_inputs_total.T[contra_indices_left].sum(axis=0)
 contra_right = all_inputs_intersect.T[contra_indices_right].sum(axis=0)/all_inputs_total.T[contra_indices_right].sum(axis=0)
+bilateral_right = all_inputs_intersect.T[bilateral_indices_right].sum(axis=0)/all_inputs_total.T[bilateral_indices_right].sum(axis=0)
 ipsi_right = all_inputs_intersect.T[ipsi_indices_right].sum(axis=0)/all_inputs_total.T[ipsi_indices_right].sum(axis=0)
 
-data = pd.DataFrame([ipsi_left, contra_left, contra_right, ipsi_right], index = ['Ipsi(L)', 'Contra(L)', 'Contra(R)', 'Ipsi(R)'])
+data = pd.DataFrame([ipsi_left, bilateral_left, contra_left, contra_right, bilateral_right, ipsi_right], index = ['Ipsi(L)', 'Bilateral(L)', 'Contra(L)', 'Contra(R)', 'Bilateral(R)', 'Ipsi(R)'])
 data = data.fillna(0)
-sns.heatmap(data.iloc[:, 0:6], ax = ax, annot=True, fmt=".0%", cbar = False, cmap = cmr.lavender)
+sns.heatmap(data.iloc[:, 0:5], ax = ax, annot=True, fmt=".0%", cbar = False, cmap = cmr.lavender)
+ax.tick_params(left=False, bottom=False)
 fig.savefig('interhemisphere/plots/summary_intersect-plot.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# identify integration center neurons
+# what types of neurons are they?
+import connectome_tools.cascade_analysis as casc
+
+ipsi = pymaid.get_skids_by_annotation('mw ipsi axon')
+bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
+contra = pymaid.get_skids_by_annotation('mw contralateral axon')
+
+data_mat = pd.DataFrame(all_inputs_intersect.T, index = adj.index)
+data_ipsi = data_mat.loc[np.intersect1d(ipsi, data_mat.index), :]
+data_bilat = data_mat.loc[np.intersect1d(bilateral, data_mat.index), :]
+data_contra = data_mat.loc[np.intersect1d(contra, data_mat.index), :]
+
+all_cats = []
+for i in range(len(data_mat.columns)):
+    cats_hop = []
+    cats_hop.append(casc.Celltype(f'hop{i}_ipsi_integrators', list(data_ipsi[data_ipsi.iloc[:, i]].index)))
+    cats_hop.append(casc.Celltype(f'hop{i}_bilateral_integrators', list(data_bilat[data_bilat.iloc[:, i]].index)))
+    cats_hop.append(casc.Celltype(f'hop{i}_contra_integrators', list(data_contra[data_contra.iloc[:, i]].index)))
+
+    all_cats.append(cats_hop)
+
+celltypes, celltype_names = pm.Promat.celltypes()
+all_celltypes = list(map(lambda pair: casc.Celltype(pair[0], pair[1]), zip(celltype_names, celltypes)))
+
+all_cat_memberships=[]
+for i in range(len(all_cats)):
+    all_cats_analyzer = casc.Celltype_Analyzer(all_cats[i])
+    all_cats_analyzer.set_known_types(all_celltypes)
+    cats_memberships = all_cats_analyzer.memberships()
+    all_cat_memberships.append(cats_memberships)
+
+fraction_types_names = all_cat_memberships[1].index
+colors = ['#00753F', '#1D79B7', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#E0B1AD', 'tab:purple','#D88052', '#A52A2A', 'tab:grey']
+plt.bar(x=fraction_types_names,height=[1]*len(colors),color=colors)
+
+for i in range(1, 5):
+    plts=[]
+    fig, ax = plt.subplots(figsize=(0.25,0.6))
+    plt1 = plt.bar(all_cat_memberships[i].columns, all_cat_memberships[i].iloc[0, :], color=colors[0])
+    bottom = all_cat_memberships[i].iloc[0, :]
+    plt.xticks(rotation=45, ha='right')
+    ax.set(ylim=(0,1))
+    plts.append(plt1)
+
+    for j in range(1, len(all_cat_memberships[i].iloc[:, 0])):
+        plt_next = plt.bar(all_cat_memberships[i].columns, all_cat_memberships[i].iloc[j, :], bottom = bottom, color = colors[j])
+        bottom = bottom + all_cat_memberships[i].iloc[j, :]
+        plts.append(plt_next)
+        ax.set(ylim=(0,1))
+        plt.xticks(rotation=45, ha='right')
+
+    plt.savefig(f'interhemisphere/plots/ipsi_bi_contra_identities/integrators_hop{i}.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# cascades to descendings
+import cmasher as cmr
+dVNC = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs)
+dSEZ = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs)
+RGN = pm.Promat.load_pairs_from_annotation('mw RGN', pairs)
+
+dVNC_left = list(dVNC.leftid)
+dVNC_right = list(dVNC.rightid)
+dSEZ_left = list(dSEZ.leftid)
+dSEZ_right = list(dSEZ.rightid)
+RGN_left = list(RGN.leftid)
+RGN_right = list(RGN.rightid)
+
+left_signal = all_inputs_hit_hist_left/n_init
+left_signal = left_signal.sum(axis=1)
+
+right_signal = all_inputs_hit_hist_right/n_init
+right_signal = -(right_signal.sum(axis=1))
+
+integration = (left_signal + right_signal)
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index)
+
+
+df_left = integration_df.loc[dVNC_left, :]
+df_left = df_left.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_left = df_left.append(integration_df.loc[dSEZ_left, :])
+df_left = df_left.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_left = df_left.append(integration_df.loc[RGN_left, :])
+
+df_right = integration_df.loc[dVNC_right, :]
+df_right = df_right.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_right = df_right.append(integration_df.loc[dSEZ_right, :])
+df_right = df_right.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_right = df_right.append(integration_df.loc[RGN_right, :])
+
+fig, axs = plt.subplots(1,2, figsize=(1.5,1.5), sharey=True)
+fig.tight_layout(pad=0.05)
+ax=axs[0]
+sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax, cbar=False)
+ax.tick_params(left=False, bottom=False)
+ax.set(yticks=([]))
+
+ax=axs[1]
+sns.heatmap(df_right, cmap=cmr.iceburn, ax=ax, cbar=False)
+ax.tick_params(left=False, bottom=False)
+ax.set(yticks=([]))
+fig.savefig('interhemisphere/plots/left-right-visits_brain_outputs.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,1.5), sharey=True)
+sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax)
+fig.savefig('interhemisphere/plots/left-right-visits_brain_outputs_cbar.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # cascades and integration through clusters
@@ -390,7 +512,7 @@ for i in range(len(inputs_hit_hist_list_left)):
 # this simplifies code 
 
 import connectome_tools.cascade_analysis as casc
-from connectome_tools.process_matrix import Promat
+import connectome_tools.process_matrix as pm
 contra = pymaid.get_skids_by_annotation('mw contralateral axon')
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 
@@ -407,7 +529,7 @@ for i in range(len(inputs_hit_hist_list_left)):
     integrators = np.where(integrators==True)[0]
     integrators = list(adj.index[integrators]) # converts to skid
     integrators = np.intersect1d(integrators, contra + bilateral) # only neurons that cross commissure
-    integrators = Promat.extract_pairs_from_list(integrators, pairs)[0]
+    integrators = pm.Promat.extract_pairs_from_list(integrators, pairs)[0]
     intersection_list.append([x for sublist in integrators.values for x in sublist])
 
 # has to be overthreshold for summed hops
@@ -417,7 +539,7 @@ for i in range(len(inputs_hit_hist_list_left)):
     integrators = np.where(integrators==True)[0]
     integrators = list(adj.index[integrators]) # converts to skid
     integrators = np.intersect1d(integrators, contra + bilateral) # only neurons that cross commissure
-    integrators = Promat.extract_pairs_from_list(integrators, pairs)[0]
+    integrators = pm.Promat.extract_pairs_from_list(integrators, pairs)[0]
     intersection_summed_list.append([x for sublist in integrators.values for x in sublist])
 
 inter_celltypes = list(map(lambda pair: casc.Celltype(pair[0], pair[1]), zip(input_names, intersection_list)))
