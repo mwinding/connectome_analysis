@@ -170,7 +170,10 @@ class Celltype_Analyzer:
             for j, celltype in enumerate(self.Celltypes):
                 if(by_celltype): # fraction of new cell type in each known category
                     if(raw_num==False):
-                        fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))/len(celltype.get_skids())
+                        if(len(celltype.get_skids())==0):
+                            fraction = 0
+                        if(len(celltype.get_skids())>0):
+                            fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))/len(celltype.get_skids())
                     if(raw_num==True):
                         fraction = len(np.intersect1d(celltype.get_skids(), knowntype.get_skids()))
                     fraction_type[i, j] = fraction
