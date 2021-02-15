@@ -32,7 +32,7 @@ plt.rcParams['font.family'] = 'arial'
 #rm = pymaid.CatmaidInstance(url, name, password, token)
 
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
+all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
 
 # build networkx Graph
 graph = pg.Analyze_Nx_G(all_edges_combined)
@@ -93,6 +93,7 @@ contains_loop_3self.append([observed_loops.loc[(3, 'self')], 'observed', 3])
 data_self = pd.DataFrame(np.concatenate((contains_loop_1self, contains_loop_2self, contains_loop_3self)), columns = ['fraction_loops', 'condition', 'path_length'])
 data_self.fraction_loops = [float(x) for x in data_self.fraction_loops]
 data_self.to_csv('interhemisphere/csv/self_loops_vs_shuffled.csv')
+data_self = pd.read_csv('interhemisphere/csv/self_loops_vs_shuffled.csv')
 
 # box plots
 height = 1.5
@@ -104,6 +105,7 @@ plt.savefig('interhemisphere/plots/loops/self_loops_vs_shuffled.pdf', format='pd
 data_pair = pd.DataFrame(np.concatenate((contains_loop_1pair, contains_loop_2pair, contains_loop_3pair)), columns = ['fraction_loops', 'condition', 'path_length'])
 data_pair.fraction_loops = [float(x) for x in data_pair.fraction_loops]
 data_pair.to_csv('interhemisphere/csv/pair_loops_vs_shuffled.csv')
+data_pair = pd.read_csv('interhemisphere/csv/pair_loops_vs_shuffled.csv')
 
 height = 1.5
 width = 1.25
@@ -112,18 +114,18 @@ g.ax.set(ylim=(0,0.5))
 plt.savefig('interhemisphere/plots/loops/pair_loops_vs_shuffled.pdf', format='pdf', bbox_inches='tight')
 
 # box plots
-height = 1.5
-width = 1.25
+height = 0.8
+width = 1.1
 with plt.rc_context({"lines.linewidth": 0.5}):
     g = sns.catplot(data=data_self, x='path_length', y='fraction_loops', hue='condition', kind='bar', height=height, aspect=width/height, linewidth=0.5)
-    g.ax.set(ylim=(0,0.5))
+    g.ax.set(ylim=(0,0.25))
     plt.savefig('interhemisphere/plots/loops/self_loops_vs_shuffled_bar.pdf', format='pdf', bbox_inches='tight')
 
-height = 1.5
-width = 1.25
+height = 0.8
+width = 1.1
 with plt.rc_context({"lines.linewidth": 0.5}):
     g = sns.catplot(data=data_pair, x='path_length', y='fraction_loops', hue='condition', kind='bar', height=height, aspect=width/height, linewidth=0.5)
-    g.ax.set(ylim=(0,0.5))
+    g.ax.set(ylim=(0,0.25))
     plt.savefig('interhemisphere/plots/loops/pair_loops_vs_shuffled_bar.pdf', format='pdf', bbox_inches='tight')
 
 # %%
