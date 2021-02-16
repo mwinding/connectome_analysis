@@ -10,6 +10,14 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
+# allows text to be editable in Illustrator
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+# font settings
+plt.rcParams['font.size'] = 5
+plt.rcParams['font.family'] = 'arial'
+
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
 def get_connectors_group(skids):
@@ -21,40 +29,55 @@ def get_connectors_group(skids):
     return(outputs, inputs)
 
 #%%
-contra_skids = pymaid.get_skids_by_annotation("mw brain crosses commissure")
+ipsi_skids = pymaid.get_skids_by_annotation("mw ipsilateral axon")
+bilateral_skids = pymaid.get_skids_by_annotation("mw bilateral axon")
+contra_skids = pymaid.get_skids_by_annotation("mw contralateral axon")
+
 #left_skids = pymaid.get_skids_by_annotation("mw left")
 right_skids = pymaid.get_skids_by_annotation("mw right")
+brain_skids = pymaid.get_skids_by_annotation("mw brain neurons")
+brain_right = np.intersect1d(right_skids, brain_skids)
 
-#contra_left = np.intersect1d(contra_skids, left_skids)
+ipsi_right = np.intersect1d(ipsi_skids, right_skids)
+bilateral_right = np.intersect1d(bilateral_skids, right_skids)
 contra_right = np.intersect1d(contra_skids, right_skids)
 
-#contra_left_outputs, contra_left_inputs = get_connectors_group(contra_left)
-contra_right_outputs, contra_right_inputs = get_connectors_group(contra_right)
-print('done')
-
-#%%
-brain_skids = pymaid.get_skids_by_annotation("mw brain neurons")
-ipsi_skids = np.setdiff1d(brain_skids, contra_skids)
-#ipsi_left = np.intersect1d(ipsi_skids, left_skids)
-ipsi_right = np.intersect1d(ipsi_skids, right_skids)
-
-#ipsi_left_outputs, ipsi_left_inputs = get_connectors_group(ipsi_left)
 ipsi_right_outputs, ipsi_right_inputs = get_connectors_group(ipsi_right)
-print('done')
+bilateral_right_outputs, bilateral_right_inputs = get_connectors_group(bilateral_right)
+contra_right_outputs, contra_right_inputs = get_connectors_group(contra_right)
 
 #%%
-fig, ax = plt.subplots(1,1,figsize=(4,1))
 
-sns.distplot(contra_right_outputs['x'], color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
-sns.distplot(contra_right_inputs['x'], color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
+min_x = 939 #based on 'cns' volume
+max_x = 105096 #based on 'cns' volume
 
-plt.savefig('synapse_distributions/plots/contra_right.svg', format='svg')
+commissure_min_x = 51500 #based on 'Brain Commissure' volume
+commissure_max_x = 56000 #based on 'Brain Commissure' volume
 
+width = 1.15
+height = 0.3
+
+fig, ax = plt.subplots(1,1,figsize=(width,height))
+sns.distplot(ipsi_right_inputs['x'], color = '#5DB2E2', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+sns.distplot(ipsi_right_outputs['x'], color = '#1F77B4', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+plt.axvline(commissure_min_x, color='gray', linewidth=0.5)
+plt.axvline(commissure_max_x, color='gray', linewidth=0.5)
+ax.set(xlim=(max_x, min_x), yticks=([]), xticks=([]), xlabel='')
+plt.savefig('synapse_distributions/plots/ipsi_right.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1,figsize=(width,height))
+sns.distplot(bilateral_right_inputs['x'], color = '#FFB176', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+sns.distplot(bilateral_right_outputs['x'], color = '#FF7F0E', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+plt.axvline(commissure_min_x, color='gray', linewidth=0.5)
+plt.axvline(commissure_max_x, color='gray', linewidth=0.5)
+ax.set(xlim=(max_x, min_x), yticks=([]), xticks=([]), xlabel='')
+plt.savefig('synapse_distributions/plots/bilateral_right.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1,figsize=(width,height))
+sns.distplot(contra_right_inputs['x'], color = '#74E274', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+sns.distplot(contra_right_outputs['x'], color = '#2CA02C', ax = ax, hist = False, kde_kws = {'shade': True, 'linewidth': 0.5})
+plt.axvline(commissure_min_x, color='gray', linewidth=0.5)
+plt.axvline(commissure_max_x, color='gray', linewidth=0.5)
+ax.set(xlim=(max_x, min_x), yticks=([]), xticks=([]), xlabel='')
+plt.savefig('synapse_distributions/plots/contra_right.pdf', format='pdf', bbox_inches='tight')
 #%%
-fig, ax = plt.subplots(1,1,figsize=(4,1))
-
-sns.distplot(ipsi_right_outputs['x'], color = 'crimson', ax = ax, hist = False, kde_kws = {'shade': True})
-sns.distplot(ipsi_right_inputs['x'], color = 'royalblue', ax = ax, hist = False, kde_kws = {'shade': True})
-
-plt.savefig('synapse_distributions/plots/ipsi_right.svg', format='svg')
-# %%
