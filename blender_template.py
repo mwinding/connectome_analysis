@@ -1,3 +1,17 @@
+import pymaid as pymaid
+from pymaid_creds import url, name, password, token
+import navis.interfaces.blender as b3d
+
+pymaid.CatmaidInstance(url, token, name, password)
+
+cns = pymaid.get_volume('cns')
+neuropil = pymaid.get_volume('neuropil')
+
+h = b3d.Handler()
+h.add(cns)
+h.add(neuropil)
+
+'''
 import pandas as pd 
 import navis
 import navis.interfaces.blender as b3d
@@ -18,3 +32,4 @@ for i in range(len(paths)):
 h = b3d.Handler()
 for neuron in neurons:
     h.add(neuron)
+'''
