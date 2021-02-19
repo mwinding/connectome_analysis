@@ -68,10 +68,86 @@ order_df = order_df.sort_values(by = 'node_visit_order')
 order = list(order_df.cluster)
 
 # %%
+# number of dendrite_axon types
+
+ipsi_axon = pymaid.get_skids_by_annotation('mw ipsilateral axon')
+contra_axon = pymaid.get_skids_by_annotation('mw contralateral axon')
+bilateral_axon = pymaid.get_skids_by_annotation('mw bilateral axon')
+ipsi_dendrite = pymaid.get_skids_by_annotation('mw ipsilateral dendrite')
+contra_dendrite = pymaid.get_skids_by_annotation('mw contralateral dendrite')
+bilateral_dendrite = pymaid.get_skids_by_annotation('mw bilateral dendrite')
+
+ipsi_ipsi = len(np.intersect1d(ipsi_dendrite, ipsi_axon))
+ipsi_bilateral = len(np.intersect1d(ipsi_dendrite, bilateral_axon))
+ipsi_contra = len(np.intersect1d(ipsi_dendrite, contra_axon))
+bilateral_ipsi = len(np.intersect1d(bilateral_dendrite, ipsi_axon))
+bilateral_bilateral = len(np.intersect1d(bilateral_dendrite, bilateral_axon))
+bilateral_contra = len(np.intersect1d(bilateral_dendrite, contra_axon))
+contra_ipsi = len(np.intersect1d(contra_dendrite, ipsi_axon))
+contra_bilateral = len(np.intersect1d(contra_dendrite, bilateral_axon))
+contra_contra = len(np.intersect1d(contra_dendrite, contra_axon))
+
+neuron_types = pd.DataFrame([[ipsi_ipsi, ipsi_bilateral, ipsi_contra], 
+                            [bilateral_ipsi, bilateral_bilateral, bilateral_contra],
+                            [contra_ipsi, contra_bilateral, contra_contra]], 
+                            index = ['ipsi', 'bilateral', 'contra'], 
+                            columns = ['ipsi', 'bilateral', 'contra'])
+
+fig, ax = plt.subplots(1,1, figsize=(0.75,0.75))
+sns.heatmap(neuron_types, annot=True, fmt = 'd', ax=ax, vmax=600, cmap='Blues', cbar=False)
+ax.set(xticks=([]), yticks=([]))
+fig.savefig('interhemisphere/plots/cell_types_dendrite-axon.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# number of contra/ipsi edges and synapses
+# just creates confusion, leave it out 
+
+ipsi_ipsi = list(np.intersect1d(ipsi_dendrite, ipsi_axon))
+ipsi_bilateral = list(np.intersect1d(ipsi_dendrite, bilateral_axon))
+ipsi_contra = list(np.intersect1d(ipsi_dendrite, contra_axon))
+bilateral_ipsi = list(np.intersect1d(bilateral_dendrite, ipsi_axon))
+bilateral_bilateral = list(np.intersect1d(bilateral_dendrite, bilateral_axon))
+bilateral_contra = list(np.intersect1d(bilateral_dendrite, contra_axon))
+contra_ipsi = list(np.intersect1d(contra_dendrite, ipsi_axon))
+contra_bilateral = list(np.intersect1d(contra_dendrite, bilateral_axon))
+contra_contra = list(np.intersect1d(contra_dendrite, contra_axon))
+weird_bilaterals = bilateral_ipsi + bilateral_bilateral + bilateral_contra
+
+left = pymaid.get_skids_by_annotation('mw left')
+right = pymaid.get_skids_by_annotation('mw right')
+br = pymaid.get_skids_by_annotation('mw brain neurons')
+
+contra_contra_left = np.intersect1d(left, np.intersect1d(contra_dendrite, contra_axon))
+contra_contra_right = np.intersect1d(right, np.intersect1d(contra_dendrite, contra_axon))
+
+left = np.setdiff1d(left, list(contra_contra_left) + weird_bilaterals)
+left = list(left) + list(contra_contra_right)
+left = list(np.intersect1d(left, adj.index))
+left = list(np.intersect1d(left, br))
+
+right = np.setdiff1d(right, list(contra_contra_right) + weird_bilaterals)
+right = list(right) + list(contra_contra_left)
+right = list(np.intersect1d(right, adj.index))
+right = list(np.intersect1d(right, br))
+
+ipsi_synapses = sum(sum(adj.loc[left, left].values)) + sum(sum(adj.loc[right, right].values))
+contra_synapses = sum(sum(adj.loc[left, right].values)) + sum(sum(adj.loc[right, left].values))
+
+ipsi_neuron_ipsi_synapses = sum(sum(adj.loc[np.intersect1d(ipsi_ipsi, left), left].values)) + sum(sum(adj.loc[np.intersect1d(ipsi_ipsi, right), right].values))
+ipsi_neuron_contra_synapses = sum(sum(adj.loc[np.intersect1d(ipsi_ipsi, left), right].values)) + sum(sum(adj.loc[np.intersect1d(ipsi_ipsi, right), left].values))
+
+bilateral_neuron_ipsi_synapses = sum(sum(adj.loc[bilateral_left, left].values)) + sum(sum(adj.loc[bilateral_right, right].values))
+bilateral_neuron_contra_synapses = sum(sum(adj.loc[bilateral_left, right].values)) + sum(sum(adj.loc[bilateral_right, left].values))
+
+contra_neuron_ipsi_synapses = sum(sum(adj.loc[contra_left, left].values)) + sum(sum(adj.loc[contra_right, right].values))
+contra_neuron_contra_synapses = sum(sum(adj.loc[contra_left, right].values)) + sum(sum(adj.loc[contra_right, left].values))
+
+# %%
 # contra/bilateral character plot
 
 left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
+br = pymaid.get_skids_by_annotation('mw brain neurons')
 
 projectome = pd.read_csv('interhemisphere/data/projectome_mw_brain_matrix_A1_split.csv', index_col = 0, header = 0)
 
@@ -110,8 +186,20 @@ fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.distplot(right_den_inputs.ratio, ax=ax, kde=False, bins=20)
 sns.distplot(left_den_inputs.ratio, ax=ax, kde=False, bins=20, color='gray')
 ax.set(yticks=[], xticks=[])
+ax.set_yscale('log')
 fig.savefig('interhemisphere/plots/Br_dendrite-input_ipsi-vs-contralateral.pdf', format='pdf', bbox_inches='tight')
 
+# check these neurons
+'''
+right_den_inputs[right_den_inputs.sort_values(by='ratio', ascending=False).ratio>0]
+left_den_inputs[left_den_inputs.sort_values(by='ratio', ascending=False).ratio>0]
+
+left_asym_dendrite = [x[0] for x in right_den_inputs[right_den_inputs.sort_values(by='ratio', ascending=False).ratio>0].index]
+right_asym_dendrite = [x[0] for x in left_den_inputs[left_den_inputs.sort_values(by='ratio', ascending=False).ratio>0].index]
+
+pymaid.add_annotations(left_asym_dendrite, 'mw check dendrite')
+pymaid.add_annotations(right_asym_dendrite, 'mw check dendrite')
+'''
 # same analysis with A1 for comparison
 meshes_left = ['Brain Hemisphere left', 'SEZ_left', 'T1_left', 'T2_left', 'T3_left', 'A1_left', 'A2_left', 'A3_left', 'A4_left', 'A5_left', 'A6_left', 'A7_left', 'A8_left']
 meshes_right = ['Brain Hemisphere right', 'SEZ_right', 'T1_right', 'T2_right', 'T3_right', 'A1_right', 'A2_right', 'A3_right', 'A4_right', 'A5_right', 'A6_right', 'A7_right', 'A8_right']
@@ -180,7 +268,34 @@ contra_pairs = pd.DataFrame(contra_pairs, columns = ['leftid', 'rightid', 'ratio
 fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.distplot(contra_pairs.ratio_aver, ax=ax, kde=False, bins=20)
 ax.set(yticks=[], xticks=[])
+#ax.set_yscale('log')
 fig.savefig('interhemisphere/plots/pairs_Br_axon-output_ipsi-vs-contralateral.pdf', format='pdf', bbox_inches='tight')
+
+
+right_den_inputs = proj_group.loc[(br, 0, 0, 1), :] # right side, dendrite inputs
+left_den_inputs = proj_group.loc[(br, 1, 0, 1), :] # left side, dendrite inputs
+
+right_den_inputs['ratio'] = right_den_inputs['summed_left']/(right_den_inputs['summed_left'] + right_den_inputs['summed_right'])
+left_den_inputs['ratio'] = left_den_inputs['summed_right']/(left_den_inputs['summed_left'] + left_den_inputs['summed_right'])
+
+br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+
+dend_pairs = []
+for i in range(len(br_pairs)):
+    if((br_pairs.leftid[i] in [x[0] for x in left_den_inputs.index]) & (br_pairs.rightid[i] in [x[0] for x in right_den_inputs.index])):
+        ratio_l = left_den_inputs.loc[br_pairs.leftid[i], 'ratio'].values[0]
+        ratio_r = right_den_inputs.loc[br_pairs.rightid[i], 'ratio'].values[0]
+        dend_pairs.append([br_pairs.leftid[i], br_pairs.rightid[i], ratio_l, ratio_r, (ratio_l+ratio_r)/2])
+
+dend_pairs = pd.DataFrame(dend_pairs, columns = ['leftid', 'rightid', 'ratio_left', 'ratio_right', 'ratio_aver'])
+#pymaid.add_annotations(list(dend_pairs[dend_pairs.ratio_aver==0].leftid.values), 'mw ipsilateral dendrite')
+#pymaid.add_annotations(list(dend_pairs[dend_pairs.ratio_aver==0].rightid.values), 'mw ipsilateral dendrite')
+
+fig, ax = plt.subplots(1,1, figsize=(1,2))
+sns.distplot(dend_pairs.ratio_aver, ax=ax, kde=False, bins=20)
+ax.set(yticks=[], xticks=[])
+ax.set_yscale('log')
+fig.savefig('interhemisphere/plots/pairs_Br_dendrite_input_ipsi-vs-contralateral.pdf', format='pdf', bbox_inches='tight')
 '''
 # check neurons on the edge of 1 and 0
 almost_contra = (contra_pairs.ratio_aver>0.8) & (contra_pairs.ratio_aver<1.0)
