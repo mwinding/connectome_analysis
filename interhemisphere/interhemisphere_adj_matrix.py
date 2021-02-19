@@ -72,7 +72,7 @@ def cluster_order(lvl_label_str, meta_with_order):
     order_df = order_df.sort_values(by = 'node_visit_order')
 
     skids_df = pd.DataFrame([x for sublist in skids_df for x in sublist], columns = ['skid', 'cluster'])
-    skids_df = skids_df.set_index('cluster', drop=False).loc[order_7]
+    skids_df = skids_df.set_index('cluster', drop=False)#.loc[order_7]
     skids_df.index = range(0, len(skids_df.index))
 
     return(lvl, list(order_df.cluster), skids_df)
@@ -162,6 +162,17 @@ meta['pair_id'] = pair_id
 fig, ax = plt.subplots(1, 1, figsize=(15, 15))
 test = adjplot(
     adj.values,
+    meta=meta,  
+    plot_type="scattermap",  # plot dots instead of a heatmap
+    sizes=(1, 1),  # min and max sizes for dots, so this is effectively binarizing
+    item_order=['pair_id'],  # order by pairs (some have no pair here so don't look same)
+    ax=ax,
+)
+plt.savefig('interhemisphere/plots/raw_adj_matrix.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1, 1, figsize=(15, 15))
+test = adjplot(
+    adj.values,
     meta=meta,
     sort_class='class',  # group by hemisphere, this is a key for column in "meta"
     plot_type="scattermap",  # plot dots instead of a heatmap
@@ -170,6 +181,18 @@ test = adjplot(
     ax=ax,
 )
 plt.savefig('interhemisphere/plots/adj_matrix_sorted-class-cluster-pair.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1, 1, figsize=(15, 15))
+test = adjplot(
+    adj.values,
+    meta=meta,
+    sort_class='cluster',  # group by hemisphere, this is a key for column in "meta"
+    plot_type="scattermap",  # plot dots instead of a heatmap
+    sizes=(1, 1),  # min and max sizes for dots, so this is effectively binarizing
+    item_order=['class', 'pair_id'],  # order by pairs (some have no pair here so don't look same)
+    ax=ax,
+)
+plt.savefig('interhemisphere/plots/adj_matrix_sorted-cluster-class-pair.pdf', bbox_inches='tight')
 
 
 fig, ax = plt.subplots(1, 1, figsize=(15, 15))
