@@ -57,22 +57,6 @@ bi_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
 contra_pairs = pm.Promat.extract_pairs_from_list(contra, pairs)[0]
 
 # %%
-# generate paths for whole brain
-# skip to save time
-threshold = 0.01
-adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
-
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
-
-matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)
-matrix_nonpaired = list(np.intersect1d(matrix_pairs[2].nonpaired, left+right)) # ignore unipolar neurons
-all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
-
-all_edges_combined = adj_mat.threshold_edge_list(all_sources, matrix_nonpaired, threshold, left, right) # currently generates edge list for all paired -> paired/nonpaired, nonpaired -> paired/nonpaired
-all_edges_combined.to_csv('interhemisphere/csvs/all_paired_edges.csv')
-
-# %%
 # load previously generated paths
 all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
 
