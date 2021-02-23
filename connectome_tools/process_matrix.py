@@ -22,22 +22,29 @@ class Adjacency_matrix():
         self.adj_inter = self.interlaced_matrix()
         self.adj_pairwise = self.average_pairwise_matrix()
 
-    def fraction_input_matrix(self, axon=False):
+    def fraction_input_matrix(self):
         adj_fract = self.adj.copy()
         for column in adj_fract.columns:
-            if(axon):
+            if((self.mat_type=='aa') | (self.mat_type=='da')):
                 axon_input = self.input_counts.loc[column].axon_input
                 if(axon_input == 0):
                     adj_fract.loc[:, column] = 0
                 if(axon_input > 0):
                     adj_fract.loc[:, column] = adj_fract.loc[:, column]/axon_input
 
-            if(axon==False):
+            if((self.mat_type=='ad') | (self.mat_type=='dd')):
                 dendrite_input = self.input_counts.loc[column].dendrite_input
                 if(dendrite_input == 0):
                     adj_fract.loc[:, column] = 0
                 if(dendrite_input > 0):
                     adj_fract.loc[:, column] = adj_fract.loc[:, column]/dendrite_input
+
+            if((self.mat_type=='all') | (self.mat_type not in ['aa', 'da', 'ad', 'dd']) ):
+                all_input = self.input_counts.loc[column].dendrite_input + self.input_counts.loc[column].axon_input
+                if(all_input == 0):
+                    adj_fract.loc[:, column] = 0
+                if(all_input > 0):
+                    adj_fract.loc[:, column] = adj_fract.loc[:, column]/all_input
 
         return(adj_fract)
 
