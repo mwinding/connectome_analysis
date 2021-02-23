@@ -83,8 +83,8 @@ morphologies_50.to_csv('brain_completeness/data/morphologies_50_.csv')
 connectors_50.to_csv('brain_completeness/data/connectors_50_.csv')
 connectors_details_50.to_csv('brain_completeness/data/connectors_details_50_.csv')
 # %%
-# stats for first reviewed neurons
-
+# stats for reviewed neurons
+# add 17380319 next time
 skids = [7025831, 17654645, 4901087, 9085808, 10355356, 12928099, 16714214, 9034378, 17384874, 10872426]
 
 review_2 = pymaid.get_review_details(skids)
@@ -251,10 +251,6 @@ plt.savefig('brain_completeness/plots/review_both-comparison.pdf', format='pdf',
 
 effect = pd.DataFrame(list(zip(edges.groupby(['edge_type', 'review_effect']).count().iloc[:, 0], [x[0] for x in edges.groupby(['edge_type', 'review_effect']).count().index], [x[1] for x in edges.groupby(['edge_type', 'review_effect']).count().index])),
                 columns = ['counts', 'edge_type', 'change'])
-
-fig, ax = plt.subplots(1,1,figsize=(4, 4))
-sns.barplot(data = effect, x = 'edge_type', y='counts', hue='change', palette=palette, ax=ax)
-plt.savefig('brain_completeness/plots/review_edges_new-and-false.pdf', format='pdf', bbox_inches = 'tight')
 
 fig, ax = plt.subplots(1,1,figsize=(4, 4))
 sns.barplot(data = effect, x = 'edge_type', y='counts', hue='change', palette=palette, ax=ax)
