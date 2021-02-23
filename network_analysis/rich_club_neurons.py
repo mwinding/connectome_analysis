@@ -33,7 +33,29 @@ plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, name, password, token)
 
-adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
+adj_ad = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
+adj_aa = pd.read_csv('VNC_interaction/data/brA1_axon-axon.csv', header = 0, index_col = 0)
+adj_da = pd.read_csv('VNC_interaction/data/brA1_dendrite-axon.csv', header = 0, index_col = 0)
+adj_dd = pd.read_csv('VNC_interaction/data/brA1_dendrite-dendrite.csv', header = 0, index_col = 0)
+
+#adj_type = 'all'
+#adj = adj_ad + adj_aa + adj_da + adj_dd
+
+#adj_type = 'ad'
+#adj = adj_ad
+
+#adj_type = 'aa'
+#adj = adj_aa
+
+#adj_type = 'dd'
+#adj = adj_dd
+
+#adj_type = 'da'
+#adj = adj_da
+
+adj_type = 'all-aa'
+adj = adj_ad + adj_da + adj_dd
+
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
 
 # remove A1 except for ascendings
@@ -49,10 +71,15 @@ inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_inpu
 pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
 pairs.drop(1121, inplace=True) # remove duplicate rightid
 
-adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, 'axo-dendritic')
+adj_mat = pm.Adjacency_matrix(adj.values, adj.index, pairs, inputs, adj_type)
 
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csvs/all_paired_edges.csv', index_col=0)
+all_edges_combined = pd.read_csv(f'network_analysis/csv/{adj_type}_all_paired_edges.csv', index_col=0)
+
+# flip contralateral axon/contralateral dendrite neurons so they act as ipsilateral
+contra_contras = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), 
+                                pymaid.get_skids_by_annotation('mw contralateral dendrite'))
+all_edges_combined.loc[[x in contra_contras for x in all_edges_combined.upstream_pair_id], 'type'] = ['ipsilateral']*sum([x in contra_contras for x in all_edges_combined.upstream_pair_id])
 
 # build networkx Graph
 graph = pg.Analyze_Nx_G(all_edges_combined, graph_type='undirected')
@@ -79,9 +106,9 @@ R_rc_list_df = pd.DataFrame(R_rc_list)
 
 # plot normalized rich-club plot
 fig, ax = plt.subplots(1,1, figsize=(2,2))
-sns.lineplot(x=[x for x in range(0, 80)], y=np.array(rc)/R_rc_list_df.mean(axis=0), ax=ax, linewidth=0.5)
-ax.set(xlim=(0,70))
-plt.savefig(f'rich_club/plots/rich-club-normalized_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
+sns.lineplot(x=[x for x in range(0, len(rc))], y=np.array(rc)/R_rc_list_df.mean(axis=0), ax=ax, linewidth=0.5)
+ax.set(xlim=(0,80))
+plt.savefig(f'network_analysis/plots/{adj_type}_rich-club-normalized_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
 
 # plot random with error bars vs observed
 data = []
@@ -96,9 +123,9 @@ data = pd.concat([data, pd.DataFrame(rc_data, columns = ['rich_club_coeff', 'deg
 
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.lineplot(data=data, x='degree', y='rich_club_coeff', hue='type', ci='sd', ax=ax, linewidth=0.5)
-ax.set(xlim=(0,70))
+ax.set(xlim=(0,80))
 ax.set(ylim=(0, .8))
-plt.savefig(f'rich_club/plots/rich-club_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'network_analysis/plots/{adj_type}_rich-club_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # generate rich-club coefficients for the raw graph and 100 graphs with 100*M double-edge swaps, where M=number of edges
@@ -118,7 +145,7 @@ R_rc_com_list_df = pd.DataFrame(R_rc_com_list)
 # plot normalized rich-club plot
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.lineplot(x=[x for x in range(0, len(rc_complete))], y=np.array(rc_complete)/R_rc_com_list_df.mean(axis=0), ax=ax, linewidth=0.5)
-plt.savefig(f'rich_club/plots/raw_rich-club-normalized_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'network_analysis/plots/{adj_type}_raw_rich-club-normalized_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
 
 # plot random with error bars vs observed
 data_com = []
@@ -134,11 +161,11 @@ data_com = pd.concat([data_com, pd.DataFrame(rc_com_data, columns = ['rich_club_
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.lineplot(data=data_com, x='degree', y='rich_club_coeff', hue='type', ci='sd', linewidth=0.5)
 ax.set(ylim=(0, .8))
-plt.savefig(f'rich_club/plots/raw_rich-club_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'network_analysis/plots/{adj_type}_raw_rich-club_pair-threshold-graph_{n_init}-repeats.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.lineplot(data=data_com, x='degree', y='rich_club_coeff', hue='type', ci='sd', linewidth=0.25)
 ax.set(ylim=(0, .8))
-plt.savefig(f'rich_club/plots/raw_rich-club_pair-threshold-graph_{n_init}-repeats_thin_line.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'network_analysis/plots/{adj_type}_raw_rich-club_pair-threshold-graph_{n_init}-repeats_thin_line.pdf', format='pdf', bbox_inches='tight')
 
 # %%
