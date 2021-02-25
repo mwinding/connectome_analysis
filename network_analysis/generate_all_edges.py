@@ -41,6 +41,7 @@ adj_dd = pd.read_csv('VNC_interaction/data/brA1_dendrite-dendrite.csv', header =
 adj_type = 'all'
 adj_all = adj_ad + adj_aa + adj_da + adj_dd
 adj_allaa = adj_ad + adj_da + adj_dd
+adj_ad_da = adj_ad + adj_da
 
 #convert column names to int for easier indexing
 adj_all.columns = adj_all.columns.astype(int) 
@@ -49,6 +50,7 @@ adj_aa.columns = adj_aa.columns.astype(int)
 adj_da.columns = adj_da.columns.astype(int) 
 adj_dd.columns = adj_dd.columns.astype(int) 
 adj_allaa.columns = adj_allaa.columns.astype(int) 
+adj_ad_da.columns = adj_ad_da.columns.astype(int) 
 
 # remove A1 except for ascendings
 A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
@@ -63,6 +65,7 @@ adj_aa = adj_aa.loc[pruned_index, pruned_index]
 adj_dd = adj_dd.loc[pruned_index, pruned_index] 
 adj_da = adj_da.loc[pruned_index, pruned_index] 
 adj_allaa = adj_allaa.loc[pruned_index, pruned_index] 
+adj_ad_da = adj_ad_da.loc[pruned_index, pruned_index] 
 
 # load inputs and pair data
 inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
@@ -79,11 +82,12 @@ adj_aa_mat = pm.Adjacency_matrix(adj_aa.values, adj_aa.index, pairs, inputs, 'aa
 adj_dd_mat = pm.Adjacency_matrix(adj_dd.values, adj_dd.index, pairs, inputs, 'dd')
 adj_da_mat = pm.Adjacency_matrix(adj_da.values, adj_da.index, pairs, inputs, 'da')
 adj_allaa_mat = pm.Adjacency_matrix(adj_allaa.values, adj_allaa.index, pairs, inputs, 'all-aa')
+adj_ad_da_mat = pm.Adjacency_matrix(adj_ad_da.values, adj_ad_da.index, pairs, inputs, 'ad_da')
 
 # %%
 # generate all paired and nonpaired edges from each matrix with threshold
-adjs = [adj_all_mat, adj_ad_mat, adj_aa_mat, adj_dd_mat, adj_da_mat, adj_allaa_mat]
-adjs_names = ['all', 'ad', 'aa', 'dd', 'da', 'all-aa']
+adjs = [adj_all_mat, adj_ad_mat, adj_aa_mat, adj_dd_mat, adj_da_mat, adj_allaa_mat, adj_ad_da_mat]
+adjs_names = ['all', 'ad', 'aa', 'dd', 'da', 'all-aa', 'ad_da']
 
 threshold = 0.01
 left = pymaid.get_skids_by_annotation('mw left')
