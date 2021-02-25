@@ -41,6 +41,9 @@ adj_dd = pd.read_csv('VNC_interaction/data/brA1_dendrite-dendrite.csv', header =
 #adj_type = 'all'
 #adj = adj_ad + adj_aa + adj_da + adj_dd
 
+#adj_type = 'all-aa'
+#adj = adj_ad + adj_da + adj_dd
+
 #adj_type = 'ad'
 #adj = adj_ad
 
@@ -53,8 +56,8 @@ adj_dd = pd.read_csv('VNC_interaction/data/brA1_dendrite-dendrite.csv', header =
 #adj_type = 'da'
 #adj = adj_da
 
-adj_type = 'all-aa'
-adj = adj_ad + adj_da + adj_dd
+adj_type = 'ad_da'
+adj = adj_ad + adj_da
 
 adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
 
