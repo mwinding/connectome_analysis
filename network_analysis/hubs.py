@@ -411,7 +411,7 @@ neurons['types'] = types
 neurons['hub'] = hubs
 
 g = sns.jointplot(data=neurons, x='in_degree', y='out_degree', hue='types', xlim=(-1, 140), ylim=(-1, 140), s=4, edgecolor='none', alpha = 1.0)
-g.plot_marginals(sns.histplot)
+g.plot_marginals(sns.histplot, fill=None)
 g.ax_joint.axvline(x=20, color='grey', linewidth=0.5)
 g.ax_joint.axhline(y=20, color='grey', linewidth=0.5)
 g.ax_marg_x.axvline(x=20, color='grey', linewidth=0.5)
@@ -426,3 +426,58 @@ plt.savefig('network_analysis/plots/hubs_metrics.pdf', format='pdf', bbox_inches
 
 # %%
 # where are hubs in clusters?
+
+lvl = lvl7
+order = order_7
+
+cluster_ids = []
+for skid in neurons.skid:
+    cluster_id='none'
+    for i, cluster_skids in enumerate(lvl.skids):
+        if(skid in cluster_skids):
+            cluster_id = lvl.iloc[i].cluster
+    
+    cluster_ids.append(cluster_id)
+
+neurons['cluster']=cluster_ids
+
+neurons.groupby(['cluster', 'types']).count()
+
+hubs_in_clusters = pd.DataFrame(neurons.pivot_table(index='types',
+                                        columns = 'cluster',
+                                        values='hub',
+                                        fill_value=0, 
+                                        aggfunc='count').unstack(), columns = ['counts'])
+
+total_in_clusters = pd.DataFrame(neurons.pivot_table(columns='cluster',
+                                        values='types',
+                                        fill_value=0, 
+                                        aggfunc='count').unstack(), columns = ['counts'])
+
+for cluster in order:
+    hubs_in_clusters.loc[cluster, 'counts'] = (hubs_in_clusters.loc[cluster, :]/total_in_clusters.loc[cluster].values[0][0]).values
+
+hubs_in_clusters.loc['none', 'counts'] = (hubs_in_clusters.loc['none', 'counts']/sum(hubs_in_clusters.loc['none', 'counts'])).values
+#hubs_in_clusters.reset_index(inplace=True)
+ind = [x for x in range(0, len(total_in_clusters))]
+
+hub_types = np.unique([x[1] for x in hubs_in_clusters.index])
+hubs_in_clusters_plot = [hubs_in_clusters.loc[(slice(None), x), :] for x in hub_types]
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[0].values], color = sns.color_palette()[3])
+bottom = np.array([x[0] for x in hubs_in_clusters_plot[0].values])
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[1].values], bottom = bottom, color = sns.color_palette()[1])
+bottom = bottom + np.array([x[0] for x in hubs_in_clusters_plot[1].values])
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[3].values], bottom = bottom, color = sns.color_palette()[2])
+bottom = bottom + np.array([x[0] for x in hubs_in_clusters_plot[3].values])
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[2].values], bottom = bottom, color = '#ACAAC8')
+
+# %%
+# cell-type identity of hubs
+
+# %%
+# local vs connector hubs?
+
