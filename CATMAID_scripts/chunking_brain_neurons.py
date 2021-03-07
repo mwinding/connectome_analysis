@@ -9,7 +9,7 @@ import pandas as pd
 import re
 from itertools import chain
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # breaking all brain neurons into neuron chunks of size "size" for blender import
 # blender needs skids separated by commas

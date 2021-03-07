@@ -16,7 +16,7 @@ import pymaid
 from pymaid_creds import url, name, password, token
 import string
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 lineages = pymaid.get_annotated('Volker')
 
 # %%

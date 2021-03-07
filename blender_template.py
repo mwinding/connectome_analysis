@@ -1,15 +1,18 @@
 import pymaid as pymaid
-from pymaid_creds import url, name, password, token
+#from pymaid_creds import url, name, password, token
 import navis.interfaces.blender as b3d
+import numpy as np
 
 pymaid.CatmaidInstance(url, token, name, password)
 
 cns = pymaid.get_volume('cns')
-neuropil = pymaid.get_volume('neuropil')
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
 
 h = b3d.Handler()
 h.add(cns)
 h.add(neuropil)
+
+h.neurons.bevel(.02) # change neuron thickness
 
 '''
 import pandas as pd 

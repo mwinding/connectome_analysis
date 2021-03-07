@@ -26,7 +26,7 @@ from graspy.utils import binarize, pass_to_ranks
 from src.data import load_metagraph
 from src.visualization import CLASS_COLOR_DICT, adjplot
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 #mg = load_metagraph("G", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')

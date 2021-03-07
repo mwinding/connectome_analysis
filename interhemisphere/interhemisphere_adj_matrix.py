@@ -10,7 +10,7 @@ except:
 
 import pymaid as pymaid
 from pymaid_creds import url, name, password, token
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 import matplotlib.pyplot as plt
 import seaborn as sns

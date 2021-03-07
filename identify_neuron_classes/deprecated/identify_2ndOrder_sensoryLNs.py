@@ -42,7 +42,7 @@ paired = pairs.values.flatten()
 
 # %%
 # identify skids of brain input neurons and 2nd order brain inputs
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # pull sensory annotations and then pull associated skids
 sensories = pymaid.get_annotated('mw brain inputs')

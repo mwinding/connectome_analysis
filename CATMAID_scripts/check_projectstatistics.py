@@ -13,7 +13,7 @@ import datetime
 
 #pymaid.clear_cache()
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # %%
 

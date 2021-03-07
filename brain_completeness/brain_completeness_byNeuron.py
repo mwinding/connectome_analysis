@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 completeness = pd.read_csv('data/brain_partner_completeness_2020-04-28.csv')
 
 # %%
@@ -107,7 +107,7 @@ plt.axvline(np.mean(completeness['ppn_pre']), 0, 1, linewidth = 0.5, color='oran
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-RG = pymaid.get_skids_by_annotation('mw RG')
+RG = pymaid.get_skids_by_annotation('mw RGN')
 outputs = dVNC + dSEZ + RG
 
 post_complete = []

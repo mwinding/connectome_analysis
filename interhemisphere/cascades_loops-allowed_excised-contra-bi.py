@@ -33,7 +33,7 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 #mg = load_metagraph("G", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')

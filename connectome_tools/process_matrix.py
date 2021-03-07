@@ -659,8 +659,8 @@ class Promat():
         asc_classII_III = pymaid.get_skids_by_annotation('mw A1 ascending class II_III')
         asc_all = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
 
-        LHN = list(np.setdiff1d(LHN, FBN_all + dVNC))
-        CN = list(np.setdiff1d(CN, LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN
+        LHN = list(np.setdiff1d(LHN, FBN_all + dVNC)) # 'LHN' means exclusive LHNs that are not FBN or dVNC
+        CN = list(np.setdiff1d(CN, LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN or dVNC
         pre_dVNC = list(np.setdiff1d(pre_dVNC, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
         pre_dSEZ = list(np.setdiff1d(pre_dSEZ, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC)) # 'pre_dSEZ' must have no other category assignment
         pre_RGN = list(np.setdiff1d(pre_RGN, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC + pre_RGN)) # 'pre_RGN' must have no other category assignment

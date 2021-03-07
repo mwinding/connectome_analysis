@@ -30,7 +30,7 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 MBON = pymaid.get_skids_by_annotation('mw MBON')
 
 adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)

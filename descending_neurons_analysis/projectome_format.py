@@ -21,7 +21,7 @@ import pymaid
 from pymaid_creds import url, name, password, token
 
 projectome = pd.read_csv('data/projectome_2_7_2020.csv')
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # %%
 # format into adjacency matrix

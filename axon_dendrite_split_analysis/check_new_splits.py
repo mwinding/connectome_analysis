@@ -24,7 +24,7 @@ from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # getting required skids
 unsplittables = pymaid.get_skids_by_annotation('mw mixed axon/dendrite')

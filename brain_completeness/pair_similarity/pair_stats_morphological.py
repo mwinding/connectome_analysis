@@ -15,7 +15,7 @@ import connectome_tools.process_matrix as promat
 import pymaid
 from pymaid_creds import url, name, password, token
 
-#rm = pymaid.CatmaidInstance(url, name, password, token)
+#rm = pymaid.CatmaidInstance(url, token, name, password)
 
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 morph_stats = pd.read_csv('data/brain_skeleton_measurements.csv', header = 0)

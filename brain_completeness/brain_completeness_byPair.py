@@ -1,19 +1,20 @@
-#%%
+# %%
 import os
+import sys
 try:
     os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
+    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
+    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
 except:
     pass
 
-#%%
 import csv
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-connectors = pd.read_csv('brain_completeness/brain_connector_completeness_2020_3_2.csv')
+connectors = pd.read_csv('brain_completeness/brain_connector_completeness_2021_03_05.csv')
 print(connectors)
 
 # postsynaptic completeness

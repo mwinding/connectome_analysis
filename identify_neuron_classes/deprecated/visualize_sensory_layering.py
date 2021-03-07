@@ -42,7 +42,7 @@ pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 paired = pairs.values.flatten()
 
 # %%
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # pull sensory annotations and then pull associated skids
 inputs = pymaid.get_annotated('mw brain inputs')

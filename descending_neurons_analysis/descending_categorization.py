@@ -22,7 +22,7 @@ from pymaid_creds import url, name, password, token
 
 
 projectome = pd.read_csv('descending_neurons_analysis/data/projectome_adjacency.csv', index_col = 0, header = 0)
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # %%
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list

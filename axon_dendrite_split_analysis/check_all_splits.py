@@ -25,7 +25,7 @@ import pymaid
 from pymaid_creds import url, name, password, token
 
 # %%
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 skids = pymaid.get_skids_by_annotation('mw brain neurons')
 unsplittable = pymaid.get_skids_by_annotation('mw mixed axon/dendrite')

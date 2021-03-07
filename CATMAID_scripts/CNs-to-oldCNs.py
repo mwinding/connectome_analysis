@@ -9,7 +9,7 @@ import pandas as pd
 import re
 import natsort as ns
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # save old skids/annotation correspondences
 annotated = pymaid.get_annotated('MB nomenclature')

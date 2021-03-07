@@ -6,7 +6,7 @@ import pyoctree
 from pymaid_creds import url, name, password, token
 
 #pymaid.clear_cache()
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 annotated = pymaid.get_annotated('mw neuron groups')
 test1 = annotated['name'][3]

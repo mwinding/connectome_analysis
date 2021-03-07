@@ -29,7 +29,7 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-#rm = pymaid.CatmaidInstance(url, name, password, token)
+#rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # load previously generated paths
 all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)

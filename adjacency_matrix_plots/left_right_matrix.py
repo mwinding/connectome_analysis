@@ -15,7 +15,7 @@ import math
 #from pymaid_creds import url, name, password, token
 #import pymaid
 
-#rm = pymaid.CatmaidInstance(url, name, password, token)
+#rm = pymaid.CatmaidInstance(url, token, name, password)
 #left = pymaid.get_skids_by_annotation('mw left')
 #right = pymaid.get_skids_by_annotation('mw right')
 '''

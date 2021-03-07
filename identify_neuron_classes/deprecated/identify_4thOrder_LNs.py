@@ -44,7 +44,7 @@ paired = pairs.values.flatten()
 
 # %%
 # identify skids of brain input neurons and 2nd order brain inputs
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # pull skids for 2nd order PNs and 3rd order neurons
 PN_A00c = pymaid.get_skids_by_annotation('mw A00c 3rd_order PN')

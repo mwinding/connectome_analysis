@@ -15,7 +15,7 @@ import connectome_tools.process_matrix as promat
 import pymaid
 from pymaid_creds import url, name, password, token
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 
 # allows text to be editable in Illustrator

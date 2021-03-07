@@ -42,7 +42,7 @@ pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
 
 # load projectome and CATMAID
 projectome = pd.read_csv('data/projectome.csv')
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # load brain neurons that cross commissure
 contra = pymaid.get_skids_by_annotation("mw brain crosses commissure")

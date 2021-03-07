@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from src.data import load_metagraph
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
 pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0) # import pairs
 

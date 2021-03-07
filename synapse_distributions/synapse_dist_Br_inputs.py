@@ -10,7 +10,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-rm = pymaid.CatmaidInstance(url, name, password, token)
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 def get_connectors_group(annotation):
     skids = pymaid.get_skids_by_annotation(annotation)
