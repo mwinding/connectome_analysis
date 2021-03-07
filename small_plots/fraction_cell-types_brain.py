@@ -46,21 +46,30 @@ outputs_all = [x for sublist in outputs for x in sublist]
 brain = list(np.setdiff1d(brain, outputs_all))
 
 all_celltypes, celltype_names = pm.Promat.celltypes()
+LNs = pymaid.get_skids_by_annotation('mw LNs')
+
+all_celltypes = all_celltypes[0:2] + [LNs] + all_celltypes[2:len(all_celltypes)]
+celltype_names = celltype_names[0:2] + ['LN'] + celltype_names[2:len(celltype_names)]
+
+unknown_brain = np.setdiff1d(brain, [x for sublist in all_celltypes[1:9] for x in sublist])
 # %%
 # plot number brain inputs, interneurons, outputs
 
-col_width = 0.15
-plot_height = 0.75
+col_width = 0.125
+plot_height = 1
 # general cell types
-colors = ['#1D79B7', '#5D8C90', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC']
-fig, ax = plt.subplots(1,1,figsize=(col_width*len(celltype_names[1:8]), plot_height))
-graph = sns.barplot(x=celltype_names[1:8], y=[len(skids) for skids in all_celltypes[1:8]], ax=ax, palette = colors)
+colors = ['#00753F', '#1D79B7', '#5D8C90', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#FFDAC7', '#E0B1AD', '#9467BD','#D88052', '#A52A2A', 'tab:grey']
+cell_types = ['sens', 'PN', 'LN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'ascending', 'pre-dSEZ', 'pre-dVNC', 'RGN', 'dSEZ', 'dVNC', 'unk']
+
+colors = ['#1D79B7', '#5D8C90', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC']
+fig, ax = plt.subplots(1,1,figsize=(col_width*len(celltype_names[1:9]), plot_height))
+graph = sns.barplot(x=celltype_names[1:9], y=[len(skids) for skids in all_celltypes[1:9]], ax=ax, palette = colors)
 plt.xticks(rotation=45, ha='right')
 i=0
 for p in graph.patches:
     height = p.get_height()
     graph.text(p.get_x()+p.get_width()/2., height + 5,
-        [len(skids) for skids in all_celltypes[1:8]][i], ha="center", color=colors[i])
+        [len(skids) for skids in all_celltypes[1:9]][i], ha="center", color=colors[i])
     i += 1
 ax.set(ylim=(0, 230))
 
