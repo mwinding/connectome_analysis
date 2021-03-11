@@ -109,3 +109,16 @@ post_frag_stats = brain_related_skels.set_index('skeleton').loc[post_frags]
 
 #pd.DataFrame(post_frag_stats[post_frag_stats.n_nodes>200].index).to_csv('brain_completeness/data/post_frags.csv')
 # %%
+# number of non-brain neurons
+
+char_tab = pd.read_csv('data/characterization_table_2021_03_05.csv')
+other_cells = list(char_tab[char_tab.category=='other_cell'].skeleton_id)
+brain = pymaid.get_skids_by_annotation('mw brain neurons')
+brain_su = np.setdiff1d(pymaid.get_skids_by_annotation(f'mw potential SU'), brain)
+other_cells = np.setdiff1d(other_cells, brain_su)
+
+pymaid.add_annotations(other_cells, 'mw brain other cells')
+
+#external = list(char_tab[char_tab.category=='external_object'].skeleton_id)
+
+# %%
