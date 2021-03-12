@@ -52,7 +52,7 @@ class Cascade_Analyzer:
 class Celltype:
     def __init__(self, name, skids):
         self.name = name
-        self.skids = skids
+        self.skids = list(np.unique(skids))
 
     def get_name(self):
         return(self.name)
