@@ -625,12 +625,12 @@ class Promat():
     # set of known celltypes, returned as skid lists
     @staticmethod
     def celltypes(more_celltypes=[], more_names=[]):
-        A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
         A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
         br = pymaid.get_skids_by_annotation('mw brain neurons')
         MBON = pymaid.get_skids_by_annotation('mw MBON')
         MBIN = pymaid.get_skids_by_annotation('mw MBIN')
         LHN = pymaid.get_skids_by_annotation('mw LHN')
+        LN = pymaid.get_skids_by_annotation('mw LNs')
         CN = pymaid.get_skids_by_annotation('mw CN')
         KC = pymaid.get_skids_by_annotation('mw KC')
         RGN = pymaid.get_skids_by_annotation('mw RGN')
@@ -648,8 +648,7 @@ class Promat():
         FB2N = pymaid.get_skids_by_annotation('mw FB2N')
         FBN_all = FBN + FB2N
 
-        input_names = pymaid.get_annotated('mw brain inputs').name
-        general_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd']
+        input_names = pymaid.get_annotated('mw brain sensories').name
         input_skids_list = list(map(pymaid.get_skids_by_annotation, input_names))
         sens_all = [x for sublist in input_skids_list for x in sublist]
 
@@ -657,20 +656,23 @@ class Promat():
         asc_mechano = pymaid.get_skids_by_annotation('mw A1 ascending mechano')
         asc_proprio = pymaid.get_skids_by_annotation('mw A1 ascending proprio')
         asc_classII_III = pymaid.get_skids_by_annotation('mw A1 ascending class II_III')
-        asc_all = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
+        asc_all = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw A1 ascending').name]
+        asc_all = [x for sublist in asc_all for x in sublist]
 
-        LHN = list(np.setdiff1d(LHN, FBN_all + dVNC)) # 'LHN' means exclusive LHNs that are not FBN or dVNC
-        CN = list(np.setdiff1d(CN, LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN or dVNC
-        pre_dVNC = list(np.setdiff1d(pre_dVNC, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
-        pre_dSEZ = list(np.setdiff1d(pre_dSEZ, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC)) # 'pre_dSEZ' must have no other category assignment
-        pre_RGN = list(np.setdiff1d(pre_RGN, MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC + pre_RGN)) # 'pre_RGN' must have no other category assignment
-        dSEZ = list(np.setdiff1d(dSEZ, MBON + MBIN + LHN + CN + KC + dVNC + PN + FBN_all + dVNC))
+        LHN = list(np.setdiff1d(LHN, asc_all + PN + FBN_all + dVNC)) # 'LHN' means exclusive LHNs that are not FBN or dVNC
+        CN = list(np.setdiff1d(CN, asc_all + PN + MBON + LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN or dVNC
+        pre_dVNC = list(np.setdiff1d(pre_dVNC, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
+        pre_dSEZ = list(np.setdiff1d(pre_dSEZ, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC)) # 'pre_dSEZ' must have no other category assignment
+        pre_RGN = list(np.setdiff1d(pre_RGN, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC + pre_RGN)) # 'pre_RGN' must have no other category assignment
+        dSEZ = list(np.setdiff1d(dSEZ, asc_all + sens_all + MBON + LN + MBIN + LHN + CN + KC + dVNC + PN + FBN_all + dVNC))
+        RGN = list(np.setdiff1d(RGN, asc_all + dSEZ + dVNC))
 
-        few_synapses = pymaid.get_skids_by_annotation('mw brain few synapses')
-        A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
+        immature = pymaid.get_skids_by_annotation('mw partially differentiated')
+        A1_local = list(np.setdiff1d(A1, asc_all)) # all A1 without A1_ascending
 
-        celltypes = [sens_all, PN, LHN, MBIN, list(np.setdiff1d(KC, few_synapses)), MBON, FBN_all, CN, pre_RGN, pre_dSEZ, pre_dVNC, RGN, dSEZ, dVNC]
-        celltype_names = ['Sens', 'PN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'pre-RGN', 'pre-dSEZ','pre-dVNC', 'RGN', 'dSEZ', 'dVNC']
+        celltypes = [sens_all, PN, LN, LHN, MBIN, list(np.setdiff1d(KC, immature)), MBON, FBN_all, CN, asc_all, pre_RGN, pre_dSEZ, pre_dVNC, RGN, dSEZ, dVNC]
+        celltype_names = ['Sens', 'PN', 'LN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'ascending', 'pre-RGN', 'pre-dSEZ','pre-dVNC', 'RGN', 'dSEZ', 'dVNC']
+        colors = ['#00753F', '#1D79B7', '#5D8C90', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#FFDAC7', '#E0B1AD', '#9467BD','#D88052', '#A52A2A']
 
         if(len(more_celltypes)>0):
             celltypes = celltypes + more_celltypes
@@ -681,7 +683,7 @@ class Promat():
         celltypes = [x for i,x in enumerate(celltypes) if exists[i]==True]
         celltype_names = [x for i,x in enumerate(celltype_names) if exists[i]==True]
 
-        return(celltypes, celltype_names)
+        return(celltypes, celltype_names, colors)
 
     # summing input from a group of upstream neurons
     # generating DataFrame with sorted leftid, rightid, summed-input left, summed-input right
