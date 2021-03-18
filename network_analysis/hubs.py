@@ -472,8 +472,25 @@ bottom = bottom + np.array([x[0] for x in hubs_in_clusters_plot[1].values])
 
 plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[3].values], bottom = bottom, color = sns.color_palette()[2])
 bottom = bottom + np.array([x[0] for x in hubs_in_clusters_plot[3].values])
+plt.savefig('network_analysis/plots/hubs-in-clusters.pdf', format='pdf', bbox_inches='tight')
 
-plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[2].values], bottom = bottom, color = '#ACAAC8')
+# %%
+# plot hub types separately 
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[0].values], color = sns.color_palette()[3])
+plt.ylim(0,1)
+plt.xlim(-1,max(ind)+1)
+plt.savefig('network_analysis/plots/in-out-hubs-in-clusters.pdf', format='pdf', bbox_inches='tight')
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[1].values], color = sns.color_palette()[1])
+plt.ylim(0,1)
+plt.xlim(-1,max(ind)+1)
+plt.savefig('network_analysis/plots/out-hubs-in-clusters.pdf', format='pdf', bbox_inches='tight')
+
+plt.bar(ind, [x[0] for x in hubs_in_clusters_plot[3].values], color = sns.color_palette()[2])
+plt.ylim(0,1)
+plt.xlim(-1,max(ind)+1)
+plt.savefig('network_analysis/plots/in-hubs-in-clusters.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # cell-type identity of hubs
