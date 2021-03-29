@@ -305,11 +305,23 @@ class Prograph():
                     writer.writerows([sum(Prograph.path_edge_attributes(G, path, 'edge_type', False)=='contralateral') for path in paths_list])
 
     @staticmethod
-    def path_edge_attributes(G, path, attribute_name, include_skids=True):
+    def path_edge_attributes(G, path, attribute_name, include_skids=True, flip=False):
         if(include_skids):
             return [(u,v,G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])]
         if(include_skids==False):
             return np.array([(G[u][v][attribute_name]) for (u,v) in zip(path[0:],path[1:])])
+
+    @staticmethod
+    def pull_edges(G, skid, attribute, edge_type):
+        if(edge_type=='out'):
+            out_edges = [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.out_edges(skid))]
+            return(out_edges)
+        if(edge_type=='in'):
+            in_edges = [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.in_edges(skid))]
+            return(in_edges)
+        if(edge_type=='all'):
+            all_edges = [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.out_edges(skid))] + [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.in_edges(skid))]
+            return(all_edges)
 
     @staticmethod
     def excise_edges(edges, nodes, edge_type):
