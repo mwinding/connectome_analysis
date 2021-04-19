@@ -45,7 +45,7 @@ remove_these = [ 'DPLal',
                 'unknown lineage']
 lineages = [x for x in lineages if x not in remove_these ]
 lineages.sort()
-lineage_skids = [pymaid.get_skids_by_annotation(x) for x in lineages]
+lineage_skids = [list(np.intersect1d(pymaid.get_skids_by_annotation(x), brain)) for x in lineages]
 
 lineage_skids_summed = [lineage_skids[i] + lineage_skids[i+1] for i in np.arange(0, len(lineages), 2)]
 lineages_oneside = [lineages[i] for i in np.arange(0, len(lineages), 2)]

@@ -37,7 +37,7 @@ input_names = pymaid.get_annotated('mw brain inputs').name
 input_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain inputs').name))
 
 output_names = pymaid.get_annotated('mw brain outputs').name
-output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
+output_skids_list = list(map(pymaid.get_skids_by_annotation, output_names))
 output_skids = [val for sublist in output_skids_list for val in sublist]
 
 #%%
