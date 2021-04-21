@@ -162,8 +162,9 @@ class Celltype_Analyzer:
             return(skids)
         if(split==True):
             return(skids, meta_annots)
-        
-    def default_celltypes(self):
+    
+    @staticmethod
+    def default_celltypes():
         priority_list = pymaid.get_annotated('mw brain simple priorities').name
         priority_skids = [self.get_skids_from_meta_meta_annotation(priority) for priority in priority_list]
 

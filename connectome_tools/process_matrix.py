@@ -622,6 +622,7 @@ class Promat():
             
         return(binMat)
 
+    
     # set of known celltypes, returned as skid lists
     @staticmethod
     def celltypes(more_celltypes=[], more_names=[]):
