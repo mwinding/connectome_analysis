@@ -16,7 +16,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import connectome_tools.process_matrix as pm
-import connectome_tools.cascade_analysis as casc
+import connectome_tools.celltype as ct
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -77,11 +77,11 @@ lvl5, order_5 = cluster_order('lvl5_labels', meta_with_order)
 # %%
 # known cell types in clusters
 
-celltypes, celltype_names, celltype_colors = pm.Promat.celltypes()
+celltypes, celltype_names, celltype_colors = ct.Celltype_Analyzer.celltypes()
 celltype_colors = celltype_colors + ['tab:gray']
-all_clusters = [casc.Celltype(lvl7.cluster[i], lvl7.skids[i]) for i in range(0, len(lvl7))]
-all_celltypes = [casc.Celltype(celltype_names[i], celltypes[i]) for i in range(0, len(celltypes))]
-cluster_analyze = casc.Celltype_Analyzer(all_clusters)
+all_clusters = [ct.Celltype(lvl7.cluster[i], lvl7.skids[i]) for i in range(0, len(lvl7))]
+all_celltypes = [ct.Celltype(celltype_names[i], celltypes[i]) for i in range(0, len(celltypes))]
+cluster_analyze = ct.Celltype_Analyzer(all_clusters)
 cluster_analyze.set_known_types(all_celltypes)
 memberships = cluster_analyze.memberships()
 memberships = memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14], :]
@@ -98,9 +98,9 @@ plt.savefig('cluster_analysis/plots/celltypes-clusters.pdf', format='pdf', bbox_
 # %%
 # lineages in clusters
 
-all_clusters = [casc.Celltype(lvl7.cluster[i], lvl7.skids[i]) for i in range(0, len(lvl7))]
-all_lineage_skids = [casc.Celltype(lineages_oneside[i], lineage_skids_summed[i]) for i in range(0, len(lineage_skids_summed))]
-cluster_analyze = casc.Celltype_Analyzer(all_clusters)
+all_clusters = [ct.Celltype(lvl7.cluster[i], lvl7.skids[i]) for i in range(0, len(lvl7))]
+all_lineage_skids = [ct.Celltype(lineages_oneside[i], lineage_skids_summed[i]) for i in range(0, len(lineage_skids_summed))]
+cluster_analyze = ct.Celltype_Analyzer(all_clusters)
 cluster_analyze.set_known_types(all_lineage_skids)
 lineage_memberships = cluster_analyze.memberships()
 
