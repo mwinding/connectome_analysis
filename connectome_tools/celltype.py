@@ -4,20 +4,45 @@ import numpy as np
 import pandas as pd
 import sys
 import pymaid
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import itertools
+
 sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-from connectome_tools.process_matrix import Promat
+import connectome_tools.cluster_analysis as clust
 
 
 class Celltype:
-    def __init__(self, name, skids):
+    def __init__(self, name, skids, color=[]):
         self.name = name
         self.skids = list(np.unique(skids))
+        if(color!=[]):
+            self.color = color
 
     def get_name(self):
         return(self.name)
 
     def get_skids(self):
         return(self.skids)
+
+    def get_color(self):
+        return(self.color)
+
+    # plots memberships of celltype in a list of other celltypes
+    def plot_cell_type_memberships(self, celltypes): # list of Celltype objects
+        celltype_colors = [x.get_color() for x in celltypes] + ['tab:gray']
+
+        ct_analyzer = Celltype_Analyzer([self])
+        ct_analyzer.set_known_types(celltypes)
+        memberships = ct_analyzer.memberships()
+
+        # plot memberships
+        ind = np.arange(0, len(ct_analyzer.Celltypes))
+        plt.bar(ind, memberships.iloc[0], color=celltype_colors[0])
+        bottom = memberships.iloc[0]
+        for i in range(1, len(memberships.index)):
+            plt.bar(ind, memberships.iloc[i], bottom = bottom, color=celltype_colors[i])
+            bottom = bottom + memberships.iloc[i]
 
 
 class Celltype_Analyzer:
@@ -64,7 +89,7 @@ class Celltype_Analyzer:
     def set_known_types(self, list_Celltypes, unknown=True):
         if(unknown==True):
             unknown_skids = np.setdiff1d(self.skids, np.unique([skid for celltype in list_Celltypes for skid in celltype.get_skids()]))
-            unknown_type = [Celltype('unknown', unknown_skids)]
+            unknown_type = [Celltype('unknown', unknown_skids, 'tab:gray')]
             list_Celltypes = list_Celltypes + unknown_type
             
         self.known_types = list_Celltypes
@@ -138,6 +163,18 @@ class Celltype_Analyzer:
                                     columns = [f'{celltype.get_name()} ({len(celltype.get_skids())})' for celltype in self.Celltypes])
         return(fraction_type)
 
+    def plot_memberships(self):
+        memberships = self.memberships()
+        celltype_colors = [x.get_color() for x in self.get_known_types()]
+
+        # plot memberships
+        ind = np.arange(0, len(self.Celltypes))
+        plt.bar(ind, memberships.iloc[0, :], color=celltype_colors[0])
+        bottom = memberships.iloc[0, :]
+        for i in range(1, len(memberships.index)):
+            plt.bar(ind, memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+            bottom = bottom + memberships.iloc[i, :]
+
     def connectivtiy(self, celltypes, normalize_pre_num = False, normalize_post_num = False):
 
         #level0_keys = np.unique(self.adj_df.index.get_level_values(0))
@@ -153,7 +190,8 @@ class Celltype_Analyzer:
         mat = pd.DataFrame(mat, index = celltypes, columns = celltypes)
         return(mat)
 
-    def get_skids_from_meta_meta_annotation(self, meta_meta, split=False):
+    @staticmethod
+    def get_skids_from_meta_meta_annotation(meta_meta, split=False):
         meta_annots = pymaid.get_annotated(meta_meta).name
         annot_list = [list(pymaid.get_annotated(meta).name) for meta in meta_annots]
         skids = [list(pymaid.get_skids_by_annotation(annots)) for annots in annot_list]
@@ -166,7 +204,7 @@ class Celltype_Analyzer:
     @staticmethod
     def default_celltypes():
         priority_list = pymaid.get_annotated('mw brain simple priorities').name
-        priority_skids = [self.get_skids_from_meta_meta_annotation(priority) for priority in priority_list]
+        priority_skids = [Celltype_Analyzer.get_skids_from_meta_meta_annotation(priority) for priority in priority_list]
 
         # made the priority groups exclusive by removing neurons from lists that also in higher priority
         override = priority_skids[0]
@@ -196,7 +234,7 @@ class Celltype_Analyzer:
         skid_groups = [x for sublist in skid_groups for x in sublist]
         names = [list(pymaid.get_annotated(x).name) for x in priority_list]
         names = [x for sublist in names for x in sublist]
-        #names = [x.replace('mw brain ', '') for x in names]        
+        #names = [x.replace('mw brain ', '') for x in names]
         
         # identify colors
         colors = list(pymaid.get_annotated('mw brain simple colors').name)
@@ -208,68 +246,71 @@ class Celltype_Analyzer:
         skid_groups = [element for _, element in sorted(zip(groups_sort, skid_groups))]
 
         names = [x.replace('mw brain ', '') for x in names] #format names
-        data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['celltype', 'skids', 'color'])
-        return(data)
+        data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['name', 'skids', 'color'])
+        celltype_objs = list(map(lambda x: Celltype(*x), zip(names, skid_groups, colors)))
+        return(data, celltype_objs)
 
-    # set of known celltypes, returned as skid lists
-    @staticmethod
-    def celltypes(more_celltypes=[], more_names=[]):
-        A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-        br = pymaid.get_skids_by_annotation('mw brain neurons')
-        MBON = pymaid.get_skids_by_annotation('mw MBON')
-        MBIN = pymaid.get_skids_by_annotation('mw MBIN')
-        LHN = pymaid.get_skids_by_annotation('mw LHN')
-        LN = pymaid.get_skids_by_annotation('mw LNs')
-        CN = pymaid.get_skids_by_annotation('mw CN')
-        KC = pymaid.get_skids_by_annotation('mw KC')
-        RGN = pymaid.get_skids_by_annotation('mw RGN')
-        dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-        pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC 1%')
-        pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ 1%')
-        pre_RGN = pymaid.get_skids_by_annotation('mw pre-RGN 1%')
-        dVNC = pymaid.get_skids_by_annotation('mw dVNC')
-        uPN = pymaid.get_skids_by_annotation('mw uPN')
-        tPN = pymaid.get_skids_by_annotation('mw tPN')
-        vPN = pymaid.get_skids_by_annotation('mw vPN')
-        mPN = pymaid.get_skids_by_annotation('mw mPN')
-        PN = uPN + tPN + vPN + mPN
-        FBN = pymaid.get_skids_by_annotation('mw FBN')
-        FB2N = pymaid.get_skids_by_annotation('mw FB2N')
-        FBN_all = FBN + FB2N
 
-        input_names = pymaid.get_annotated('mw brain sensories').name
-        input_skids_list = list(map(pymaid.get_skids_by_annotation, input_names))
-        sens_all = [x for sublist in input_skids_list for x in sublist]
+def plot_cell_types_cluster(lvl_labels, path):
 
-        asc_noci = pymaid.get_skids_by_annotation('mw A1 ascending noci')
-        asc_mechano = pymaid.get_skids_by_annotation('mw A1 ascending mechano')
-        asc_proprio = pymaid.get_skids_by_annotation('mw A1 ascending proprio')
-        asc_classII_III = pymaid.get_skids_by_annotation('mw A1 ascending class II_III')
-        asc_all = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw A1 ascending').name]
-        asc_all = [x for sublist in asc_all for x in sublist]
+    _, all_celltypes = Celltype_Analyzer.default_celltypes()
+    lvl = clust.Analyze_Cluster('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', 'data/meta_data_w_order.csv', lvl_labels)
 
-        LHN = list(np.setdiff1d(LHN, asc_all + PN + FBN_all + dVNC)) # 'LHN' means exclusive LHNs that are not FBN or dVNC
-        CN = list(np.setdiff1d(CN, asc_all + PN + MBON + LHN + FBN_all + dVNC)) # 'CN' means exclusive CNs that are not FBN or LHN or dVNC
-        pre_dVNC = list(np.setdiff1d(pre_dVNC, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
-        pre_dSEZ = list(np.setdiff1d(pre_dSEZ, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC)) # 'pre_dSEZ' must have no other category assignment
-        pre_RGN = list(np.setdiff1d(pre_RGN, asc_all + sens_all + LN + MBON + MBIN + LHN + CN + KC + RGN + dSEZ + dVNC + PN + FBN_all + asc_all + pre_dVNC + pre_RGN)) # 'pre_RGN' must have no other category assignment
-        dSEZ = list(np.setdiff1d(dSEZ, asc_all + sens_all + MBON + LN + MBIN + LHN + CN + KC + dVNC + PN + FBN_all + dVNC))
-        RGN = list(np.setdiff1d(RGN, asc_all + dSEZ + dVNC))
+    all_clusters = [Celltype(lvl.clusters.cluster[i], lvl.clusters.skids[i]) for i in range(0, len(lvl.clusters))]
+    cluster_analyze = Celltype_Analyzer(all_clusters)
 
-        immature = pymaid.get_skids_by_annotation('mw partially differentiated')
-        A1_local = list(np.setdiff1d(A1, asc_all)) # all A1 without A1_ascending
+    cluster_analyze.set_known_types(all_celltypes)
+    celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
+    memberships = cluster_analyze.memberships()
+    memberships = memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14], :]
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14]]
 
-        celltypes = [sens_all, PN, LN, LHN, MBIN, list(np.setdiff1d(KC, immature)), MBON, FBN_all, CN, asc_all, pre_RGN, pre_dSEZ, pre_dVNC, RGN, dSEZ, dVNC]
-        celltype_names = ['Sens', 'PN', 'LN', 'LHN', 'MBIN', 'KC', 'MBON', 'MB-FBN', 'CN', 'ascending', 'pre-RGN', 'pre-dSEZ','pre-dVNC', 'RGN', 'dSEZ', 'dVNC']
-        colors = ['#00753F', '#1D79B7', '#5D8C90', '#D4E29E', '#FF8734', '#E55560', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#FFDAC7', '#E0B1AD', '#9467BD','#D88052', '#A52A2A']
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    plt.bar(ind, memberships.iloc[0, :], color=celltype_colors[0])
+    bottom = memberships.iloc[0, :]
+    for i in range(1, len(memberships.index)):
+        plt.bar(ind, memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+        bottom = bottom + memberships.iloc[i, :]
+    plt.savefig(path, format='pdf', bbox_inches='tight')
 
-        if(len(more_celltypes)>0):
-            celltypes = celltypes + more_celltypes
-            celltype_names = celltype_names + more_names
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, lvl_labels, path):
 
-        # only use celltypes that have non-zero number of members
-        exists = [len(x)!=0 for x in celltypes]
-        celltypes = [x for i,x in enumerate(celltypes) if exists[i]==True]
-        celltype_names = [x for i,x in enumerate(celltype_names) if exists[i]==True]
+    # all cell types plot data
+    _, all_celltypes = Celltype_Analyzer.default_celltypes()
+    lvl = clust.Analyze_Cluster('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', 'data/meta_data_w_order.csv', lvl_labels)
 
-        return(celltypes, celltype_names, colors)
+    all_clusters = [Celltype(lvl.clusters.cluster[i], lvl.clusters.skids[i]) for i in range(0, len(lvl.clusters))]
+    cluster_analyze = Celltype_Analyzer(all_clusters)
+
+    cluster_analyze.set_known_types(all_celltypes)
+    celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
+    all_memberships = cluster_analyze.memberships()
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14], :]
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14]]
+    
+    # particular cell type data
+    cluster_analyze.set_known_types([particular_cell_type])
+    membership = cluster_analyze.memberships()
+
+    # plot
+    fig = plt.figure(figsize=size) 
+    fig.subplots_adjust(hspace=0.1)
+    gs = GridSpec(4, 1)
+
+    ax = fig.add_subplot(gs[0:3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, membership.iloc[0, :], color=particular_color)
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]), title=particular_cell_type.get_name())
+
+    ax = fig.add_subplot(gs[3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, all_memberships.iloc[0, :], color=celltype_colors[0])
+    bottom = all_memberships.iloc[0, :]
+    for i in range(1, len(all_memberships.index)):
+        plt.bar(ind, all_memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+        bottom = bottom + all_memberships.iloc[i, :]
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]))
+    ax.axis('off')
+    ax.axis('off')
+
+    plt.savefig(path, format='pdf', bbox_inches='tight')

@@ -10,5 +10,6 @@ neuron_groups_data
 axon_dendrite_data
 pymaid_creds.py
 connectome_tools_venv
+ct_venv
 csv
 old_csvs
