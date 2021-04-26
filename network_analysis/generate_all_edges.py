@@ -1,12 +1,6 @@
 #%%
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -35,36 +29,6 @@ Gaa = nx.readwrite.graphml.read_graphml('data/graphs/Gaa.graphml', node_type=int
 Gdd = nx.readwrite.graphml.read_graphml('data/graphs/Gdd.graphml', node_type=int)
 Gda = nx.readwrite.graphml.read_graphml('data/graphs/Gda.graphml', node_type=int)
 
-'''
-# identify duplicated neurons on right and their unduplicated left partner
-duplicates = pymaid.get_skids_by_annotation('mw duplicated neurons')
-left_duplicate_partner = list(np.unique(pairs.leftid[sum([pairs.rightid==x for x in duplicates])==1]))
-
-# there exist a couple duplicated neurons on the right side
-# this synthetically duplicates the singleton left side neuron so that they are matched
-# synthetic neurons simply have a negative sign added to the original skid (i.e. 8700125=original, -8700125=synthetically duplicated)
-for partner in left_duplicate_partner:
-    for graph in [G, Gad, Gaa, Gdd, Gda]:
-        if(partner in graph.nodes):
-            in_edges = list(graph.in_edges(partner, data=True))
-            out_edges = list(graph.out_edges(partner, data=True))
-            in_edges_new = [(x[0], -partner, x[2]) for x in in_edges]
-            out_edges_new = [(-partner, x[1], x[2]) for x in out_edges]
-            all_edges = in_edges_new + out_edges_new
-
-            if((partner, partner) in [(x[0], x[1]) for x in in_edges]):
-                weight = in_edges[np.where([(x[0], x[1])==(partner, partner) for x in in_edges])[0][0]][2] # weight of self-edge if it exists
-                all_edges = all_edges + [(-partner, -partner, weight)]
-
-            for edge in all_edges:
-                graph.add_edge(edge[0], edge[1], weight = edge[2]['weight'])
-
-# change one of the duplicated pairs to match the new synthetic left side neuron
-for partner in left_duplicate_partner:
-    first_index = np.where(pairs.leftid == partner)[0][0]
-    pairs.iloc[first_index, 0] = -pairs.iloc[first_index, 0]
-'''
-
 # generate adjacency matrices
 adj_all = pd.DataFrame(nx.adjacency_matrix(G=G, weight = 'weight').todense(), columns = G.nodes, index = G.nodes)
 adj_ad = pd.DataFrame(nx.adjacency_matrix(G=Gad, weight = 'weight').todense(), columns = Gad.nodes, index = Gad.nodes)
@@ -82,13 +46,6 @@ adj_da.to_csv('data/adj/all-neurons_dendrite-axon.csv')
 # import input data and export as simplified csv
 meta_data = pd.read_csv('data/graphs/meta_data.csv', index_col = 0)
 inputs = meta_data.loc[:, ['axon_input', 'dendrite_input']]
-
-'''
-# added input information for synthetic neurons
-duplicate_inputs = inputs.loc[left_duplicate_partner, :].copy()
-duplicate_inputs.index = [-x for x in duplicate_inputs.index]
-inputs = pd.concat([inputs, duplicate_inputs])
-'''
 
 # exporting input data
 inputs.to_csv('data/graphs/inputs.csv')
@@ -139,6 +96,9 @@ adj_ad_da_mat = pm.Adjacency_matrix(adj_ad_da.values, adj_ad_da.index, pairs, in
 
 # %%
 # generate all paired and nonpaired edges from each matrix with threshold
+# export as paired edges between paired neurons (collapse left/right hemispheres, except for nonpaired neurons)
+# export as normal edge list, but with pair-wise threshold
+
 adjs = [adj_all_mat, adj_ad_mat, adj_aa_mat, adj_dd_mat, adj_da_mat, adj_allaa_mat, adj_ad_da_mat]
 adjs_names = ['all', 'ad', 'aa', 'dd', 'da', 'all-aa', 'ad_da']
 
@@ -152,6 +112,8 @@ for i, adj_mat in enumerate(adjs):
     all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
 
     all_edges_combined = adj_mat.threshold_edge_list(all_sources, matrix_nonpaired, threshold, left, right) # currently generates edge list for all paired -> paired/nonpaired, nonpaired -> paired/nonpaired
-    all_edges_combined.to_csv(f'data/edges_threshold/{adjs_names[i]}_all_paired_edges.csv')
+    all_edges_combined.to_csv(f'data/edges_threshold/{adjs_names[i]}_all-paired-edges.csv')
+    all_edges_split = adj_mat.split_paired_edges(all_edges_combined, left, right)
+    all_edges_split.to_csv(f'data/edges_threshold/pairwise-threshold_{adjs_names[i]}_all-edges.csv')
 
 # %%

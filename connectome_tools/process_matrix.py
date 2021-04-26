@@ -343,6 +343,33 @@ class Adjacency_matrix():
                                 
                 all_edges.append(specific_edges.values[0])
                 all_edges.append(specific_edges.values[1])
+
+            # check for edges between two nonpaired neurons
+            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'nonpaired') & (edge[0] in include_nonpaired) & (edge[1] in include_nonpaired)):
+
+                edge_weight = specific_edges.values[0][0]
+                if(edge[0] in left):
+                    if(edge[1] in right):
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], edge_weight, 0, False, 'contralateral', 'nonpaired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+                    if(edge[1] in left):
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], edge_weight, 0, False, 'ipsilateral', 'nonpaired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                if(edge[0] in right):
+                    if(edge[1] in left):
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], 0, edge_weight, False, 'contralateral', 'nonpaired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+                    if(edge[1] in right):
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], 0, edge_weight, False, 'ipsilateral', 'nonpaired', 'nonpaired']], 
+                                                    columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
+
+                # is edge over threshold? 
+                # only one edge so strict==True/False doesn't apply
+                if(edge_weight>threshold):
+                    specific_edges.loc[:, 'overthres'] = True
+                                
+                all_edges.append(specific_edges.values[0])
             
         all_edges = pd.DataFrame(all_edges, columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
             
@@ -377,7 +404,62 @@ class Adjacency_matrix():
         all_edges_combined.reset_index(inplace=True, drop=True)
         return(all_edges_combined)
 
-        # generate edge list for whole matrix
+    # convert paired edge list with pair-wise threshold back to normal edge list, input from threshold_edge_list()
+    def split_paired_edges(self, all_edges_combined, left, right):
+        pairs = self.pairs
+
+        all_edges_combined_split = []
+        for i in range(len(all_edges_combined.index)):
+            row = all_edges_combined.iloc[i]
+            if((row.upstream_status=='paired') & (row.downstream_status=='paired')):
+                if(row.type=='ipsilateral'):
+                    all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
+                    all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                if(row.type=='contralateral'):
+                    all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
+                    all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+
+            if((row.upstream_status=='nonpaired') & (row.downstream_status=='paired')):
+                if(row.upstream_pair_id in left):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                if(row.upstream_pair_id in right):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+
+            if((row.upstream_status=='paired') & (row.downstream_status=='nonpaired')):
+                if(row.downstream_pair_id in left):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+                if(row.downstream_pair_id in right):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
+
+            if((row.upstream_status=='nonpaired') & (row.downstream_status=='nonpaired')):
+                if(row.downstream_pair_id in left):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+
+                if(row.downstream_pair_id in right):
+                    if(row.type=='ipsilateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                    if(row.type=='contralateral'):
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
+
+        all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_pair_id', 'downstream_pair_id', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
+        return(all_edges_combined_split)
+        
+    # generate edge list for whole matrix
     def edge_list(self, exclude_loops=False):
         edges = []
         for i in range(len(self.adj.index)):
