@@ -39,7 +39,7 @@ class Adjacency_matrix():
                 if(dendrite_input > 0):
                     adj_fract.loc[:, column] = adj_fract.loc[:, column]/dendrite_input
 
-            if((self.mat_type=='all') | (self.mat_type not in ['aa', 'da', 'ad', 'dd']) ):
+            if((self.mat_type=='summed') | (self.mat_type not in ['aa', 'da', 'ad', 'dd']) ):
                 all_input = self.input_counts.loc[column].dendrite_input + self.input_counts.loc[column].axon_input
                 if(all_input == 0):
                     adj_fract.loc[:, column] = 0
@@ -271,6 +271,10 @@ class Adjacency_matrix():
             us_pair_status = adj.loc[(slice(None), slice(None), edge[0]), :].index[0][0]
             ds_pair_status = adj.loc[(slice(None), slice(None), edge[1]), :].index[0][0]
 
+            # note that edge weights in 'left', 'right' columns refer to %input onto the dendrite of the left or right hemisphere downstream neuron
+            #   the 'type' column indicates whether the edge is contralateral/ipsilateral (this can allow one to determine whether the signal originated on the left or right side if that's important)
+            #   note: the split_paired_edges() method takes the output of threshold_edge_list() and splits these paired edges so that it becomes more explicit which hemisphere the upstream neuron belongs to
+
             # check for paired connections
             if((us_pair_status == 'pairs') & (ds_pair_status == 'pairs')): 
                 specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0,0], specific_edges.iloc[1,1], False, 'ipsilateral', 'paired','paired'],
@@ -326,11 +330,11 @@ class Adjacency_matrix():
 
                 if(edge[0] in left):
                     specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0, 0], 0, False, 'ipsilateral', 'nonpaired', 'paired'],
-                                                    [edge[0], edge[1], specific_edges.iloc[0, 1], 0, False, 'contralateral', 'nonpaired', 'paired']], 
+                                                    [edge[0], edge[1], 0, specific_edges.iloc[0, 1], False, 'contralateral', 'nonpaired', 'paired']], 
                                                     columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
 
                 if(edge[0] in right):
-                    specific_edges = pd.DataFrame([[edge[0], edge[1], 0, specific_edges.iloc[0, 0], False, 'contralateral', 'nonpaired', 'paired'],
+                    specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0, 0], 0, False, 'contralateral', 'nonpaired', 'paired'],
                                                     [edge[0], edge[1], 0, specific_edges.iloc[0, 1], False, 'ipsilateral', 'nonpaired', 'paired']], 
                                                     columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
 
@@ -350,7 +354,7 @@ class Adjacency_matrix():
                 edge_weight = specific_edges.values[0][0]
                 if(edge[0] in left):
                     if(edge[1] in right):
-                        specific_edges = pd.DataFrame([[edge[0], edge[1], edge_weight, 0, False, 'contralateral', 'nonpaired', 'nonpaired']], 
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], 0, edge_weight, False, 'contralateral', 'nonpaired', 'nonpaired']], 
                                                     columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
                     if(edge[1] in left):
                         specific_edges = pd.DataFrame([[edge[0], edge[1], edge_weight, 0, False, 'ipsilateral', 'nonpaired', 'nonpaired']], 
@@ -358,7 +362,7 @@ class Adjacency_matrix():
 
                 if(edge[0] in right):
                     if(edge[1] in left):
-                        specific_edges = pd.DataFrame([[edge[0], edge[1], 0, edge_weight, False, 'contralateral', 'nonpaired', 'nonpaired']], 
+                        specific_edges = pd.DataFrame([[edge[0], edge[1], edge_weight, 0, False, 'contralateral', 'nonpaired', 'nonpaired']], 
                                                     columns = ['upstream_pair_id', 'downstream_pair_id', 'left', 'right', 'overthres', 'type', 'upstream_status', 'downstream_status'])
                     if(edge[1] in right):
                         specific_edges = pd.DataFrame([[edge[0], edge[1], 0, edge_weight, False, 'ipsilateral', 'nonpaired', 'nonpaired']], 
@@ -405,9 +409,11 @@ class Adjacency_matrix():
         return(all_edges_combined)
 
     # convert paired edge list with pair-wise threshold back to normal edge list, input from threshold_edge_list()
+    # note that neurons with bilateral dendrites aren't treated in any special way, so they may be indicated as contralateral edges even if that's inaccurate/complicated
     def split_paired_edges(self, all_edges_combined, left, right):
         pairs = self.pairs
 
+        # note that edge_weights are from the perspective of the downstream neuron, i.e. %input onto their dendrite
         all_edges_combined_split = []
         for i in range(len(all_edges_combined.index)):
             row = all_edges_combined.iloc[i]
@@ -416,9 +422,11 @@ class Adjacency_matrix():
                     all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
                     all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
                 if(row.type=='contralateral'):
-                    all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
-                    all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+                    all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
+                    all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
 
+            # note that pair_ids are really skeleton IDs for nonpaired neurons; this allows one to compare to left/right annotations
+            # this comparison is required because the location of nonpaired -> pair edges depends on whether the nonpaired is left or right
             if((row.upstream_status=='nonpaired') & (row.downstream_status=='paired')):
                 if(row.upstream_pair_id in left):
                     if(row.type=='ipsilateral'):
@@ -429,32 +437,36 @@ class Adjacency_matrix():
                     if(row.type=='ipsilateral'):
                         all_edges_combined_split.append([row.upstream_pair_id, Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
                     if(row.type=='contralateral'):
-                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
 
+            # use the downstream_pair_id because this is really just skeleton ID for nonpaired neurons
+            # therefore one can compare to left/right annotations to determine which hemisphere it belongs to
             if((row.upstream_status=='paired') & (row.downstream_status=='nonpaired')):
                 if(row.downstream_pair_id in left):
                     if(row.type=='ipsilateral'):
                         all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
                     if(row.type=='contralateral'):
-                        all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+                        all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
                 if(row.downstream_pair_id in right):
                     if(row.type=='ipsilateral'):
                         all_edges_combined_split.append([Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
                     if(row.type=='contralateral'):
-                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
 
+            # use the downstream_pair_id because this is really just skeleton ID for nonpaired neurons
+            # therefore one can compare to left/right annotations to determine which hemisphere it belongs to
             if((row.upstream_status=='nonpaired') & (row.downstream_status=='nonpaired')):
                 if(row.downstream_pair_id in left):
                     if(row.type=='ipsilateral'):
                         all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
                     if(row.type=='contralateral'):
-                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
 
                 if(row.downstream_pair_id in right):
                     if(row.type=='ipsilateral'):
                         all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
                     if(row.type=='contralateral'):
-                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
+                        all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
 
         all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_pair_id', 'downstream_pair_id', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
         return(all_edges_combined_split)

@@ -86,7 +86,7 @@ adj_ad_da = adj_ad_da.loc[pruned_index[6], pruned_index[6]]
 # %%
 # load adj matrices
 
-adj_all_mat = pm.Adjacency_matrix(adj_all.values, adj_all.index, pairs, inputs, 'all')
+adj_all_mat = pm.Adjacency_matrix(adj_all.values, adj_all.index, pairs, inputs, 'summed')
 adj_ad_mat = pm.Adjacency_matrix(adj_ad.values, adj_ad.index, pairs, inputs, 'ad')
 adj_aa_mat = pm.Adjacency_matrix(adj_aa.values, adj_aa.index, pairs, inputs, 'aa')
 adj_dd_mat = pm.Adjacency_matrix(adj_dd.values, adj_dd.index, pairs, inputs, 'dd')
@@ -100,7 +100,7 @@ adj_ad_da_mat = pm.Adjacency_matrix(adj_ad_da.values, adj_ad_da.index, pairs, in
 # export as normal edge list, but with pair-wise threshold
 
 adjs = [adj_all_mat, adj_ad_mat, adj_aa_mat, adj_dd_mat, adj_da_mat, adj_allaa_mat, adj_ad_da_mat]
-adjs_names = ['all', 'ad', 'aa', 'dd', 'da', 'all-aa', 'ad_da']
+adjs_names = ['summed', 'ad', 'aa', 'dd', 'da', 'all-aa', 'ad_da']
 
 threshold = 0.01
 left = pymaid.get_skids_by_annotation('mw left')
@@ -116,4 +116,9 @@ for i, adj_mat in enumerate(adjs):
     all_edges_split = adj_mat.split_paired_edges(all_edges_combined, left, right)
     all_edges_split.to_csv(f'data/edges_threshold/pairwise-threshold_{adjs_names[i]}_all-edges.csv')
 
+# %%
+# load data for proofreading purposes
+
+paired_edge_lists = [pd.read_csv(f'data/edges_threshold/{name}_all-paired-edges.csv', index_col=0) for name in adjs_names]
+edge_lists = [pd.read_csv(f'data/edges_threshold/pairwise-threshold_{name}_all-edges.csv', index_col=0) for name in adjs_names]
 # %%
