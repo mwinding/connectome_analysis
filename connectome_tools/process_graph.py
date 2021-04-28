@@ -54,6 +54,36 @@ class Analyze_Nx_G():
 
         return(graph)
 
+    # comprehensive list of in/out degrees and identification of hubs if desired
+    def get_node_degrees(self, hub_threshold=None):
+        nodes = list(self.G.nodes)
+        in_degree = [self.G.in_degree(node) for node in nodes]
+        out_degree = [self.G.out_degree(node) for node in nodes]
+
+        neurons = pd.DataFrame(zip(in_degree, out_degree), index=nodes, columns=['in_degree', 'out_degree'])
+
+        if(hub_threshold!=None):
+            in_hub = [1 if in_d>=hub_threshold else 0 for in_d in in_degree]
+            out_hub = [1 if out_d>=hub_threshold else 0 for out_d in out_degree]
+            in_out_hub = [1 if ((degree[0]>=hub_threshold) & (degree[1]>=hub_threshold)) else 0 for degree in zip(in_degree, out_degree)]
+
+            neurons = pd.DataFrame(zip(in_degree, out_degree, in_hub, out_hub, in_out_hub), index=nodes, columns=['in_degree', 'out_degree', 'in_hub', 'out_hub', 'in_out_hub'])
+            
+            hub_type=[]
+            for index in range(0, len(neurons)):
+                if((neurons.iloc[index, :].in_hub==1) & (neurons.iloc[index, :].out_hub==0)):
+                    hub_type.append('in_hub')
+                if((neurons.iloc[index, :].out_hub==1) & (neurons.iloc[index, :].in_hub==0)):
+                    hub_type.append('out_hub')
+                if(neurons.iloc[index, :].in_out_hub==1):
+                    hub_type.append('in_out_hub')
+                if((neurons.iloc[index, :].out_hub==0) & (neurons.iloc[index, :].in_hub==0)):
+                    hub_type.append('non-hub')
+
+            neurons['type']=hub_type
+
+        return(neurons)
+
     # modified some of the functions from networkx to generate multi-hop self loop paths
     def empty_generator(self):
         """ Return a generator with no members """
