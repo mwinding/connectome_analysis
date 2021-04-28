@@ -12,9 +12,9 @@ from joblib import Parallel, delayed
 
 class Adjacency_matrix():
 
-    def __init__(self, adj, skids, pairs, input_counts, mat_type):
+    def __init__(self, adj, skids, input_counts, mat_type):
         self.skids = skids
-        self.pairs = pairs
+        self.pairs = Promat.get_pairs()
         self.input_counts = input_counts
         self.mat_type = mat_type # 'axo-dendritic', 'axo-axonic', etc.
         self.adj = pd.DataFrame(adj, index = skids, columns = skids)
@@ -573,6 +573,46 @@ class Adjacency_matrix():
         return(mat, mat_plotting)
             
 class Promat():
+
+    # default method to import pair list and process it to deal with duplicated neurons
+    @staticmethod
+    def get_pairs(pairs_path='data/pairs/pairs-2021-04-06.csv'):
+        print(f'Path to pairs list is: {pairs_path}')
+
+        pairs = pd.read_csv(pairs_path, header = 0) # import pairs, manually determined with help from Heather Patsolic and Ben Pedigo's scripts
+
+        # duplicated right-side neurons to throw out for simplicity 
+        duplicated = pymaid.get_skids_by_annotation('mw duplicated neurons to delete')
+        duplicated_index = np.where(sum([pairs.rightid==x for x in duplicated])==1)[0]
+        pairs = pairs.drop(duplicated_index)
+
+        return(pairs)
+
+    # converts any df with df.index = list of skids to a multiindex with ['pair_status', 'pair_id', 'skid']
+    #   'pair_status': pairs / nonpaired
+    #   'pair_id': left skid of a pair or simply the skid of a nonpaired neuron
+    @staticmethod
+    def convert_df_to_pairwise(df):
+
+        pairs = Promat.get_pairs()
+        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(df.index, pairs)
+            
+        # left_right interlaced order for brain matrix
+        brain_pair_order = []
+        for i in range(0, len(brain_pairs)):
+            brain_pair_order.append(brain_pairs.iloc[i].leftid)
+            brain_pair_order.append(brain_pairs.iloc[i].rightid)
+
+        order = brain_pair_order + list(brain_nonpaired.nonpaired)
+        interlaced = df.loc[order, :]
+
+        index_df = pd.DataFrame([['pairs', Promat.get_paired_skids(skid, pairs)[0], skid] for skid in brain_pair_order] + [['nonpaired', skid, skid] for skid in list(brain_nonpaired.nonpaired)], 
+                                columns = ['pair_status', 'pair_id', 'skid'])
+        index = pd.MultiIndex.from_frame(index_df)
+        interlaced.index = index
+
+        return(interlaced)
+
     # trim out neurons not currently in the brain matrix
     @staticmethod
     def trim_missing(skidList, brainMatrix):
