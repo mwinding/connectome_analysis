@@ -12,12 +12,12 @@ from joblib import Parallel, delayed
 
 class Adjacency_matrix():
 
-    def __init__(self, adj, skids, input_counts, mat_type):
-        self.skids = skids
+    def __init__(self, adj, input_counts, mat_type):
+        self.skids = list(adj.index)
         self.pairs = Promat.get_pairs()
         self.input_counts = input_counts
-        self.mat_type = mat_type # 'axo-dendritic', 'axo-axonic', etc.
-        self.adj = pd.DataFrame(adj, index = skids, columns = skids)
+        self.mat_type = mat_type # 'ad', 'aa', 'dd', 'da', 'summed'
+        self.adj = pd.DataFrame(adj, index = self.skids, columns = self.skids)
         self.adj_fract = self.fraction_input_matrix()
         self.adj_inter = self.interlaced_matrix()
         self.adj_pairwise = self.average_pairwise_matrix()
@@ -210,7 +210,10 @@ class Adjacency_matrix():
         if(allow_source_ds):
             _, ds, edges = self.downstream(source, threshold, exclude=(exclude))
 
-        _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict)
+        left = pymaid.get_skids_by_annotation('mw left')
+        right = pymaid.get_skids_by_annotation('mw right')
+
+        _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict, left=left, right=right)
 
         if(allow_source_ds==False):
             before = source + ds
@@ -223,7 +226,7 @@ class Adjacency_matrix():
         for i in range(0,(hops-1)):
             source = ds
             _, ds, edges = self.downstream(source, threshold, exclude=before) 
-            _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict)
+            _, ds = self.edge_threshold(edges, threshold, direction='downstream', strict=strict, left=left, right=right)
 
             if((len(ds)!=0) & (len(ds)>=min_members)):
                 layers.append(ds)
@@ -260,7 +263,7 @@ class Adjacency_matrix():
 
     # checking additional threshold criteria after identifying neurons over summed threshold
     # left and right are only necessary when nonpaired neurons are included
-    def edge_threshold(self, edges, threshold, direction, strict=False, include_nonpaired=[], left=[], right=[]):
+    def edge_threshold(self, edges, threshold, direction, strict=False, include_nonpaired=True, left=[], right=[]):
 
         adj = self.adj_inter.copy()
 
@@ -302,7 +305,7 @@ class Adjacency_matrix():
                 all_edges.append(specific_edges.values[1])
 
             # check for edges to downstream nonpaired neurons
-            if((us_pair_status == 'pairs') & (ds_pair_status == 'nonpaired') & (edge[1] in include_nonpaired)):
+            if((us_pair_status == 'pairs') & (ds_pair_status == 'nonpaired') & (include_nonpaired==True)):
 
                 if(edge[1] in left):
                     specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0].values[0], 0, False, 'ipsilateral', 'paired', 'nonpaired'],
@@ -326,7 +329,7 @@ class Adjacency_matrix():
 
 
             # check for edges from upstream nonpaired neurons
-            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'pairs') & (edge[0] in include_nonpaired)):
+            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'pairs') & (include_nonpaired==True)):
 
                 if(edge[0] in left):
                     specific_edges = pd.DataFrame([[edge[0], edge[1], specific_edges.iloc[0, 0], 0, False, 'ipsilateral', 'nonpaired', 'paired'],
@@ -349,7 +352,7 @@ class Adjacency_matrix():
                 all_edges.append(specific_edges.values[1])
 
             # check for edges between two nonpaired neurons
-            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'nonpaired') & (edge[0] in include_nonpaired) & (edge[1] in include_nonpaired)):
+            if((us_pair_status == 'nonpaired') & (ds_pair_status == 'nonpaired') & (include_nonpaired==True)):
 
                 edge_weight = specific_edges.values[0][0]
                 if(edge[0] in left):
@@ -660,7 +663,9 @@ class Promat():
     # converts array of skids into left-right pairs in separate columns
     # puts unpaired and nonpaired neurons in different lists
     @staticmethod
-    def extract_pairs_from_list(skids, pairList):
+    def extract_pairs_from_list(skids, pairList=None):
+        if(pairList is None):
+            pairList = Promat.get_pairs()
         pairs = pd.DataFrame([], columns = ['leftid', 'rightid'])
         unpaired = pd.DataFrame([], columns = ['unpaired'])
         nonpaired = pd.DataFrame([], columns = ['nonpaired'])

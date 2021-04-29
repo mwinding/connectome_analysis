@@ -1,16 +1,12 @@
 #%%
+import sys
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
+#sys.path.append(os.getcwd() + '/connectome_tools/')
 
-# %%
-import sys
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+sys.path.append('/Users/mwinding/repos/maggot_models')
+
 from pymaid_creds import url, name, password, token
 import pymaid
 
@@ -19,8 +15,8 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-from graspy.plot import gridplot, heatmap
-from graspy.utils import binarize, pass_to_ranks
+#from graspy.plot import gridplot, heatmap
+#from graspy.utils import binarize, pass_to_ranks
 from src.data import load_metagraph
 from src.visualization import CLASS_COLOR_DICT, adjplot
 
