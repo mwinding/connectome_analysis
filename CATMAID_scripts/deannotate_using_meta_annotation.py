@@ -1,0 +1,27 @@
+#%%
+import os
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from pymaid_creds import url, name, password, token
+import pymaid
+import connectome_tools.cluster_analysis as clust
+import connectome_tools.celltype as ct
+import connectome_tools.process_graph as pg
+import connectome_tools.process_matrix as pm
+import navis
+
+rm = pymaid.CatmaidInstance(url, token, name, password)
+
+# %%
+# deannotation all sub-annotations under meta-annotation
+## VERY DANGEROUS; BE CAREFUL!!! ##
+
+meta = 'mw brain inputs 2nd_order'
+annots = [annot for annot in pymaid.get_annotated(meta).name]
+
+[pymaid.remove_annotations(pymaid.get_skids_by_annotation(annot), annot) for annot in annots]
+# %%
