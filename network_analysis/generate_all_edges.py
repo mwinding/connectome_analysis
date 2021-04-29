@@ -46,10 +46,11 @@ adj_da.to_csv('data/adj/all-neurons_dendrite-axon.csv')
 # import input data and export as simplified csv
 meta_data = pd.read_csv('data/graphs/meta_data.csv', index_col = 0)
 inputs = meta_data.loc[:, ['axon_input', 'dendrite_input']]
+outputs = meta_data.loc[:, ['axon_output', 'dendrite_output']]
 
 # exporting input data
 inputs.to_csv('data/graphs/inputs.csv')
-
+outputs.to_csv('data/graphs/outputs.csv')
 # %%
 # prune out A1 neurons from adjacency matrices (optional)
 
