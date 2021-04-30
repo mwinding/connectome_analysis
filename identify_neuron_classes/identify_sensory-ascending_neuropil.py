@@ -33,10 +33,10 @@ brain = pymaid.get_skids_by_annotation('mw brain neurons') + brain_inputs
 
 adj_names = ['ad', 'aa', 'dd', 'da']
 adj_ad, adj_aa, adj_dd, adj_da = [pd.read_csv(f'data/adj/all-neurons_{name}.csv', index_col = 0).rename(columns=int) for name in adj_names]
-adj_ad.loc[np.intersect1d(adj_ad.index, brain), np.intersect1d(adj_ad.index, brain)]
-adj_aa.loc[np.intersect1d(adj_aa.index, brain), np.intersect1d(adj_aa.index, brain)]
-adj_dd.loc[np.intersect1d(adj_dd.index, brain), np.intersect1d(adj_dd.index, brain)]
-adj_da.loc[np.intersect1d(adj_da.index, brain), np.intersect1d(adj_da.index, brain)]
+adj_ad = adj_ad.loc[np.intersect1d(adj_ad.index, brain), np.intersect1d(adj_ad.index, brain)]
+adj_aa = adj_aa.loc[np.intersect1d(adj_aa.index, brain), np.intersect1d(adj_aa.index, brain)]
+adj_dd = adj_dd.loc[np.intersect1d(adj_dd.index, brain), np.intersect1d(adj_dd.index, brain)]
+adj_da = adj_da.loc[np.intersect1d(adj_da.index, brain), np.intersect1d(adj_da.index, brain)]
 adjs = [adj_ad, adj_aa, adj_dd, adj_da]
 
 # load input counts
@@ -106,6 +106,24 @@ def identify_LNs(summed_adj, adj_aa, skids, input_skids, outputs, pairs = pm.Pro
 
 LNs = [identify_LNs(summed_adj, adj_aa, input_types.order2.iloc[i], input_types.source.iloc[i], outputs)[0] for i in range(0, len(input_types))]
 LNs_data = [identify_LNs(summed_adj, adj_aa, input_types.order2.iloc[i], input_types.source.iloc[i], outputs)[1] for i in range(0, len(input_types))]
+
+# %%
+#
+
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .05)
+colors = ['#00753F', '#1D79B7', '#5D8C90', '#D88052', '#FF8734', '#E55560', '#F9EB4D', '#8C7700', '#9467BD','#D88052', '#A52A2A']
+
+for i, skids in enumerate(input_types.order2):
+    neurons = pymaid.get_neurons(skids)
+
+    fig, ax = navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=0.5)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 3.5
+    plt.show()
+    fig.savefig(f'identify_neuron_classes/plots/morpho_{input_types.type.iloc[i]}.pdf', format='pdf')
+
 
 # %%
 # identify all 3rd-order neurons

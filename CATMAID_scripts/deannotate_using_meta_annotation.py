@@ -4,15 +4,9 @@ os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current 
 
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import navis
+
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
