@@ -24,7 +24,7 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-#%%
+# %%
 # load previously generated adjacency matrices
 # see 'network_analysis/generate_all_edges.py'
 
@@ -58,24 +58,56 @@ input_types = input_types.reset_index(drop=True)
 
 # %%
 # identify all 2nd-order neurons
-threshold = 0.01
-layers = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs)[0] for skids in input_types.source]
-input_types['order2'] = layers
 
-# look at overlap between order2 neurons
-cts = [ct.Celltype(input_types.type.iloc[i] + ' 2nd-order', input_types.order2.iloc[i]) for i in range(0, len(input_types.index))]
-cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou').iloc[0:10, 0:10])
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+
+threshold = 0.01
+order2 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff)[0] for skids in input_types.source]
+input_types['order2'] = order2
+
+all_order2 = list(np.unique([x for sublist in input_types.order2 for x in sublist]))
+order3 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order2)[0] for skids in input_types.order2]
+input_types['order3'] = order3
+
+all_order3 = list(np.unique([x for sublist in input_types.order3 for x in sublist]))
+order4 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order3+all_order2)[0] for skids in input_types.order3]
+input_types['order4'] = order4
+
+all_order4 = list(np.unique([x for sublist in input_types.order4 for x in sublist]))
 
 # export IDs
-[pymaid.add_annotations(input_types.order2.iloc[i], f'mw brain 2nd_order {input_types.type.iloc[i]}') for i in range(0, 10)]
-pymaid.add_meta_annotations([f'mw brain 2nd_order {input_types.type.iloc[i]}' for i in range(0, 10)], 'mw brain inputs 2nd_order')
+#[pymaid.add_annotations(input_types.order2.iloc[i], f'mw brain 2nd_order {input_types.type.iloc[i]}') for i in range(0, 10)]
+#pymaid.add_meta_annotations([f'mw brain 2nd_order {input_types.type.iloc[i]}' for i in range(0, 10)], 'mw brain inputs 2nd_order')
+#[pymaid.add_annotations(input_types.order3.iloc[i], f'mw brain 3rd_order {input_types.type.iloc[i]}') for i in range(0, 10)]
+#pymaid.add_meta_annotations([f'mw brain 3rd_order {input_types.type.iloc[i]}' for i in range(0, 10)], 'mw brain inputs 3rd_order')
+
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+input_types = input_types.set_index('type')
+
+# look at overlap between order2 neurons
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+cts = [ct.Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
+cts_analyze = ct.Celltype_Analyzer(cts)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_2nd-order.pdf', format='pdf')
+
+# look at overlap between order3 neurons
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+cts = [ct.Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
+cts_analyze = ct.Celltype_Analyzer(cts)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_3rd-order.pdf', format='pdf')
+
+# look at overlap between order4 neurons
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+cts = [ct.Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
+cts_analyze = ct.Celltype_Analyzer(cts)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', format='pdf')
 
 # %%
 # visualize neurons in adjacency
-#all_order2 = [x for sublist in [input_types.order2.iloc[i] for i in range(0,10)] for x in sublist]
 summed_adj = pd.read_csv(f'data/adj/all-neurons_all-all.csv', index_col = 0).rename(columns=int)
-#plt.imshow(summed_adj.loc[np.intersect1d(summed_adj.index, all_order2),np.intersect1d(summed_adj.index, all_order2)], vmax=1, cmap='Reds')
 
 # identify all PNs / LNs
 def identify_LNs(summed_adj, adj_aa, skids, input_skids, outputs, pairs = pm.Promat.get_pairs(), sort = True):
@@ -101,35 +133,129 @@ def identify_LNs(summed_adj, adj_aa, skids, input_skids, outputs, pairs = pm.Pro
     skid_percent_output = pm.Promat.convert_df_to_pairwise(pd.DataFrame(skid_percent_output, columns=['skid', 'percent_output_intragroup']).set_index('skid'))
 
     LNs = skid_percent_output.groupby('pair_id').sum()      
-    LNs = LNs[np.array([x for sublist in (LNs>=1).values for x in sublist])]    
-    return(list(LNs.index), skid_percent_output)
+    LNs = LNs[np.array([x for sublist in (LNs>=1).values for x in sublist])]
+    MBONs = pymaid.get_skids_by_annotation('mw MBON')
+    MBINs = pymaid.get_skids_by_annotation('mw MBIN')
+    RGNs = pymaid.get_skids_by_annotation('mw RGN')
+    exclude = RGNs + MBINs + MBONs
+    LNs = np.setdiff1d(list(LNs.index), exclude) # don't count MBONs/MBINs/RGNs as LNs
+    return(list(LNs), skid_percent_output)
 
-LNs = [identify_LNs(summed_adj, adj_aa, input_types.order2.iloc[i], input_types.source.iloc[i], outputs)[0] for i in range(0, len(input_types))]
-LNs_data = [identify_LNs(summed_adj, adj_aa, input_types.order2.iloc[i], input_types.source.iloc[i], outputs)[1] for i in range(0, len(input_types))]
+# identify LNs of different sens order
+LNs_2nd = [identify_LNs(summed_adj, adj_aa, input_types.order2.loc[i], input_types.source.loc[i], outputs)[0] for i in order]
+LNs_2nd_data = [identify_LNs(summed_adj, adj_aa, input_types.order2.loc[i], input_types.source.loc[i], outputs)[1] for i in order]
+
+LNs_3rd = [identify_LNs(summed_adj, adj_aa, input_types.order3.loc[i], input_types.order2.loc[i], outputs)[0] for i in order]
+LNs_3rd_data = [identify_LNs(summed_adj, adj_aa, input_types.order3.loc[i], input_types.order2.loc[i], outputs)[1] for i in order]
+
+LNs_4th = [identify_LNs(summed_adj, adj_aa, input_types.order4.loc[i], input_types.order3.loc[i], outputs)[0] for i in order]
+LNs_4th_data = [identify_LNs(summed_adj, adj_aa, input_types.order4.loc[i], input_types.order3.loc[i], outputs)[1] for i in order]
+# nothing useful came from 4th level LNs
+
+# export LNs
+[pymaid.add_annotations(LNs_2nd[i], f'mw brain 2nd_order LN {name}') for i, name in enumerate(order) if len(LNs_2nd[i])>0]
+pymaid.add_meta_annotations([f'mw brain 2nd_order LN {name}' for i, name in enumerate(order) if len(LNs_2nd[i])>0], 'mw brain inputs 2nd_order LN')
+[pymaid.add_annotations(LNs_3rd[i], f'mw brain 3rd_order LN {name}') for i, name in enumerate(order) if len(LNs_3rd[i])>0]
+pymaid.add_meta_annotations([f'mw brain 3rd_order LN {name}' for i, name in enumerate(order) if len(LNs_3rd[i])>0], 'mw brain inputs 3rd_order LN')
 
 # %%
-#
+# identify 2nd-order PNs from ANs/MNs
+
+# %%
+# plot 2nd-order types
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
-neuropil.color = (250, 250, 250, .05)
+neuropil.color = (250, 250, 250, .075)
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
 colors = ['#00753F', '#1D79B7', '#5D8C90', '#D88052', '#FF8734', '#E55560', '#F9EB4D', '#8C7700', '#9467BD','#D88052', '#A52A2A']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
+            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
 
-for i, skids in enumerate(input_types.order2):
+# alpha determined by number of neurons being plotted
+max_members = max([len(x) for x in input_types.order2.loc[order]])
+min_alpha = 0.1
+max_alpha = 0.2 # max is really min+max
+alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.order2.loc[order]]
+
+n_rows = 2
+n_cols = 5
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+for i, skids in enumerate(input_types.order2.loc[order]):
     neurons = pymaid.get_neurons(skids)
 
-    fig, ax = navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=0.5)
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 3.5
-    plt.show()
-    fig.savefig(f'identify_neuron_classes/plots/morpho_{input_types.type.iloc[i]}.pdf', format='pdf')
+    ax.dist = 5.75
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder_synapses.png', format='png')
+'''
+# plot synapses on the same plot to see neuropil areas
+fig = plt.figure(figsize=(2, 2))
+gs = plt.GridSpec(1, 1, figure=fig, wspace=0, hspace=0)
+axs = np.empty((1, 1), dtype=object)
+ax = fig.add_subplot(gs[0], projection="3d")
+
+for i, skids in enumerate(input_types.order2.iloc[0]):
+    neurons = pymaid.get_neurons(skids)
+
+    navis.plot2d(x=[neurons, neuropil], connectors_only=True, ax=ax)
+
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 5.75
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder_synapses.pdf', format='pdf')
+'''
+# %%
+# plot 3rd-order
+
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .075)
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
+            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+
+# alpha determined by number of neurons being plotted
+max_members = max([len(x) for x in input_types.order3.loc[order]])
+min_alpha = 0.025
+max_alpha = 0.2 # max is really min+max
+alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.order3.loc[order]]
+
+n_rows = 2
+n_cols = 5
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+for i, skids in enumerate(input_types.order3.loc[order]):
+    neurons = pymaid.get_neurons(skids)
+
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 5.75
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png')
+
+
 
 
 # %%
-# identify all 3rd-order neurons
-# identify all PNs / LNs
-
-
-
-# %%
-# plot 2nd-order, 3-order based on A-D, A-A, etc.
