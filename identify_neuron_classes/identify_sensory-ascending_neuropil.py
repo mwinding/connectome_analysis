@@ -193,11 +193,11 @@ for i, skids in enumerate(input_types.order2.loc[order]):
     navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 5.75
+    ax.dist = 6
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder_synapses.png', format='png')
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder.png', format='png', dpi=300, transparent=True)
 '''
 # plot synapses on the same plot to see neuropil areas
 fig = plt.figure(figsize=(2, 2))
@@ -253,7 +253,7 @@ for i, skids in enumerate(input_types.order3.loc[order]):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png')
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png', dpi=300)
 
 
 
