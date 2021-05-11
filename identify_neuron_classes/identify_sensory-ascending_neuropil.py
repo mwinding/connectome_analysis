@@ -8,13 +8,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
+
 import connectome_tools.cluster_analysis as clust
 import connectome_tools.celltype as ct
 import connectome_tools.process_graph as pg
 import connectome_tools.process_matrix as pm
 import navis
-
-rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -89,68 +89,40 @@ fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_2nd-order.pdf', format='pdf')
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order3 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_3rd-order.pdf', format='pdf')
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order4 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', format='pdf')
+fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# visualize neurons in adjacency
+# identify LNs in each layer
 summed_adj = pd.read_csv(f'data/adj/all-neurons_all-all.csv', index_col = 0).rename(columns=int)
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
 
-# identify all PNs / LNs
-def identify_LNs(summed_adj, adj_aa, skids, input_skids, outputs, pairs = pm.Promat.get_pairs(), sort = True):
-    mat = summed_adj.loc[np.intersect1d(summed_adj.index, skids), np.intersect1d(summed_adj.index, skids)]
-    mat = mat.sum(axis=1)
+sens = [pymaid.get_skids_by_annotation(f'mw {celltype}') for celltype in order]
+order2_ct = [ct.Celltype(f'2nd-order {celltype}', pymaid.get_skids_by_annotation(f'mw brain 2nd_order {celltype}')) for celltype in order]
+order3_ct = [ct.Celltype(f'3rd-order {celltype}', pymaid.get_skids_by_annotation(f'mw brain 3rd_order {celltype}')) for celltype in order]
+exclude = [pymaid.get_skids_by_annotation(x) for x in ['mw MBON', 'mw MBIN', 'mw RGN', 'mw dVNC', 'mw dSEZ', 'mw bilateral axon', 'mw contralateral axon', 'mw KC']]
+exclude = [x for sublist in exclude for x in sublist]
 
-    mat_axon = adj_aa.loc[np.intersect1d(adj_aa.index, skids), np.intersect1d(adj_aa.index, input_skids)]
-    mat_axon = mat_axon.sum(axis=1)
-
-    # convert to % outputs
-    skid_percent_output = []
-    for skid in skids:
-        skid_output = 0
-        output = sum(outputs.loc[skid, :])
-        if(output != 0):
-            if(skid in mat.index):
-                skid_output = skid_output + mat.loc[skid]/output
-            if(skid in mat_axon.index):
-                skid_output = skid_output + mat_axon.loc[skid]/output
-
-        skid_percent_output.append([skid, skid_output])
-
-    skid_percent_output = pm.Promat.convert_df_to_pairwise(pd.DataFrame(skid_percent_output, columns=['skid', 'percent_output_intragroup']).set_index('skid'))
-
-    LNs = skid_percent_output.groupby('pair_id').sum()      
-    LNs = LNs[np.array([x for sublist in (LNs>=1).values for x in sublist])]
-    MBONs = pymaid.get_skids_by_annotation('mw MBON')
-    MBINs = pymaid.get_skids_by_annotation('mw MBIN')
-    RGNs = pymaid.get_skids_by_annotation('mw RGN')
-    exclude = RGNs + MBINs + MBONs
-    LNs = np.setdiff1d(list(LNs.index), exclude) # don't count MBONs/MBINs/RGNs as LNs
-    return(list(LNs), skid_percent_output)
-
-# identify LNs of different sens order
-LNs_2nd = [identify_LNs(summed_adj, adj_aa, input_types.order2.loc[i], input_types.source.loc[i], outputs)[0] for i in order]
-LNs_2nd_data = [identify_LNs(summed_adj, adj_aa, input_types.order2.loc[i], input_types.source.loc[i], outputs)[1] for i in order]
-
-LNs_3rd = [identify_LNs(summed_adj, adj_aa, input_types.order3.loc[i], input_types.order2.loc[i], outputs)[0] for i in order]
-LNs_3rd_data = [identify_LNs(summed_adj, adj_aa, input_types.order3.loc[i], input_types.order2.loc[i], outputs)[1] for i in order]
-
-LNs_4th = [identify_LNs(summed_adj, adj_aa, input_types.order4.loc[i], input_types.order3.loc[i], outputs)[0] for i in order]
-LNs_4th_data = [identify_LNs(summed_adj, adj_aa, input_types.order4.loc[i], input_types.order3.loc[i], outputs)[1] for i in order]
-# nothing useful came from 4th level LNs
+# identify LNs
+# use 0.5 output fraction within group threshold; except for ORN, AN, MN, photoreceptors (2nd-order) because a couple known LNs are excluded
+#   seems to be due to incomplete reconstruction of outputs in lower AL
+threshold = 0.5
+LNs_2nd = [celltype.identify_LNs(0.4, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct[0:4])] # relax the threshold due to issues with output sink in SEZ
+LNs_2nd = LNs_2nd + [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct[4:])]
+LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, exclude=exclude)[0] for i, celltype in enumerate(order3_ct)]
 
 # export LNs
 [pymaid.add_annotations(LNs_2nd[i], f'mw brain 2nd_order LN {name}') for i, name in enumerate(order) if len(LNs_2nd[i])>0]
@@ -158,9 +130,23 @@ pymaid.add_meta_annotations([f'mw brain 2nd_order LN {name}' for i, name in enum
 [pymaid.add_annotations(LNs_3rd[i], f'mw brain 3rd_order LN {name}') for i, name in enumerate(order) if len(LNs_3rd[i])>0]
 pymaid.add_meta_annotations([f'mw brain 3rd_order LN {name}' for i, name in enumerate(order) if len(LNs_3rd[i])>0], 'mw brain inputs 3rd_order LN')
 
-# %%
-# identify 2nd-order PNs from ANs/MNs
+# add special case for AN/MN/ORN LNs
+# 2nd-order
+ct_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order ORN') + pymaid.get_skids_by_annotation('mw brain 2nd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 2nd_order MN sensories')
+input_skids = pymaid.get_skids_by_annotation('mw ORN') + pymaid.get_skids_by_annotation('mw AN sensories') + pymaid.get_skids_by_annotation('mw MN sensories')
+AN_MN_ORN_order2 = ct.Celltype('2nd-order AN-MN-ORN', ct_skids)
+AN_MN_ORN_LNs_2nd = AN_MN_ORN_order2.identify_LNs(0.4, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] # relaxed threshold for 2nd_order
+pymaid.add_annotations(AN_MN_ORN_LNs_2nd, 'mw brain 2nd_order LN AN_MN_ORN')
+pymaid.add_meta_annotations('mw brain 2nd_order LN AN_MN_ORN', 'mw brain inputs 2nd_order LN')
 
+'''
+ct_skids = pymaid.get_skids_by_annotation('mw brain 3rd_order ORN') + pymaid.get_skids_by_annotation('mw brain 3rd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 3rd_order MN sensories')
+input_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order ORN') + pymaid.get_skids_by_annotation('mw brain 2nd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 2nd_order MN sensories')
+AN_MN_ORN_order2 = ct.Celltype('3rd-order AN-MN-ORN', ct_skids)
+AN_MN_ORN_LNs_3rd = AN_MN_ORN_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0]
+pymaid.add_annotations(AN_MN_ORN_LNs_3rd, 'mw brain 3rd_order LN AN_MN_ORN')
+pymaid.add_meta_annotations('mw brain 3rd_order LN AN_MN_ORN', 'mw brain inputs 3rd_order LN')
+'''
 # %%
 # plot 2nd-order types
 
@@ -254,8 +240,5 @@ for i, skids in enumerate(input_types.order3.loc[order]):
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png', dpi=300)
-
-
-
 
 # %%
