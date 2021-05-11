@@ -7,10 +7,12 @@ import pymaid
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import itertools
+import connectome_tools.process_matrix as pm
 
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
+from upsetplot import plot
+from upsetplot import from_contents
+from upsetplot import from_memberships
 import connectome_tools.cluster_analysis as clust
-
 
 class Celltype:
     def __init__(self, name, skids, color=[]):
@@ -43,6 +45,37 @@ class Celltype:
         for i in range(1, len(memberships.index)):
             plt.bar(ind, memberships.iloc[i], bottom = bottom, color=celltype_colors[i])
             bottom = bottom + memberships.iloc[i]
+
+    def identify_LNs(self, threshold, summed_adj, adj_aa, input_skids, outputs, exclude, pairs = pm.Promat.get_pairs(), sort = True):
+        mat = summed_adj.loc[np.intersect1d(summed_adj.index, self.skids), np.intersect1d(summed_adj.index, self.skids)]
+        mat = mat.sum(axis=1)
+
+        mat_axon = adj_aa.loc[np.intersect1d(adj_aa.index, self.skids), np.intersect1d(adj_aa.index, input_skids)]
+        mat_axon = mat_axon.sum(axis=1)
+
+        # convert to % outputs
+        skid_percent_output = []
+        for skid in self.skids:
+            skid_output = 0
+            output = sum(outputs.loc[skid, :])
+            if(output != 0):
+                if(skid in mat.index):
+                    skid_output = skid_output + mat.loc[skid]/output
+                if(skid in mat_axon.index):
+                    skid_output = skid_output + mat_axon.loc[skid]/output
+
+            skid_percent_output.append([skid, skid_output])
+
+        skid_percent_output = pm.Promat.convert_df_to_pairwise(pd.DataFrame(skid_percent_output, columns=['skid', 'percent_output_intragroup']).set_index('skid'))
+
+        # identify neurons with >=50% output within group (or axoaxonic onto input neurons to group)
+        LNs = skid_percent_output.groupby('pair_id').sum()      
+        LNs = LNs[np.array([x for sublist in (LNs>=threshold*2).values for x in sublist])]
+        LNs = list(LNs.index) # identify pair_ids of all neurons pairs/nonpaired over threshold
+        LNs = [list(skid_percent_output.loc[(slice(None), skid), :].index) for skid in LNs] # pull all left/right pairs or just nonpaired neurons
+        LNs = [x[2] for sublist in LNs for x in sublist]
+        LNs = list(np.setdiff1d(LNs, exclude)) # don't count neurons flagged as excludes: for example, MBONs/MBINs/RGNs probably shouldn't be LNs
+        return(LNs, skid_percent_output)
 
 
 class Celltype_Analyzer:
@@ -191,6 +224,27 @@ class Celltype_Analyzer:
                     mat[i, j] = self.adj_df.loc[key_i, key_j].values.sum()/len(self.adj_df.loc[key_j].index)
         mat = pd.DataFrame(mat, index = celltypes, columns = celltypes)
         return(mat)
+
+    def upset_members(self, path=None, plot_upset=False):
+
+        celltypes = self.Celltypes
+
+        contents = {} # empty dictionary
+        for celltype in celltypes:
+            name = celltype.get_name()
+            contents[name] = celltype.get_skids()
+
+        data = from_contents(contents)
+
+        if(plot_upset):
+            fg = plot(data)
+            plt.savefig(f'{path}.pdf', bbox_inches='tight')
+
+        unique_indices = np.unique(data.index)
+        cat_types = [Celltype(' + '.join([data.index.names[i] for i, value in enumerate(index) if value==True]), 
+                    list(data.loc[index].id)) for index in unique_indices]
+
+        return (cat_types)
 
     @staticmethod
     def get_skids_from_meta_meta_annotation(meta_meta, split=False):
