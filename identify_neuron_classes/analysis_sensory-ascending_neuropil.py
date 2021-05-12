@@ -143,33 +143,33 @@ sns.heatmap(memberships, annot=True, fmt='d', cmap='Greens', cbar=False)
 
 # plot 2nd order identities
 order2_cta.set_known_types(celltypes)
-memberships = order2_cta.memberships(raw_num=True).drop('sensories').T
+memberships = order2_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
 annotations = memberships.astype(str)
 annotations[annotations=='0']=''
 
-fig, ax = plt.subplots(1,1, figsize=(3,2))
+fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
 plt.savefig('identify_neuron_classes/plots/cell-identities_2nd_order.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot 3rd order identities
 order3_cta.set_known_types(celltypes)
-memberships = order3_cta.memberships(raw_num=True).drop('sensories').T
+memberships = order3_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
 annotations = memberships.astype(str)
 annotations[annotations=='0']=''
 
-fig, ax = plt.subplots(1,1, figsize=(3,2))
+fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
 plt.savefig('identify_neuron_classes/plots/cell-identites_3rd-order.pdf', bbox_inches='tight', format = 'pdf')
 
@@ -239,14 +239,14 @@ import plotly.graph_objects as go
 # custom bar plot for cell types
 
 fig = go.Figure()
-'''
+
 fig.add_trace(go.Scatter(
     x=[1.5, 4.5],
     y=[0.75, 0.75],
     text=["Unfilled Rectangle", "Filled Rectangle"],
     mode="text",
 ))
-'''
+
 # Set axes properties
 fig.update_xaxes(range=[0, 55], showgrid=False)
 fig.update_yaxes(range=[0, 8], showgrid=False)
@@ -294,8 +294,5 @@ ax.add_patch(rect3)
 
 plt.show()
 '''
-# %%
-# adjaceny matrix of 2nd/3rd order sensory centers (wiring diagram?)
-
 # %%
 # cascades through sensory centers
