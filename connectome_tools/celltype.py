@@ -79,40 +79,14 @@ class Celltype:
 
 
 class Celltype_Analyzer:
-    def __init__(self, list_Celltypes, adj=[], skids=[]):
+    def __init__(self, list_Celltypes, adj=[]):
         self.Celltypes = list_Celltypes
         self.celltype_names = [celltype.get_name() for celltype in self.Celltypes]
         self.num = len(list_Celltypes) # how many cell types
         self.known_types = []
         self.known_types_names = []
         self.adj = adj
-
-        if(len(skids)>0):
-            self.skids = skids
-        if(len(skids)==0):
-            self.skids = list(np.unique([x for sublist in self.Celltypes for x in sublist.get_skids()]))
-
-        self.adj_df = []
-
-    def get_celltype_names(self):
-        return self.celltype_names
-
-    def generate_adj(self):
-        # adjacency matrix only between assigned cell types
-        adj_df = pd.DataFrame(self.adj, index = self.skids, columns = self.skids)
-        skids = [skid for celltype in self.Celltypes for skid in celltype.get_skids()]
-        adj_df = adj_df.loc[skids, skids]
-
-        # generating multiindex for adjacency matrix df
-        index_df = pd.DataFrame([[celltype.get_name(), skid] for celltype in self.Celltypes for skid in celltype.get_skids()], 
-                                columns = ['celltype', 'skid'])
-        index = pd.MultiIndex.from_frame(index_df)
-
-        # add multiindex to both rows and columns
-        adj_df.index = index
-        adj_df.columns = index
-
-        self.adj_df = adj_df
+        self.skids = [x for sublist in [celltype.get_skids() for celltype in list_Celltypes] for x in sublist]
 
     def add_celltype(self, Celltype):
         self.Celltypes = self.Celltypes + Celltype
@@ -210,19 +184,25 @@ class Celltype_Analyzer:
             bottom = bottom + memberships.iloc[i, :]
         plt.savefig(path, format='pdf', bbox_inches='tight')
 
-    def connectivtiy(self, celltypes, normalize_pre_num = False, normalize_post_num = False):
+    def connectivity(self, adj = None, use_stored_adj = False, normalize_pre_num = False, normalize_post_num = False):
 
-        #level0_keys = np.unique(self.adj_df.index.get_level_values(0))
+        if(use_stored_adj):
+            adj_df = self.adj
+        else:
+            adj_df = adj
+
+        celltypes = [x.get_skids() for x in self.Celltypes]
+        celltype_names = [x.get_name() for x in self.Celltypes]
         mat = np.zeros((len(celltypes), len(celltypes)))
         for i, key_i in enumerate(celltypes):
             for j, key_j in enumerate(celltypes):
                 if(normalize_pre_num==False & normalize_post_num==False):
-                    mat[i, j] = self.adj_df.loc[key_i, key_j].values.sum()
+                    mat[i, j] = adj_df.loc[key_i, key_j].values.sum()
                 if(normalize_pre_num==True):
-                    mat[i, j] = self.adj_df.loc[key_i, key_j].values.sum()/len(self.adj_df.loc[key_i].index)
+                    mat[i, j] = adj_df.loc[key_i, key_j].values.sum()/len(key_i)
                 if(normalize_post_num==True):
-                    mat[i, j] = self.adj_df.loc[key_i, key_j].values.sum()/len(self.adj_df.loc[key_j].index)
-        mat = pd.DataFrame(mat, index = celltypes, columns = celltypes)
+                    mat[i, j] = adj_df.loc[key_i, key_j].values.sum()/len(key_j)
+        mat = pd.DataFrame(mat, index = celltype_names, columns = celltype_names)
         return(mat)
 
     def upset_members(self, path=None, plot_upset=False):
@@ -258,7 +238,7 @@ class Celltype_Analyzer:
             return(skids, meta_annots)
     
     @staticmethod
-    def default_celltypes():
+    def default_celltypes(exclude = []):
         priority_list = pymaid.get_annotated('mw brain simple priorities').name
         priority_skids = [Celltype_Analyzer.get_skids_from_meta_meta_annotation(priority) for priority in priority_list]
 
