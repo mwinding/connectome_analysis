@@ -88,21 +88,21 @@ input_types = input_types.set_index('type')
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
 fig.savefig(f'identify_neuron_classes/plots/similarity_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order3 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
 fig.savefig(f'identify_neuron_classes/plots/similarity_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order4 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax)
+sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
 fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
@@ -147,6 +147,45 @@ AN_MN_ORN_LNs_3rd = AN_MN_ORN_order2.identify_LNs(threshold, summed_adj, adj_aa,
 pymaid.add_annotations(AN_MN_ORN_LNs_3rd, 'mw brain 3rd_order LN AN_MN_ORN')
 pymaid.add_meta_annotations('mw brain 3rd_order LN AN_MN_ORN', 'mw brain inputs 3rd_order LN')
 '''
+
+# %%
+# plot sensories/ascendings
+
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .075)
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+colors = ['#00753F', '#1D79B7', '#5D8C90', '#D88052', '#FF8734', '#E55560', '#F9EB4D', '#8C7700', '#9467BD','#D88052', '#A52A2A']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
+            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+
+# alpha determined by number of neurons being plotted
+max_members = max([len(x) for x in input_types.source.loc[order]])
+min_alpha = 0.1
+max_alpha = 0.2 # max is really min+max
+alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.source.loc[order]]
+
+n_rows = 2
+n_cols = 5
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+for i, skids in enumerate(input_types.source.loc[order]):
+    neurons = pymaid.get_neurons(skids)
+
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 6
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_asc.png', format='png', dpi=300, transparent=True)
+
 # %%
 # plot 2nd-order types
 
@@ -184,26 +223,7 @@ for i, skids in enumerate(input_types.order2.loc[order]):
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder.png', format='png', dpi=300, transparent=True)
-'''
-# plot synapses on the same plot to see neuropil areas
-fig = plt.figure(figsize=(2, 2))
-gs = plt.GridSpec(1, 1, figure=fig, wspace=0, hspace=0)
-axs = np.empty((1, 1), dtype=object)
-ax = fig.add_subplot(gs[0], projection="3d")
 
-for i, skids in enumerate(input_types.order2.iloc[0]):
-    neurons = pymaid.get_neurons(skids)
-
-    navis.plot2d(x=[neurons, neuropil], connectors_only=True, ax=ax)
-
-    ax.azim = -90
-    ax.elev = -90
-    ax.dist = 5.75
-    ax.set_xlim3d((-4500, 110000))
-    ax.set_ylim3d((-4500, 110000))
-
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder_synapses.pdf', format='pdf')
-'''
 # %%
 # plot 3rd-order
 
@@ -235,10 +255,55 @@ for i, skids in enumerate(input_types.order3.loc[order]):
     navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 5.75
+    ax.dist = 6
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png', dpi=300)
+
+# %%
+# plot each type sequentially: sens -> 2nd-order -> 3rd-order
+
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .075)
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
+            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+
+neurons = [x for sublist in list(zip(input_types.source.loc[order], input_types.order2.loc[order], input_types.order3.loc[order])) for x in sublist]
+colors = list(np.repeat(colors, 3))
+
+# alpha determined by number of neurons being plotted
+max_members = max([len(x) for x in neurons])
+min_alpha = 0.025
+max_alpha = 0.2 # max is really min+max
+alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in neurons]
+
+n_rows = 10
+n_cols = 3
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+for i, neuron_types in enumerate(neurons):
+
+    # load neurons one at a time to prevent CATMAID time-out bug
+    neurons_loaded = pymaid.get_neurons(neuron_types[0])
+    for j in range(1, len(neuron_types)):
+        loaded = pymaid.get_neurons(neuron_types[j])
+        neurons_loaded = neurons_loaded + loaded
+
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons_loaded, neuropil], connectors_only=False, color=colors[i], alpha=alphas[i], ax=ax)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 6
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2nd_3rd_order.png', format='png', dpi=300)
 
 # %%
