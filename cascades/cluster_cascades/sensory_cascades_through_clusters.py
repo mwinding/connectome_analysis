@@ -15,17 +15,23 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-#from graspy.plot import gridplot, heatmap
-#from graspy.utils import binarize, pass_to_ranks
 from src.data import load_metagraph
 from src.visualization import CLASS_COLOR_DICT, adjplot
+from src.traverse import Cascade, to_transmission_matrix
+from src.traverse import TraverseDispatcher
+from src.visualization import matrixplot
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg.calculate_degrees(inplace=True)
+import connectome_tools.cascade_analysis as casc
+import connectome_tools.celltype as ct
 
-adj = mg.adj  # adjacency matrix from the "mg" object
+#mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
+#mg.calculate_degrees(inplace=True)
+
+#adj = mg.adj  # adjacency matrix from the "mg" object
+adj_ad = pd.read_csv(f'data/adj/all-neurons_ad.csv', index_col = 0).rename(columns=int)
+adj = adj_ad.values
 
 clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
 order = pd.read_csv('cascades/data/signal_flow_order_lvl7.csv').values
@@ -39,62 +45,28 @@ order = np.array(order_delisted)
 
 #%%
 # pull sensory annotations and then pull associated skids
-input_names = pymaid.get_annotated('mw brain inputs').name
-input_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain inputs').name))
+order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
+input_skids_list = [x.get_skids() for x in sens]
 input_skids = [val for sublist in input_skids_list for val in sublist]
 
 output_names = pymaid.get_annotated('mw brain outputs').name
 output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
 output_skids = [val for sublist in output_skids_list for val in sublist]
 
-# order names and skids in desired way for the rest of analysis
-sensory_order = [0, 3, 4, 1, 2, 6, 5]
-input_names_format = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c']
-input_names_format_reordered = [input_names_format[i] for i in sensory_order]
-input_skids_list_reordered = [input_skids_list[i] for i in sensory_order]
-
 #%%
 # cascades from each sensory modality
-from src.traverse import Cascade, to_transmission_matrix
-from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
-
-# convert skids to indices
-input_indices_list = []
-for input_skids in input_skids_list_reordered:
-    indices = np.where([x in input_skids for x in mg.meta.index])[0]
-    input_indices_list.append(indices)
-
-output_indices_list = []
-for input_skids in output_skids_list:
-    indices = np.where([x in input_skids for x in mg.meta.index])[0]
-    output_indices_list.append(indices)
-
-all_input_indices = np.where([x in input_skids for x in mg.meta.index])[0]
-output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
 
 p = 0.05
 max_hops = 10
 n_init = 100
 simultaneous = True
-transition_probs = to_transmission_matrix(adj, p)
+adj=adj_ad
 
-cdispatch = TraverseDispatcher(
-    Cascade,
-    transition_probs,
-    stop_nodes = output_indices,
-    max_hops=max_hops,
-    allow_loops = False,
-    n_init=n_init,
-    simultaneous=simultaneous,
-)
+input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, stop_skids=output_skids, 
+                                                                    adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
-input_hit_hist_list = []
-for input_indices in input_indices_list:
-    hit_hist = cdispatch.multistart(start_nodes = input_indices)
-    input_hit_hist_list.append(hit_hist)
-
-all_input_hit_hist = cdispatch.multistart(start_nodes = all_input_indices)
+# **** continue here when new clusters are available
 
 #%%
 # grouping cascade indices by cluster type
