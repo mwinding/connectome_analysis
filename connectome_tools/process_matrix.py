@@ -597,8 +597,7 @@ class Promat():
     @staticmethod
     def convert_df_to_pairwise(df):
 
-        pairs = Promat.get_pairs()
-        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(df.index, pairs)
+        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(df.index)
             
         # left_right interlaced order for brain matrix
         brain_pair_order = []
@@ -892,5 +891,17 @@ class Promat():
         print("Write complete")
         return()
 
-    #def reorderInputsOutputs_toRow(matrix):
-    #    for i in matrix[,1]
+    @staticmethod
+    def pull_adj(type_adj, subgraph):
+
+        adj = pd.read_csv(f'data/adj/all-neurons_{type_adj}.csv', index_col = 0).rename(columns=int)
+        
+        if(subgraph=='brain'):
+            brain = pymaid.get_skids_by_annotation('mw brain paper clustered neurons')
+            adj = adj.loc[np.intersect1d(adj.index, brain), np.intersect1d(adj.index, brain)]
+
+        #if(subgraph=='brain-A1'):
+
+        #if(subgraph=='A1'):
+
+        return(adj)
