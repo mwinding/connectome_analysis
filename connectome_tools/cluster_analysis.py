@@ -29,24 +29,5 @@ class Analyze_Cluster():
         order_df.reset_index(inplace=True, drop=True)
 
         return(order_df, list(order_df.cluster))
-'''
-# known cell types in clusters
 
-celltypes, celltype_names, celltype_colors = pm.Promat.celltypes()
-celltype_colors = celltype_colors + ['tab:gray']
-all_clusters = [casc.Celltype(lvl7.cluster[i], lvl7.skids[i]) for i in range(0, len(lvl7))]
-all_celltypes = [casc.Celltype(celltype_names[i], celltypes[i]) for i in range(0, len(celltypes))]
-cluster_analyze = casc.Celltype_Analyzer(all_clusters)
-cluster_analyze.set_known_types(all_celltypes)
-memberships = cluster_analyze.memberships()
-memberships = memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14], :]
-celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,15,12,13,14]]
-
-ind = np.arange(0, len(all_clusters))
-plt.bar(ind, memberships.iloc[0, :], color=celltype_colors[0])
-bottom = memberships.iloc[0, :]
-for i in range(1, len(memberships.index)):
-    plt.bar(ind, memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
-    bottom = bottom + memberships.iloc[i, :]
-plt.savefig('cluster_analysis/plots/celltypes-clusters.pdf', format='pdf', bbox_inches='tight')
-'''
+    
