@@ -205,7 +205,7 @@ class Celltype_Analyzer:
         mat = pd.DataFrame(mat, index = celltype_names, columns = celltype_names)
         return(mat)
 
-    def upset_members(self, path=None, plot_upset=False):
+    def upset_members(self, threshold=0, path=None, plot_upset=False, exclude_singletons_from_threshold=False, threshold_dual_cats=0, exclude_skids=None):
 
         celltypes = self.Celltypes
 
@@ -216,15 +216,44 @@ class Celltype_Analyzer:
 
         data = from_contents(contents)
 
-        if(plot_upset):
-            fg = plot(data)
-            plt.savefig(f'{path}.pdf', bbox_inches='tight')
+        # identify indices of set intersection between all data and exclude_skids
+        if(exclude_skids!=None):
+            ind_dict = dict((k,i) for i,k in enumerate(data.id.values))
+            inter = set(ind_dict).intersection(exclude_skids)
+            indices = [ind_dict[x] for x in inter]
+            data = data.iloc[np.setdiff1d(range(0, len(data)), indices)]
 
         unique_indices = np.unique(data.index)
         cat_types = [Celltype(' + '.join([data.index.names[i] for i, value in enumerate(index) if value==True]), 
                     list(data.loc[index].id)) for index in unique_indices]
 
-        return (cat_types)
+        # apply threshold to all category types
+        if(exclude_singletons_from_threshold==False):
+            cat_bool = [len(x.get_skids())>=threshold for x in cat_types]
+        
+        # allows categories with no intersection ('singletons') to dodge the threshold
+        if(exclude_singletons_from_threshold): 
+            cat_bool = [(((len(x.get_skids())>=threshold) | ('+' not in x.get_name())) | (len(x.get_skids())>=threshold_dual_cats) & (x.get_name().count('+')<2)) for x in cat_types]
+
+        cats_selected = list(np.array(cat_types)[cat_bool])
+        skids_selected = [x for sublist in [cat.get_skids() for cat in cats_selected] for x in sublist]
+
+        # identify indices of set intersection between all data and skids_selected
+        ind_dict = dict((k,i) for i,k in enumerate(data.id.values))
+        inter = set(ind_dict).intersection(skids_selected)
+        indices = [ind_dict[x] for x in inter]
+
+        data = data.iloc[indices]
+
+        if(plot_upset):
+            fg = plot(data, sort_categories_by = None)
+            plt.savefig(f'{path}.pdf', bbox_inches='tight')
+
+        # identify skids that weren't plotting in upset plot (based on plotting threshold)
+        all_skids = [x for sublist in [cat.get_skids() for cat in cat_types] for x in sublist]
+        skids_excluded = list(np.setdiff1d(all_skids, skids_selected))
+
+        return (cat_types, cats_selected, skids_excluded)
 
     @staticmethod
     def get_skids_from_meta_meta_annotation(meta_meta, split=False):
