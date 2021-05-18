@@ -28,7 +28,8 @@ plt.rcParams['font.family'] = 'arial'
 # load previously generated adjacency matrices
 # see 'network_analysis/generate_all_edges.py'
 
-brain_inputs = [x for sublist in [pymaid.get_skids_by_annotation(annot) for annot in pymaid.get_annotated('mw brain inputs and ascending').name] for x in sublist]
+modalities = 'mw brain sensory modalities'
+brain_inputs = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=False)
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + brain_inputs
 
 adj_names = ['ad', 'aa', 'dd', 'da']
@@ -47,17 +48,13 @@ outputs = pd.read_csv('data/graphs/outputs.csv', index_col=0)
 mat_ad, mat_aa, mat_dd, mat_da = [pm.Adjacency_matrix(adj=adj, input_counts=inputs, mat_type=adj_names[i]) for i, adj in enumerate(adjs)]
 # %%
 # load appropriate sensory and ascending types
-input_types = [[annot.replace('mw ', ''), pymaid.get_skids_by_annotation(annot)] for annot in pymaid.get_annotated('mw brain inputs and ascending').name]
-input_types = pd.DataFrame(input_types, columns = ['type', 'source'])
 
-all_ascending = [pymaid.get_skids_by_annotation(annot) for annot in pymaid.get_annotated('mw brain ascendings').name]
-all_ascending = [x for sublist in all_ascending for x in sublist]
-
-input_types = input_types.append(pd.DataFrame([['A1 ascendings all', all_ascending]], columns = ['type', 'source']))
-input_types = input_types.reset_index(drop=True)
+input_types, input_names = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=True)
+input_names = [annot.replace('mw ', '') for annot in input_names]
+input_types = pd.DataFrame(zip(input_names, input_types), columns = ['type', 'source'])
 
 # %%
-# identify all 2nd-order neurons
+# identify all 2nd/3rd/4th-order neurons
 
 pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
 
@@ -76,12 +73,15 @@ input_types['order4'] = order4
 all_order4 = list(np.unique([x for sublist in input_types.order4 for x in sublist]))
 
 # export IDs
-#[pymaid.add_annotations(input_types.order2.iloc[i], f'mw brain 2nd_order {input_types.type.iloc[i]}') for i in range(0, 10)]
-#pymaid.add_meta_annotations([f'mw brain 2nd_order {input_types.type.iloc[i]}' for i in range(0, 10)], 'mw brain inputs 2nd_order')
-#[pymaid.add_annotations(input_types.order3.iloc[i], f'mw brain 3rd_order {input_types.type.iloc[i]}') for i in range(0, 10)]
-#pymaid.add_meta_annotations([f'mw brain 3rd_order {input_types.type.iloc[i]}' for i in range(0, 10)], 'mw brain inputs 3rd_order')
+#[pymaid.add_annotations(input_types.order2.loc[index], f'mw brain 2nd_order {input_types.type.loc[index]}') for index in input_types.index]
+#pymaid.add_meta_annotations([f'mw brain 2nd_order {input_types.type.loc[index]}' for index in input_types.index], 'mw brain inputs 2nd_order')
+#[pymaid.add_annotations(input_types.order3.loc[index], f'mw brain 3rd_order {input_types.type.loc[index]}') for index in input_types.index]
+#pymaid.add_meta_annotations([f'mw brain 3rd_order {input_types.type.loc[index]}' for index in input_types.index], 'mw brain inputs 3rd_order')
 
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+# %%
+# intersection between 2nd/3rd/4th neuropils
+
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
 input_types = input_types.set_index('type')
 
 # look at overlap between order2 neurons
@@ -107,21 +107,20 @@ fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', form
 
 # %%
 # identify LNs in each layer
+pymaid.clear_cache()
 summed_adj = pd.read_csv(f'data/adj/all-neurons_all-all.csv', index_col = 0).rename(columns=int)
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'visual', 'enteric', 'thermo', 'noci', 'mechano', 'proprio', 'touch', 'intero']
 
-sens = [pymaid.get_skids_by_annotation(f'mw {celltype}') for celltype in order]
+sens = [ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {celltype}') for celltype in order]
 order2_ct = [ct.Celltype(f'2nd-order {celltype}', pymaid.get_skids_by_annotation(f'mw brain 2nd_order {celltype}')) for celltype in order]
 order3_ct = [ct.Celltype(f'3rd-order {celltype}', pymaid.get_skids_by_annotation(f'mw brain 3rd_order {celltype}')) for celltype in order]
 exclude = [pymaid.get_skids_by_annotation(x) for x in ['mw MBON', 'mw MBIN', 'mw RGN', 'mw dVNC', 'mw dSEZ', 'mw bilateral axon', 'mw contralateral axon', 'mw KC']]
 exclude = [x for sublist in exclude for x in sublist]
 
 # identify LNs
-# use 0.5 output fraction within group threshold; except for ORN, AN, MN, photoreceptors (2nd-order) because a couple known LNs are excluded
-#   seems to be due to incomplete reconstruction of outputs in lower AL
+# use 0.5 output fraction within group threshold
 threshold = 0.5
-LNs_2nd = [celltype.identify_LNs(0.4, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct[0:4])] # relax the threshold due to issues with output sink in SEZ
-LNs_2nd = LNs_2nd + [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct[4:])]
+LNs_2nd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct)]
 LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, exclude=exclude)[0] for i, celltype in enumerate(order3_ct)]
 
 # export LNs
@@ -130,14 +129,13 @@ pymaid.add_meta_annotations([f'mw brain 2nd_order LN {name}' for i, name in enum
 [pymaid.add_annotations(LNs_3rd[i], f'mw brain 3rd_order LN {name}') for i, name in enumerate(order) if len(LNs_3rd[i])>0]
 pymaid.add_meta_annotations([f'mw brain 3rd_order LN {name}' for i, name in enumerate(order) if len(LNs_3rd[i])>0], 'mw brain inputs 3rd_order LN')
 
-# add special case for AN/MN/ORN LNs
-# 2nd-order
-ct_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order ORN') + pymaid.get_skids_by_annotation('mw brain 2nd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 2nd_order MN sensories')
-input_skids = pymaid.get_skids_by_annotation('mw ORN') + pymaid.get_skids_by_annotation('mw AN sensories') + pymaid.get_skids_by_annotation('mw MN sensories')
-AN_MN_ORN_order2 = ct.Celltype('2nd-order AN-MN-ORN', ct_skids)
-AN_MN_ORN_LNs_2nd = AN_MN_ORN_order2.identify_LNs(0.4, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] # relaxed threshold for 2nd_order
-pymaid.add_annotations(AN_MN_ORN_LNs_2nd, 'mw brain 2nd_order LN AN_MN_ORN')
-pymaid.add_meta_annotations('mw brain 2nd_order LN AN_MN_ORN', 'mw brain inputs 2nd_order LN')
+# add special case for olfactory/gustatory 2nd-order because it's so interconnected
+ct_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order olfactory') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-external') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-internal')
+input_skids = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw olfactory') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-external') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-internal')
+olf_gust_order2 = ct.Celltype('2nd-order olfactory-gustatory', ct_skids)
+olf_gust_LN_order2 = olf_gust_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] # relaxed threshold for 2nd_order
+pymaid.add_annotations(olf_gust_LN_order2, 'mw brain 2nd_order LN olfactory-gustatory')
+pymaid.add_meta_annotations('mw brain 2nd_order LN olfactory-gustatory', 'mw brain inputs 2nd_order LN')
 
 '''
 ct_skids = pymaid.get_skids_by_annotation('mw brain 3rd_order ORN') + pymaid.get_skids_by_annotation('mw brain 3rd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 3rd_order MN sensories')
@@ -153,10 +151,9 @@ pymaid.add_meta_annotations('mw brain 3rd_order LN AN_MN_ORN', 'mw brain inputs 
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
-colors = ['#00753F', '#1D79B7', '#5D8C90', '#D88052', '#FF8734', '#E55560', '#F9EB4D', '#8C7700', '#9467BD','#D88052', '#A52A2A']
-colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
-            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#ED1C24', '#35B3E7',
+            '#F15A29', '#00A79D', '#F93DB6', '#754C29', '#662D91']
 
 # alpha determined by number of neurons being plotted
 max_members = max([len(x) for x in input_types.source.loc[order]])
@@ -165,7 +162,7 @@ max_alpha = 0.2 # max is really min+max
 alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.source.loc[order]]
 
 n_rows = 2
-n_cols = 5
+n_cols = 6
 
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
 gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
@@ -191,10 +188,9 @@ fig.savefig(f'identify_neuron_classes/plots/morpho_sens_asc.png', format='png', 
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
-colors = ['#00753F', '#1D79B7', '#5D8C90', '#D88052', '#FF8734', '#E55560', '#F9EB4D', '#8C7700', '#9467BD','#D88052', '#A52A2A']
-colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
-            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#ED1C24', '#35B3E7',
+            '#F15A29', '#00A79D', '#F93DB6', '#754C29', '#662D91']
 
 # alpha determined by number of neurons being plotted
 max_members = max([len(x) for x in input_types.order2.loc[order]])
@@ -203,7 +199,7 @@ max_alpha = 0.2 # max is really min+max
 alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.order2.loc[order]]
 
 n_rows = 2
-n_cols = 5
+n_cols = 6
 
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
 gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
@@ -229,9 +225,9 @@ fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder.png', format='p
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
-colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
-            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#ED1C24', '#35B3E7',
+            '#F15A29', '#00A79D', '#F93DB6', '#754C29', '#662D91']
 
 # alpha determined by number of neurons being plotted
 max_members = max([len(x) for x in input_types.order3.loc[order]])
@@ -240,7 +236,7 @@ max_alpha = 0.2 # max is really min+max
 alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in input_types.order3.loc[order]]
 
 n_rows = 2
-n_cols = 5
+n_cols = 6
 
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
 gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
@@ -266,9 +262,8 @@ fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='p
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
-colors  = ['#00A651', '#8DC63F', '#D7DF23', '#35B3E7', '#ED1C24',
-            '#662D91', '#F15A29', '#00A79D', '#F93DB6', '#754C29']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#ED1C24', '#35B3E7', '#F15A29', '#00A79D', '#F93DB6', '#754C29', '#662D91']
 
 neurons = [x for sublist in list(zip(input_types.source.loc[order], input_types.order2.loc[order], input_types.order3.loc[order])) for x in sublist]
 colors = list(np.repeat(colors, 3))
@@ -279,7 +274,7 @@ min_alpha = 0.025
 max_alpha = 0.2 # max is really min+max
 alphas = [min_alpha+(max_alpha-len(x)/max_members*max_alpha) for x in neurons]
 
-n_rows = 10
+n_rows = len(input_types.index)
 n_cols = 3
 
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
