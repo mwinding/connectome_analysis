@@ -595,9 +595,11 @@ class Promat():
     #   'pair_status': pairs / nonpaired
     #   'pair_id': left skid of a pair or simply the skid of a nonpaired neuron
     @staticmethod
-    def convert_df_to_pairwise(df):
+    def convert_df_to_pairwise(df, pairs=None):
 
-        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(df.index)
+        if(pairs==None):
+            pairs = Promat.get_pairs()
+        brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(df.index, pairList = pairs)
             
         # left_right interlaced order for brain matrix
         brain_pair_order = []
