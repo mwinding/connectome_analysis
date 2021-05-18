@@ -265,6 +265,16 @@ class Celltype_Analyzer:
             return(skids)
         if(split==True):
             return(skids, meta_annots)
+
+    @staticmethod
+    def get_skids_from_meta_annotation(meta, split=False):
+        annot_list = pymaid.get_annotated(meta).name
+        skids = [list(pymaid.get_skids_by_annotation(annots)) for annots in annot_list]
+        if(split==False):
+            skids = [x for sublist in skids for x in sublist]
+            return(skids)
+        if(split==True):
+            return(skids, meta_annots)
     
     @staticmethod
     def default_celltypes(exclude = []):
