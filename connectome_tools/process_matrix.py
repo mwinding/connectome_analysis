@@ -641,6 +641,10 @@ class Promat():
         if(skid in pairList["rightid"].values):
             pair_skid = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
 
+        if((skid not in pairList['rightid'].values) & (skid not in pairList['leftid'].values)):
+            print(f'skid {skid} is not in paired list')
+            pair_skid = skid
+
         return(pair_skid)
 
     # returns paired skids in array [left, right]; can input either left or right skid of a pair to identify
@@ -656,8 +660,8 @@ class Promat():
             pair_right = skid
 
         if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
-            print("skid %i is not in paired list" % (skid))
-            return([skid, skid])
+            print(f"skid {skid} is not in paired list")
+            return(skid)
 
         return([pair_left, pair_right])
 
