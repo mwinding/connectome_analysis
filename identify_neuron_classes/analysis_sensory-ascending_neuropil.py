@@ -29,7 +29,7 @@ plt.rcParams['font.family'] = 'arial'
 
 # warning: hardcoded names to get order correct
 # could be problem if more are added
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
 order2_names = [f'mw brain 2nd_order {celltype}' for celltype in order]
 order3_names = [f'mw brain 3rd_order {celltype}' for celltype in order]
 
@@ -41,18 +41,18 @@ order3_ct = ct.Celltype_Analyzer([ct.Celltype(order3_names[i].replace('mw brain 
 
 # upset plots of 2nd/3rd order centers
 #   returned values are Celltypes of upset plot partitions 
-order2_cats = order2_ct.upset_members(path='identify_neuron_classes/plots/2nd-order_upset-plot', plot_upset=True)
-order3_cats = order3_ct.upset_members(path='identify_neuron_classes/plots/3rd-order_upset-plot', plot_upset=True)
+order2_cats = order2_ct.upset_members(path='identify_neuron_classes/plots/2nd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
+order3_cats = order3_ct.upset_members(path='identify_neuron_classes/plots/3rd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
 
 # %%
 # manually generate Sankey-like plots
 # use numbers extracted here for sizes of each bar
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
 sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
 order2 = [ct.Celltype(f'2nd_order {name}', pymaid.get_skids_by_annotation(f'mw brain 2nd_order {name}')) for name in order]
 order3 = [ct.Celltype(f'3rd_order {name}', pymaid.get_skids_by_annotation(f'mw brain 3rd_order {name}')) for name in order]
 
-LNs = pymaid.get_skids_by_annotation('mw brain LNs')
+LNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
 RGN = pymaid.get_skids_by_annotation('mw RGN')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
@@ -104,6 +104,8 @@ row_sum = df.sum(axis=1).values
 for i in range(0, len(df)):
     df.iloc[i, :] = df.iloc[i, :]/row_sum[i]
 
+df=df.fillna(0) # fill NaN from divide by 0 with 0
+
 fig, ax = plt.subplots(1,1,figsize=(15,6))
 ax.bar(x = df.index, height = df['Sens'])
 ax.bar(x = df.index, height = df['LN'])
@@ -117,7 +119,7 @@ plt.savefig('identify_neuron_classes/plots/fraction-LNs-and-outputs_per_neuropil
 
 # %%
 # known cell types per 2nd/3rd order
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
 sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
 order2 = [ct.Celltype(f'2nd_order {name}', pymaid.get_skids_by_annotation(f'mw brain 2nd_order {name}')) for name in order]
 order3 = [ct.Celltype(f'3rd_order {name}', pymaid.get_skids_by_annotation(f'mw brain 3rd_order {name}')) for name in order]
@@ -176,7 +178,7 @@ plt.savefig('identify_neuron_classes/plots/cell-identites_3rd-order.pdf', bbox_i
 # %%
 # adjacency matrix of all types
 
-brain_inputs = [x for sublist in [pymaid.get_skids_by_annotation(annot) for annot in pymaid.get_annotated('mw brain inputs and ascending').name] for x in sublist]
+brain_inputs = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + brain_inputs
 
 adj_names = ['ad', 'aa', 'dd', 'da']
@@ -185,114 +187,15 @@ adj_ad = adj_ad.loc[np.intersect1d(adj_ad.index, brain), np.intersect1d(adj_ad.i
 adj_aa = adj_aa.loc[np.intersect1d(adj_aa.index, brain), np.intersect1d(adj_aa.index, brain)]
 adj_dd = adj_dd.loc[np.intersect1d(adj_dd.index, brain), np.intersect1d(adj_dd.index, brain)]
 adj_da = adj_da.loc[np.intersect1d(adj_da.index, brain), np.intersect1d(adj_da.index, brain)]
+adjs = [adj_ad, adj_aa, adj_dd, adj_da]
 
-neuron_types = sens + order2 + order3
-neuron_types_skids = [x.get_skids() for x in neuron_types]
-
-mat = adj_ad
-summed_mat = pd.DataFrame(np.zeros(shape=(len(neuron_types_skids),len(neuron_types_skids))),
-                                    index = [x.get_name() for x in neuron_types],
-                                    columns = [x.get_name() for x in neuron_types])
-for i, skids_i in enumerate(neuron_types_skids):
-    for j, skids_j in enumerate(neuron_types_skids):
-        skids_i = np.intersect1d(skids_i, mat.index)
-        skids_j = np.intersect1d(skids_j, mat.index)
-        sum_value = mat.loc[skids_i, skids_j].sum(axis=1).sum()
-        sum_value = sum_value/len(skids_j)
-        summed_mat.iloc[i, j] = sum_value
-
-fig, ax = plt.subplots(1,1,figsize=(5,5))
-sns.heatmap(summed_mat.iloc[10:, 10:], square=True, vmax=75)
-plt.savefig('identify_neuron_classes/plots/connectivity-between-neuropils.pdf', bbox_inches='tight', format = 'pdf')
+vmaxs = [75, 30, 30, 10]
+for i, adj in enumerate(adjs):
+    neuron_types_cta = ct.Celltype_Analyzer(order2 + order3)
+    summed_mat = neuron_types_cta.connectivity(adj=adj, normalize_post_num=True)
+    fig, ax = plt.subplots(1,1,figsize=(5,5))
+    sns.heatmap(summed_mat, square=True, vmax=vmaxs[i])
+    plt.savefig(f'identify_neuron_classes/plots/connectivity-between-neuropils_{adj_names[i]}.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
-# Sankey plot characterizing number of LNs, outputs, etc. per 2nd/3rd order neurons
-'''
-import plotly.graph_objects as go # Import the graphical object
-from plotly.offline import plot
-
-node_label = ['sens0', 'sens1', 'sens0order2', 'sens01order2', 'sens1order2-1', 'sens1order2-2']
-source_node = [0, 0, 1, 1, 1]
-target_node = [2, 3, 3, 4, 5]
-values = [10, 2, 3, 5, 6]
-
-fig = go.Figure( 
-    data=[go.Sankey( # The plot we are interest
-        # This part is for the node information
-        node = dict( 
-            label = node_label
-        ),
-        # This part is for the link information
-        link = dict(
-            source = source_node,
-            target = target_node,
-            value = values
-        ))])
-
-# And shows the plot
-fig.show()
-plt.savefig('identify_neuron_classes/plots/sens-order_types.pdf', bbox_inches='tight')
-
-import plotly.graph_objects as go
-
-# %%
-# custom bar plot for cell types
-
-fig = go.Figure()
-
-fig.add_trace(go.Scatter(
-    x=[1.5, 4.5],
-    y=[0.75, 0.75],
-    text=["Unfilled Rectangle", "Filled Rectangle"],
-    mode="text",
-))
-
-# Set axes properties
-fig.update_xaxes(range=[0, 55], showgrid=False)
-fig.update_yaxes(range=[0, 8], showgrid=False)
-
-# Add shapes
-fig.add_shape(type="rect",
-    x0=1, y0=1, x1=22, y1=2,
-    line=dict(color="RoyalBlue"), 
-    fillcolor="RoyalBlue"
-)
-
-fig.add_shape(type="rect",
-    x0=1, y0=4, x1=10, y1=5,
-    line=dict(
-        color="RoyalBlue",
-        width=2,
-    ),
-    fillcolor="RoyalBlue",
-)
-
-fig.add_shape(type="rect",
-    x0=11, y0=4, x1=50, y1=5,
-    line=dict(
-        color="RoyalBlue",
-        width=2,
-    ),
-    fillcolor="RoyalBlue",
-)
-
-fig.update_shapes(dict(xref='x', yref='y'))
-fig.show()
-
-# %%
-# testing plot
-
-fig, ax = plt.subplots(1,1,figsize=(4,4))
-ax.set(xlim=(0,50), ylim=(0,5))
-rect = plt.Rectangle((1,1), 21, 1, fc='gray')
-rect2 = plt.Rectangle((1,3), 14, 1, fc='gray')
-rect3 = plt.Rectangle((16,3), 20, 1, fc='gray')
-
-ax.add_patch(rect)
-ax.add_patch(rect2)
-ax.add_patch(rect3)
-
-plt.show()
-'''
-# %%
-# cascades through sensory centers
+# cascades through sensory neuropils
