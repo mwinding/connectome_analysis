@@ -78,11 +78,12 @@ all_order4 = list(np.unique([x for sublist in input_types.order4 for x in sublis
 #[pymaid.add_annotations(input_types.order3.loc[index], f'mw brain 3rd_order {input_types.type.loc[index]}') for index in input_types.index]
 #pymaid.add_meta_annotations([f'mw brain 3rd_order {input_types.type.loc[index]}' for index in input_types.index], 'mw brain inputs 3rd_order')
 
+input_types = input_types.set_index('type') # for future chunks
+
 # %%
 # intersection between 2nd/3rd/4th neuropils
 
 order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
-input_types = input_types.set_index('type')
 
 # look at overlap between order2 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
@@ -121,7 +122,7 @@ exclude = [x for sublist in exclude for x in sublist]
 # use 0.5 output fraction within group threshold
 threshold = 0.5
 LNs_2nd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct)]
-LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, exclude=exclude)[0] for i, celltype in enumerate(order3_ct)]
+LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, exclude=exclude)[1] for i, celltype in enumerate(order3_ct)]
 
 # export LNs
 [pymaid.add_annotations(LNs_2nd[i], f'mw brain 2nd_order LN {name}') for i, name in enumerate(order) if len(LNs_2nd[i])>0]
@@ -130,22 +131,27 @@ pymaid.add_meta_annotations([f'mw brain 2nd_order LN {name}' for i, name in enum
 pymaid.add_meta_annotations([f'mw brain 3rd_order LN {name}' for i, name in enumerate(order) if len(LNs_3rd[i])>0], 'mw brain inputs 3rd_order LN')
 
 # add special case for olfactory/gustatory 2nd-order because it's so interconnected
+pymaid.clear_cache()
 ct_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order olfactory') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-external') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-internal')
 input_skids = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw olfactory') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-external') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-internal')
 olf_gust_order2 = ct.Celltype('2nd-order olfactory-gustatory', ct_skids)
-olf_gust_LN_order2 = olf_gust_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] # relaxed threshold for 2nd_order
+olf_gust_LN_order2 = olf_gust_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] 
 pymaid.add_annotations(olf_gust_LN_order2, 'mw brain 2nd_order LN olfactory-gustatory')
+pymaid.clear_cache()
 pymaid.add_meta_annotations('mw brain 2nd_order LN olfactory-gustatory', 'mw brain inputs 2nd_order LN')
+# APL not picked up because it doesn't receive input from 2nd-order olfactory neurons
+# perhaps could update the definition of LN a bit
 
 '''
-ct_skids = pymaid.get_skids_by_annotation('mw brain 3rd_order ORN') + pymaid.get_skids_by_annotation('mw brain 3rd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 3rd_order MN sensories')
-input_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order ORN') + pymaid.get_skids_by_annotation('mw brain 2nd_order AN sensories') + pymaid.get_skids_by_annotation('mw brain 2nd_order MN sensories')
-AN_MN_ORN_order2 = ct.Celltype('3rd-order AN-MN-ORN', ct_skids)
-AN_MN_ORN_LNs_3rd = AN_MN_ORN_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0]
-pymaid.add_annotations(AN_MN_ORN_LNs_3rd, 'mw brain 3rd_order LN AN_MN_ORN')
-pymaid.add_meta_annotations('mw brain 3rd_order LN AN_MN_ORN', 'mw brain inputs 3rd_order LN')
+pymaid.clear_cache()
+ct_skids = pymaid.get_skids_by_annotation('mw brain 3rd_order olfactory') + pymaid.get_skids_by_annotation('mw brain 3rd_order gustatory-external') + pymaid.get_skids_by_annotation('mw brain 3rd_order gustatory-internal')
+input_skids = pymaid.get_skids_by_annotation('mw brain 2nd_order olfactory') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-external') + pymaid.get_skids_by_annotation('mw brain 2nd_order gustatory-internal')
+olf_gust_order3 = ct.Celltype('3rd-order olfactory-gustatory', ct_skids)
+olf_gust_LN_order3 = olf_gust_order3.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] 
+pymaid.add_annotations(olf_gust_LN_order3, 'mw brain 3rd_order LN olfactory-gustatory')
+pymaid.clear_cache()
+pymaid.add_meta_annotations('mw brain 3rd_order LN olfactory-gustatory', 'mw brain inputs 3rd_order LN')
 '''
-
 # %%
 # plot sensories/ascendings
 

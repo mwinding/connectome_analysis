@@ -36,10 +36,10 @@ adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
 
 #%%
 # pull sensory annotations and then pull associated skids
-order = ['ORN', 'AN sensories', 'MN sensories', 'photoreceptors', 'thermosensories', 'v\'td', 'A1 ascending noci', 'A1 ascending mechano', 'A1 ascending proprio', 'A1 ascending class II_III']
-sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
+order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 input_skids_list = [x.get_skids() for x in sens]
-input_skids = [val for sublist in input_skids_list for val in sublist]
+input_skids = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 
 output_names = pymaid.get_annotated('mw brain outputs').name
 output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))

@@ -66,7 +66,6 @@ input_skids_list_reordered = [input_skids_list[i] for i in sensory_order]
 # cascades from each sensory modality
 from src.traverse import Cascade, to_transmission_matrix
 from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
 
 # convert skids to indices
 input_indices_list = []
