@@ -15,10 +15,10 @@ from upsetplot import from_memberships
 import connectome_tools.cluster_analysis as clust
 
 class Celltype:
-    def __init__(self, name, skids, color=[]):
+    def __init__(self, name, skids, color=None):
         self.name = name
         self.skids = list(np.unique(skids))
-        if(color!=[]):
+        if(color!=None):
             self.color = color
 
     def get_name(self):
@@ -168,6 +168,10 @@ class Celltype_Analyzer:
 
         fraction_type = pd.DataFrame(fraction_type, index = self.known_types_names, 
                                     columns = [f'{celltype.get_name()} ({len(celltype.get_skids())})' for celltype in self.Celltypes])
+        
+        if(raw_num==True):
+            fraction_type = fraction_type.astype(int)
+        
         return(fraction_type)
 
     def plot_memberships(self, path, figsize):
@@ -184,9 +188,9 @@ class Celltype_Analyzer:
             bottom = bottom + memberships.iloc[i, :]
         plt.savefig(path, format='pdf', bbox_inches='tight')
 
-    def connectivity(self, adj = None, use_stored_adj = False, normalize_pre_num = False, normalize_post_num = False):
+    def connectivity(self, adj, use_stored_adj=None, normalize_pre_num = False, normalize_post_num = False):
 
-        if(use_stored_adj):
+        if(use_stored_adj==True):
             adj_df = self.adj
         else:
             adj_df = adj
@@ -205,7 +209,7 @@ class Celltype_Analyzer:
         mat = pd.DataFrame(mat, index = celltype_names, columns = celltype_names)
         return(mat)
 
-    def upset_members(self, threshold=0, path=None, plot_upset=False, exclude_singletons_from_threshold=False, threshold_dual_cats=0, exclude_skids=None):
+    def upset_members(self, threshold=0, path=None, plot_upset=False, show_counts_bool=True, exclude_singletons_from_threshold=False, threshold_dual_cats=None, exclude_skids=None):
 
         celltypes = self.Celltypes
 
@@ -232,7 +236,11 @@ class Celltype_Analyzer:
             cat_bool = [len(x.get_skids())>=threshold for x in cat_types]
         
         # allows categories with no intersection ('singletons') to dodge the threshold
-        if(exclude_singletons_from_threshold): 
+        if((exclude_singletons_from_threshold==True) & (threshold_dual_cats==None)): 
+            cat_bool = [(((len(x.get_skids())>=threshold) | ('+' not in x.get_name()))) for x in cat_types]
+
+        # allows categories with no intersection ('singletons') to dodge the threshold and additional threshold for dual combos
+        if((exclude_singletons_from_threshold==True) & (threshold_dual_cats!=None)): 
             cat_bool = [(((len(x.get_skids())>=threshold) | ('+' not in x.get_name())) | (len(x.get_skids())>=threshold_dual_cats) & (x.get_name().count('+')<2)) for x in cat_types]
 
         cats_selected = list(np.array(cat_types)[cat_bool])
@@ -245,13 +253,20 @@ class Celltype_Analyzer:
 
         data = data.iloc[indices]
 
-        if(plot_upset):
-            fg = plot(data, sort_categories_by = None)
-            plt.savefig(f'{path}.pdf', bbox_inches='tight')
-
         # identify skids that weren't plotting in upset plot (based on plotting threshold)
         all_skids = [x for sublist in [cat.get_skids() for cat in cat_types] for x in sublist]
         skids_excluded = list(np.setdiff1d(all_skids, skids_selected))
+
+        if(plot_upset):
+            if(show_counts_bool):
+                fg = plot(data, sort_categories_by = None, show_counts='%d')
+            else: 
+                fg = plot(data, sort_categories_by = None)
+
+            if(threshold_dual_cats==None):
+                plt.savefig(f'{path}_excluded{len(skids_excluded)}_threshold{threshold}.pdf', bbox_inches='tight')
+            if(threshold_dual_cats!=None):
+                plt.savefig(f'{path}_excluded{len(skids_excluded)}_threshold{threshold}_dual-threshold{threshold_dual_cats}.pdf', bbox_inches='tight')
 
         return (cat_types, cats_selected, skids_excluded)
 
@@ -274,7 +289,7 @@ class Celltype_Analyzer:
             skids = [x for sublist in skids for x in sublist]
             return(skids)
         if(split==True):
-            return(skids, meta_annots)
+            return(skids, annot_list)
     
     @staticmethod
     def default_celltypes(exclude = []):
@@ -309,18 +324,23 @@ class Celltype_Analyzer:
         skid_groups = [x for sublist in skid_groups for x in sublist]
         names = [list(pymaid.get_annotated(x).name) for x in priority_list]
         names = [x for sublist in names for x in sublist]
-        #names = [x.replace('mw brain ', '') for x in names]
+        names = [x.replace('mw brain ', '') for x in names]
         
         # identify colors
         colors = list(pymaid.get_annotated('mw brain simple colors').name)
+
+        # official order; note that it will have to change if any new groups are added
+        official_order = ['sensories', 'PNs', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
         colors_order = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
-        
+        if(len(official_order)!=len(colors_order)):
+            print('warning: issue with annotations! Check "official_order" in Celltype_Analyzer.default_celltypes()')
+            
         # ordered properly and linked to colors
-        groups_sort = [np.where(x==np.array(colors_order))[0][0] for x in names]
+        groups_sort = [np.where(x==np.array(official_order))[0][0] for x in names]
         names = [element for _, element in sorted(zip(groups_sort, names))]
         skid_groups = [element for _, element in sorted(zip(groups_sort, skid_groups))]
+        colors = [element for _, element in sorted(zip(groups_sort, colors))]
 
-        names = [x.replace('mw brain ', '') for x in names] #format names
         data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['name', 'skids', 'color'])
         celltype_objs = list(map(lambda x: Celltype(*x), zip(names, skid_groups, colors)))
         return(data, celltype_objs)
