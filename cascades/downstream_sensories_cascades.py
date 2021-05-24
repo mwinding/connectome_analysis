@@ -47,15 +47,22 @@ output_skids = [val for sublist in output_skids_list for val in sublist]
 
 #%%
 # cascades from each sensory modality
+import pickle 
 
 p = 0.05
 max_hops = 10
-n_init = 100
+n_init = 1000
 simultaneous = True
 adj=adj_ad
 
+'''
 input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = order, stop_skids=output_skids, 
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
+
+pickle.dump(input_hit_hist_list, open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'wb'))
+'''
+
+input_hit_hist_list = pickle.load(open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'rb'))
 
 # %%
 # plot sensory cascades raw
@@ -136,13 +143,21 @@ for row in sens_output_df.iterrows():
 
 all_sens_output_dist = pd.DataFrame(all_sens_output_dist, columns = ['source', 'target', 'mean_hop', 'median_hop'])
 # %%
-# plotting visits by modality to each descending to VNC neuron pair 
+# plotting visits by modality to each descending to VNC neuron pair
 # supplemental figure
-# *** CONTINUE WORKING HERE
 
 dVNC_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in dVNC_hits]
 dVNC_hits_summed = pd.concat(dVNC_hits_summed, axis=1)
 dVNC_hits_pairwise = pm.Promat.convert_df_to_pairwise(dVNC_hits_summed)
+
+dSEZ_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in dSEZ_hits]
+dSEZ_hits_summed = pd.concat(dSEZ_hits_summed, axis=1)
+dSEZ_hits_pairwise = pm.Promat.convert_df_to_pairwise(dSEZ_hits_summed)
+
+RGN_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in RGN_hits]
+RGN_hits_summed = pd.concat(RGN_hits_summed, axis=1)
+RGN_hits_pairwise = pm.Promat.convert_df_to_pairwise(RGN_hits_summed)
+
 
 fig, axs = plt.subplots(
     3, 1, figsize=(8, 8)
@@ -153,42 +168,215 @@ fig.tight_layout(pad=3.0)
 ax = axs[0]
 ax.get_xaxis().set_visible(False)
 ax.set_title('Signal to Individual VNC Descending Neurons')
-sns.heatmap(dVNC_hits.iloc[:, 1:len(dVNC_hits)].sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False]).T, ax = ax, rasterized = True)
+sns.heatmap(dVNC_hits_pairwise.T, ax = ax)
 
 ax = axs[1]
 ax.get_xaxis().set_visible(False)
 ax.set_title('Signal to Individual SEZ Descending Neurons')
-sns.heatmap(dSEZ_hits.iloc[:, 1:len(dSEZ_hits)].sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False]).T, ax = ax, rasterized = True)
+sns.heatmap(dSEZ_hits_pairwise.T, ax = ax)
 
 ax = axs[2]
 ax.set_xlabel('Individual Ring Gland Neurons')
 ax.get_xaxis().set_visible(False)
 ax.set_title('Signal to Individual Ring Gland Neurons')
-sns.heatmap(RG_hits.iloc[:, 1:len(RG_hits)].sort_values(['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd', 'A00c'], ascending=[False, False, False, False, False, False, False]).T, ax = ax, rasterized = True)
+sns.heatmap(RGN_hits_pairwise.T, ax = ax)
 
 plt.savefig('cascades/plots/signal_to_individual_outputs.pdf', format='pdf', bbox_inches='tight')
 
 #%%
 # alternative clustermap plot of descending neurons
 # supplemental figure plot
+vmax = n_init
 
-fig = sns.clustermap(dVNC_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+fig = sns.clustermap(dVNC_hits_pairwise.T, row_cluster = False, figsize = (8, 4), vmax=vmax)
 ax = fig.ax_heatmap
 ax.set_xlabel('Individual dVNCs')
 ax.set_xticks([])
-fig.savefig('cascades/plots/signal_to_individual_dVNCs.pdf')
+fig.savefig('cascades/plots/signal_to_individual_dVNCs.pdf', format='pdf', bbox_inches='tight')
 
-fig = sns.clustermap(dSEZ_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+fig = sns.clustermap(dSEZ_hits_pairwise.T, row_cluster = False, figsize = (8, 4), vmax=vmax)
 ax = fig.ax_heatmap
 ax.set_xlabel('Individual dSEZs')
 ax.set_xticks([])
-fig.savefig('cascades/plots/signal_to_individual_dSEZs.pdf')
+fig.savefig('cascades/plots/signal_to_individual_dSEZs.pdf', format='pdf', bbox_inches='tight')
 
-fig = sns.clustermap(RG_hits.iloc[:, 1:len(dVNC_hits)].T, row_cluster = False, figsize = (8, 4), rasterized = True)
+fig = sns.clustermap(RGN_hits_pairwise.T, row_cluster = False, figsize = (8, 4), vmax=vmax)
 ax = fig.ax_heatmap
 ax.set_xlabel('Individual RG neurons')
 ax.set_xticks([])
-fig.savefig('cascades/plots/signal_to_individual_RGs.pdf')
+fig.savefig('cascades/plots/signal_to_individual_RGs.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# distribution summary of signal to output neurons
+
+dVNC_dist = (dVNC_hits_pairwise.groupby('pair_id').sum()>=n_init).sum(axis=1)
+dSEZ_dist = (dSEZ_hits_pairwise.groupby('pair_id').sum()>=n_init).sum(axis=1)
+RGN_dist = (RGN_hits_pairwise.groupby('pair_id').sum()>=n_init).sum(axis=1)
+
+dist_data = pd.DataFrame(list(zip(dVNC_dist.values, ['dVNC']*len(dVNC_dist))) + list(zip(dSEZ_dist.values, ['dSEZ']*len(dSEZ_dist))) + list(zip(RGN_dist.values, ['RGN']*len(RGN_dist))),
+                            columns = ['combinations', 'type'])
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.stripplot(data = dist_data, y = 'combinations', x='type', s=1, ax=ax)
+fig.savefig('cascades/plots/signal_to_outputs_dist.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.histplot(data = dVNC_dist-0.5, ax=ax, bins=len(sens))
+fig.savefig('cascades/plots/signal_to_dVNC_dist.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.histplot(data = dSEZ_dist-0.5, ax=ax, bins=len(sens))
+fig.savefig('cascades/plots/signal_to_dSEZ_dist.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.histplot(data = RGN_dist-0.5, ax=ax, bins=len(sens))
+fig.savefig('cascades/plots/signal_to_RGN_dist.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# parallel coordinates plots
+from pandas.plotting import parallel_coordinates
+
+linewidth = 0.75
+alpha = 0.8
+very_low_color = '#D7DF23'
+low_color = '#C2DD26'
+med_color = '#8DC63F'
+high_color = '#00A651'
+
+data = dVNC_hits_pairwise.groupby('pair_id').sum()
+very_low = (dVNC_dist<=1)
+low = (dVNC_dist>1) & (dVNC_dist<4)
+med = (dVNC_dist>=4) & (dVNC_dist<8)
+high = dVNC_dist>=8
+data['type'] = [0]*len(data.index)
+data.loc[high, 'type'] = ['high']*len(data.loc[high, 'type'])
+data.loc[med, 'type'] = ['med']*len(data.loc[med, 'type'])
+data.loc[low, 'type'] = ['low']*len(data.loc[low, 'type'])
+data.loc[very_low, 'type'] = ['very_low']*len(data.loc[very_low, 'type'])
+data = data.sort_values(by='type')
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+parallel_coordinates(data, class_column='type', color = [high_color, med_color, low_color, very_low_color], alpha=alpha, linewidth=linewidth)
+fig.savefig('cascades/plots/signal-to-dVNC_parallel-coordinates.pdf', format='pdf', bbox_inches='tight')
+
+data = dSEZ_hits_pairwise.groupby('pair_id').sum()
+very_low = (dSEZ_dist<=1)
+low = (dSEZ_dist>1) & (dSEZ_dist<4)
+med = (dSEZ_dist>=4) & (dSEZ_dist<8)
+high = dSEZ_dist>=8
+data['type'] = [0]*len(data.index)
+data.loc[high, 'type'] = ['high']*len(data.loc[high, 'type'])
+data.loc[med, 'type'] = ['med']*len(data.loc[med, 'type'])
+data.loc[low, 'type'] = ['low']*len(data.loc[low, 'type'])
+data.loc[very_low, 'type'] = ['very_low']*len(data.loc[very_low, 'type'])
+data = data.sort_values(by='type')
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+parallel_coordinates(data, class_column='type', color = [high_color, low_color, med_color, very_low_color], alpha=alpha, linewidth=linewidth)
+fig.savefig('cascades/plots/signal-to-dSEZ_parallel-coordinates.pdf', format='pdf', bbox_inches='tight')
+
+data = RGN_hits_pairwise.groupby('pair_id').sum()
+very_low = (RGN_dist<=1)
+low = (RGN_dist>1) & (RGN_dist<4)
+med = (RGN_dist>=4) & (RGN_dist<8)
+high = RGN_dist>=8
+data['type'] = [0]*len(data.index)
+data.loc[high, 'type'] = ['high']*len(data.loc[high, 'type'])
+data.loc[med, 'type'] = ['med']*len(data.loc[med, 'type'])
+data.loc[low, 'type'] = ['low']*len(data.loc[low, 'type'])
+data.loc[very_low, 'type'] = ['very_low']*len(data.loc[very_low, 'type'])
+data = data.sort_values(by='type')
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+parallel_coordinates(data, class_column='type', color = [high_color, low_color, very_low_color, med_color], alpha=alpha, linewidth=linewidth)
+fig.savefig('cascades/plots/signal-to-RGN_parallel-coordinates.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# PCA of descending input
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+data = dVNC_hits_pairwise.groupby('pair_id').sum()
+data['type'] = ['dVNC']*len(data)
+
+data2 = dSEZ_hits_pairwise.groupby('pair_id').sum()
+data2['type'] = ['dSEZ']*len(data2)
+
+data3 = RGN_hits_pairwise.groupby('pair_id').sum()
+data3['type'] = ['RGN']*len(data3)
+
+data = pd.concat([data, data2, data3])
+x = data.drop(columns='type').values
+
+x = StandardScaler().fit_transform(x)
+pca = PCA(n_components=2)
+principalComponents = pca.fit_transform(x)
+principalDf = pd.DataFrame(data = principalComponents
+             , columns = ['pc1', 'pc2'], index=data.index)
+principalDf['type'] = data['type']
+
+ylim = (-2.25, 2.25)
+xlim = (-5, 6)
+size = 3
+
+# plot dVNC PCA
+plot_data = principalDf[principalDf.type=='dVNC']
+low = (dVNC_dist<4)
+med = (dVNC_dist>=4) & (dVNC_dist<10)
+high = dVNC_dist>=10
+plot_data.loc[high, 'type'] = ['high']*len(plot_data.loc[high, 'type'])
+plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
+plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+ax.set(xlim=xlim, ylim=ylim)
+fig.savefig('cascades/plots/signal-to-dVNC_PCA.pdf', format='pdf', bbox_inches='tight')
+
+# plot dSEZ PCA
+plot_data = principalDf[principalDf.type=='dSEZ']
+low = (dSEZ_dist<4)
+med = (dSEZ_dist>=4) & (dSEZ_dist<10)
+high = dSEZ_dist>=10
+plot_data.loc[high, 'type'] = ['high']*len(plot_data.loc[high, 'type'])
+plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
+plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+ax.set(xlim=xlim, ylim=ylim)
+fig.savefig('cascades/plots/signal-to-dSEZ_PCA.pdf', format='pdf', bbox_inches='tight')
+
+# plot RGN PCA
+plot_data = principalDf[principalDf.type=='RGN']
+low = (RGN_dist<4)
+med = (RGN_dist>=4) & (RGN_dist<10)
+high = RGN_dist>=10
+plot_data.loc[high, 'type'] = ['high']*len(plot_data.loc[high, 'type'])
+plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
+plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+ax.set(xlim=xlim, ylim=ylim)
+fig.savefig('cascades/plots/signal-to-RGN_PCA.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# bar plot of high, med, low categories for each type of output
+
+integration_data = [['dVNC', 'high', sum(dVNC_dist>=10)], 
+                    ['dVNC', 'med', sum((dVNC_dist>=4) & (dVNC_dist<10))],
+                    ['dVNC', 'low', sum(dVNC_dist<4)],
+                    ['dSEZ', 'high', sum(dSEZ_dist>=10)], 
+                    ['dSEZ', 'med', sum((dSEZ_dist>=4) & (dSEZ_dist<10))],
+                    ['dSEZ', 'low', sum(dSEZ_dist<4)],
+                    ['RGN', 'high', sum(RGN_dist>=10)], 
+                    ['RGN', 'med', sum((RGN_dist>=4) & (RGN_dist<10))], 
+                    ['RGN', 'low', sum(RGN_dist<4)]]
+
+integration_data = pd.DataFrame(integration_data, columns = ['class', 'type', 'count'])
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.barplot(data = integration_data, x='class', y='count', hue='type', ax=ax)
+fig.savefig('cascades/plots/signal-integration-counts_dVNCs.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 ##########
