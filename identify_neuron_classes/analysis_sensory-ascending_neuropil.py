@@ -14,6 +14,7 @@ import connectome_tools.cluster_analysis as clust
 import connectome_tools.celltype as ct
 import connectome_tools.process_graph as pg
 import connectome_tools.process_matrix as pm
+import connectome_tools.cascade_analysis as casc
 import navis
 
 # allows text to be editable in Illustrator
@@ -199,3 +200,28 @@ for i, adj in enumerate(adjs):
 
 # %%
 # cascades through sensory neuropils
+
+# load cascades generating in /cascades/multisensory_integration_cascades.py
+import pickle
+
+n_init=1000
+hops=8
+input_hit_hist_list = pickle.load(open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'rb'))
+
+all_cta = ct.Celltype_Analyzer(order2 + order3)
+
+columns = []
+for hit_hist in input_hit_hist_list:
+    column = hit_hist.cascades_in_celltypes(cta=all_cta, hops=hops, n_init=n_init).visits_norm
+    column.name = hit_hist.get_name()
+    column.index = [x.get_name() for x in all_cta.Celltypes]
+    columns.append(column)
+
+cascades_neuropil = pd.concat(columns, axis=1)
+
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+sns.heatmap(cascades_neuropil, ax=ax, cmap='Reds', vmax=1)
+plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils.pdf', bbox_inches='tight', format = 'pdf')
+
+
+# %%
