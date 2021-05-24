@@ -68,6 +68,17 @@ class Cascade_Analyzer:
         skids = np.concatenate([neurons_pairs.leftid, neurons_pairs.rightid, neurons_nonpaired.nonpaired])
         return(skids)
 
+    def cascades_in_celltypes(self, cta, hops, n_init):
+        skid_hit_hist = self.skid_hit_hist
+        hits = []
+        for celltype in cta.Celltypes:
+            total = skid_hit_hist.loc[celltype.get_skids(), :].sum(axis=0).iloc[1:hops+1].sum()
+            total = total/(len(celltype.get_skids())*n_init)
+            hits.append([celltype.get_name(), total])
+
+        data = pd.DataFrame(hits, columns=['neuropil', 'visits_norm'])
+        return(data)
+
     @staticmethod
     def run_cascade(i, cdispatch):
         return(cdispatch.multistart(start_nodes = i))
