@@ -47,22 +47,26 @@ output_skids = [val for sublist in output_skids_list for val in sublist]
 
 #%%
 # cascades from each sensory modality
+# save as pickle to use later because cascades are stochastic; prevents the need to remake plots everytime
+import pickle
 
 p = 0.05
 max_hops = 10
-n_init = 100
+n_init = 1000
 simultaneous = True
 adj=adj_ad
-
+'''
 input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = order, stop_skids=output_skids, 
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
-
+pickle.dump(input_hit_hist_list, open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'wb'))
+'''
+input_hit_hist_list = pickle.load(open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'rb'))
 # %%
 # pairwise thresholding of hit_hists
 
 threshold = n_init/2
-hops = 7
+hops = 8
 
 sens_types = [ct.Celltype(hit_hist.get_name(), list(hit_hist.pairwise_threshold(threshold=threshold, hops=hops))) for hit_hist in input_hit_hist_list]
 sens_types_analyzer = ct.Celltype_Analyzer(sens_types)
@@ -84,11 +88,14 @@ upset_analyzer = ct.Celltype_Analyzer(members_selected)
 upset_analyzer.set_known_types(celltypes)
 upset_data = upset_analyzer.memberships(raw_num=True) # the data is all out of order compared to upset plot
 
+# %%
 # matched the order of the upset manually (couldn't find out quickly how to pull the data from the plot)
 # *** MANUAL INPUT REQUIRED HERE ***
-col_order = [9, 7, 6, 5, 4, 3, 1, 0, 10, 8, 2, 11, 12, 13, 14, 15, 16, 17]
+col_order = [11, 9, 8, 7, 6, 5, 3, 2, 1, 0, 12, 10, 4, 13, 14, 15, 16, 17]
 col_name_order = [upset_data.columns[i] for i in col_order]
 
+# %%
+# plot upset cell lines
 upset_data = upset_data.loc[:, col_name_order].drop(['sensories', 'ascendings'])
 
 # add set of miscellaneous integrations that is plotted as the final bar in the upset plot
@@ -130,6 +137,7 @@ all_upset_cats = [members_selected[i] for i in col_order] + [ct.Celltype(name='+
 ll_upset_cats = [all_upset_cats[i] for i, x in enumerate(labelled_line) if x==True]
 int_upset_cats = [all_upset_cats[i] for i, x in enumerate(integrative) if x==True]
 
+hops = 8
 # determine median hops from sensory for labelled-line neurons
 neuron_data_ll = []
 for cat in ll_upset_cats:
@@ -160,36 +168,50 @@ for cat in int_upset_cats:
 
             # for paired neurons (partner skid != skid for paired neurons)
             if(partner!=skid):
-                data = skid_hit_hist.loc[skid, :]
-                partner_data = skid_hit_hist.loc[partner, :]
+                data = skid_hit_hist.loc[skid, 1:hops+1]
+                partner_data = skid_hit_hist.loc[partner, 1:hops+1]
                 if((sum(data)+sum(partner_data))>=n_init): # check pairwise threshold again here
                     # convert to counts
                     count=[]
                     for i in data.index:
-                        num = int(data.iloc[i])
+                        num = int(data.loc[i])
                         if(num>0): count = count + [i]*num
 
             # for nonpaired neurons
             if(partner==skid):
-                data = skid_hit_hist.loc[skid, :]
+                data = skid_hit_hist.loc[skid, 1:hops+1]
                 if(sum(data)>=n_init/2): # check threshold again here for unpaired
                     # convert to counts
                     count=[]
                     for i in data.index:
-                        num = int(data.iloc[i])
+                        num = int(data.loc[i])
                         if(num>0): count = count + [i]*num
 
-                neuron_data_int.append([skid, np.median(count), hit_hist.get_name(), 'integrative'])        
+            neuron_data_int.append([skid, np.median(count), hit_hist.get_name(), 'integrative'])        
 
 df_hops = pd.DataFrame(neuron_data_ll + neuron_data_int, columns=['skid', 'hops', 'sensory', 'type'])
-df_hops = df_hops.set_index(['type', 'skid', 'sensory'])
+#df_hops = df_hops.set_index(['type', 'skid', 'sensory'])
+
+# how many neurons of each type are there? labelled line vs integrative
+ll_count = len(np.unique(df_hops[df_hops.type=='labelled-line'].skid))
+int_count = len(np.unique(df_hops[df_hops.type=='integrative'].skid))
+identified = list(np.unique(df_hops[df_hops.type=='labelled-line'].skid)) + list(np.unique(df_hops[df_hops.type=='integrative'].skid))
+
+# any missing neurons? who are they?
+brain = np.setdiff1d(pymaid.get_skids_by_annotation('mw brain paper clustered neurons'), ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities'))
+left_over = list(np.setdiff1d(brain, identified))
+left_over_analyze = ct.Celltype_Analyzer([ct.Celltype('left_over', left_over)])
+left_over_analyze.set_known_types(celltypes)
+left_over_data = left_over_analyze.memberships(raw_num=True)
 
 # boxenplot of hops from sens/ascending neurons for integrative vs. labelled line
-df_hops['hops'] = df_hops['hops']-0.5 # makes the boxenplot line up with each hop level
+#df_hops['hops'] = df_hops['hops']-0.5 # makes the boxenplot line up with each hop level
 fig, ax = plt.subplots(1,1, figsize=(1,1.5))
-sns.boxenplot(data=df_hops, x='type', y='hops', k_depth='full', orient='v', linewidth=0.5, ax=ax)
-plt.savefig('cascades/plots/sens-cascades_hops_plot.pdf', format='pdf', bbox_inches='tight')
-df_hops['hops'] = df_hops['hops']+0.5 # revert back to normal
+sns.boxenplot(data=df_hops, x='type', y='hops', k_depth='full', orient='v', linewidth=0, showfliers=False, ax=ax)
+ax.set(ylim=(1, 9), yticks=[1,2,3,4,5,6,7,8])
+ax.set_xlabel([f'Labeled Line (N={ll_count})', f'Integrative (N={int_count})'])
+plt.savefig('cascades/plots/sens-cascades_hops-plot.pdf', format='pdf', bbox_inches='tight')
+#df_hops['hops'] = df_hops['hops']+0.5 # revert back to normal
 
 # %%
 # take the upset categories and make labelled-line / integrative plot of clusters
