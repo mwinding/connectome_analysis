@@ -1,13 +1,7 @@
 #%%
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
-
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -20,6 +14,8 @@ import numpy.random as random
 
 import cmasher as cmr
 
+import connectome_tools.process_matrix as pm
+
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -30,28 +26,18 @@ plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-#adj = mg.adj  # adjacency matrix from the "mg" object
-adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
-adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
-
-# remove A1 except for ascendings
-A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
-pruned_index = list(np.setdiff1d(adj.index, A1_local)) 
-adj = adj.loc[pruned_index, pruned_index] # remove all local A1 skids from adjacency matrix
+adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
 
 # load inputs and pair data
-inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
-inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+inputs = pd.read_csv('data/graphs/inputs.csv', index_col = 0)
+pairs = pm.Promat.get_pairs()
 
 # load cluster data
 clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
 
 # separate meta file with median_node_visits from sensory for each node
 # determined using iterative random walks
-meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
+meta_with_order = pd.read_csv('data/deprecated/meta_data_w_order.csv', index_col = 0, header = 0)
 
 # level 7 clusters
 lvl7 = clusters.groupby('lvl7_labels')
@@ -68,7 +54,8 @@ order_df = order_df.sort_values(by = 'node_visit_order')
 order = list(order_df.cluster)
 
 # %%
-# number of dendrite_axon types
+# number of contra/ipsi edges and synapses
+# just creates confusion, leave it out 
 
 ipsi_axon = pymaid.get_skids_by_annotation('mw ipsilateral axon')
 contra_axon = pymaid.get_skids_by_annotation('mw contralateral axon')
@@ -76,31 +63,6 @@ bilateral_axon = pymaid.get_skids_by_annotation('mw bilateral axon')
 ipsi_dendrite = pymaid.get_skids_by_annotation('mw ipsilateral dendrite')
 contra_dendrite = pymaid.get_skids_by_annotation('mw contralateral dendrite')
 bilateral_dendrite = pymaid.get_skids_by_annotation('mw bilateral dendrite')
-
-ipsi_ipsi = len(np.intersect1d(ipsi_dendrite, ipsi_axon))
-ipsi_bilateral = len(np.intersect1d(ipsi_dendrite, bilateral_axon))
-ipsi_contra = len(np.intersect1d(ipsi_dendrite, contra_axon))
-bilateral_ipsi = len(np.intersect1d(bilateral_dendrite, ipsi_axon))
-bilateral_bilateral = len(np.intersect1d(bilateral_dendrite, bilateral_axon))
-bilateral_contra = len(np.intersect1d(bilateral_dendrite, contra_axon))
-contra_ipsi = len(np.intersect1d(contra_dendrite, ipsi_axon))
-contra_bilateral = len(np.intersect1d(contra_dendrite, bilateral_axon))
-contra_contra = len(np.intersect1d(contra_dendrite, contra_axon))
-
-neuron_types = pd.DataFrame([[ipsi_ipsi, ipsi_bilateral, ipsi_contra], 
-                            [bilateral_ipsi, bilateral_bilateral, bilateral_contra],
-                            [contra_ipsi, contra_bilateral, contra_contra]], 
-                            index = ['ipsi', 'bilateral', 'contra'], 
-                            columns = ['ipsi', 'bilateral', 'contra'])
-
-fig, ax = plt.subplots(1,1, figsize=(0.75,0.75))
-sns.heatmap(neuron_types, annot=True, fmt = 'd', ax=ax, vmax=600, cmap='Blues', cbar=False)
-ax.set(xticks=([]), yticks=([]))
-fig.savefig('interhemisphere/plots/cell_types_dendrite-axon.pdf', format='pdf', bbox_inches='tight')
-
-# %%
-# number of contra/ipsi edges and synapses
-# just creates confusion, leave it out 
 
 ipsi_ipsi = list(np.intersect1d(ipsi_dendrite, ipsi_axon))
 ipsi_bilateral = list(np.intersect1d(ipsi_dendrite, bilateral_axon))
