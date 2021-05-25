@@ -1,14 +1,17 @@
 #%%
-import sys
-sys.path.append("/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/")
+import os
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 import pymaid
-import pyoctree
+import navis
+#import pyoctree
 from pymaid_creds import url, name, password, token
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+
+import connectome_tools.process_skeletons as skel
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -20,18 +23,31 @@ plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-def get_connectors_group(skids):
-    neurons = pymaid.get_neuron(skids)
+def get_connectors_group(skids, output_separate=False):
 
-    outputs = neurons.connectors[neurons.connectors['relation']==0]
-    inputs = neurons.connectors[neurons.connectors['relation']==1]
+    neurons = []
+    for skid in skids:
+        neurons.append(pymaid.get_neuron(skid))
+    axons, dendrites = skel.split_axons_dendrites(neurons, 'mw axon split')
 
-    return(outputs, inputs)
+    axon_outputs = []
+    dendrite_inputs = []
+    for axon, dendrite in zip(axons, dendrites):
+        axon_outputs.append(axon.connectors[axon.connectors['type']==0])
+        dendrite_inputs.append(dendrite.connectors[dendrite.connectors['type']==1])
+
+    if(output_separate):
+        return(axon_outputs, dendrite_inputs)
+    if(output_separate==False):
+        return(pd.concat(axon_outputs, axis=0), pd.concat(dendrite_inputs, axis=0))
 
 #%%
+# loading neurons, splitting axon/dendrite, and identifying axon and dendrite connectors
 ipsi_skids = pymaid.get_skids_by_annotation("mw ipsilateral axon")
 bilateral_skids = pymaid.get_skids_by_annotation("mw bilateral axon")
 contra_skids = pymaid.get_skids_by_annotation("mw contralateral axon")
+contra_contra_skids = pymaid.get_skids_by_annotation('mw contralateral dendrite')
+contra_skids = np.setdiff1d(contra_skids, contra_contra_skids) # remove neurons that are contralateral axon + dendrite
 
 #left_skids = pymaid.get_skids_by_annotation("mw left")
 right_skids = pymaid.get_skids_by_annotation("mw right")
@@ -47,6 +63,7 @@ bilateral_right_outputs, bilateral_right_inputs = get_connectors_group(bilateral
 contra_right_outputs, contra_right_inputs = get_connectors_group(contra_right)
 
 #%%
+# plot axon output and dendrite input spatial distributions
 
 min_x = 939 #based on 'cns' volume
 max_x = 105096 #based on 'cns' volume
