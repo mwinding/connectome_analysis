@@ -6,6 +6,27 @@ import math
 from tqdm import tqdm
 import csv
 import pymaid
+import navis
+
+# split axons and dendrites and return neurons
+def split_axons_dendrites(list_neurons, split):
+
+    axons = []
+    dendrites = []
+    for neuron in list_neurons:
+        #identify split
+        if(split in neuron.tags.keys()):
+            if(len(neuron.tags[split])==1):
+                split_id = neuron.tags[split][0]
+                axon, dendrite = navis.cut_neuron(neuron, split_id)
+                axons.append(axon)
+                dendrites.append(dendrite)
+            if(len(neuron.tags[split])>1):
+                print(f'{neuron.id}: more than one split tag!')
+        if(split not in neuron.tags.keys()):
+            print(f'{neuron.id}: no split tag!!')
+        
+    return(axons, dendrites)
 
 # import skeleton CSV (of single skeleton) in CATMAID export skeleton format
 def skid_as_networkx_graph(skeleton):
