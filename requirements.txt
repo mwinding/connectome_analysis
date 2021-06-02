@@ -56,6 +56,6 @@ tqdm==4.60.0
 traitlets==5.0.5
 trimesh==3.9.14
 typing-extensions==3.7.4.3
-urllib3==1.26.4
+urllib3==1.26.5
 vispy==0.6.6
 wcwidth==0.2.5
