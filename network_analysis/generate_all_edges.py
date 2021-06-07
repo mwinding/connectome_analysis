@@ -59,21 +59,22 @@ outputs = meta_data.loc[:, ['axon_output', 'dendrite_output']]
 # exporting input data
 inputs.to_csv('data/graphs/inputs.csv')
 outputs.to_csv('data/graphs/outputs.csv')
-# %%
-# prune out A1 neurons from adjacency matrices (optional)
 
 # making some custom adjacencies without certain edge types
 adj_allaa = adj_ad + adj_da + adj_dd
 adj_ad_da = adj_ad + adj_da
 
 #convert column names to int for easier indexing
-adj_all.columns = adj_all.columns.astype(int) 
-adj_ad.columns = adj_ad.columns.astype(int) 
-adj_aa.columns = adj_aa.columns.astype(int) 
-adj_da.columns = adj_da.columns.astype(int) 
-adj_dd.columns = adj_dd.columns.astype(int) 
-adj_allaa.columns = adj_allaa.columns.astype(int) 
-adj_ad_da.columns = adj_ad_da.columns.astype(int) 
+adj_all.columns = adj_all.columns.astype(int)
+adj_ad.columns = adj_ad.columns.astype(int)
+adj_aa.columns = adj_aa.columns.astype(int)
+adj_da.columns = adj_da.columns.astype(int)
+adj_dd.columns = adj_dd.columns.astype(int)
+adj_allaa.columns = adj_allaa.columns.astype(int)
+adj_ad_da.columns = adj_ad_da.columns.astype(int)
+
+# %%
+# prune out A1 neurons from adjacency matrices (optional)
 
 # remove A1 except for ascendings, also paritally differentiated neurons
 A1_ascending = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain ascendings').name))
@@ -95,13 +96,13 @@ adj_ad_da = adj_ad_da.loc[pruned_index[6], pruned_index[6]]
 # %%
 # load adj matrices
 
-adj_all_mat = pm.Adjacency_matrix(adj_all.values, adj_all.index, pairs, inputs, 'summed')
-adj_ad_mat = pm.Adjacency_matrix(adj_ad.values, adj_ad.index, pairs, inputs, 'ad')
-adj_aa_mat = pm.Adjacency_matrix(adj_aa.values, adj_aa.index, pairs, inputs, 'aa')
-adj_dd_mat = pm.Adjacency_matrix(adj_dd.values, adj_dd.index, pairs, inputs, 'dd')
-adj_da_mat = pm.Adjacency_matrix(adj_da.values, adj_da.index, pairs, inputs, 'da')
-adj_allaa_mat = pm.Adjacency_matrix(adj_allaa.values, adj_allaa.index, pairs, inputs, 'all-aa')
-adj_ad_da_mat = pm.Adjacency_matrix(adj_ad_da.values, adj_ad_da.index, pairs, inputs, 'ad_da')
+adj_all_mat = pm.Adjacency_matrix(adj_all, inputs, 'summed')
+adj_ad_mat = pm.Adjacency_matrix(adj_ad, inputs, 'ad')
+adj_aa_mat = pm.Adjacency_matrix(adj_aa, inputs, 'aa')
+adj_dd_mat = pm.Adjacency_matrix(adj_dd, inputs, 'dd')
+adj_da_mat = pm.Adjacency_matrix(adj_da, inputs, 'da')
+adj_allaa_mat = pm.Adjacency_matrix(adj_allaa, inputs, 'all-aa')
+adj_ad_da_mat = pm.Adjacency_matrix(adj_ad_da, inputs, 'ad_da')
 
 # %%
 # generate all paired and nonpaired edges from each matrix with threshold
@@ -116,7 +117,7 @@ left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
 
 for i, adj_mat in enumerate(adjs):
-    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)
+    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids)
     matrix_nonpaired = list(np.intersect1d(matrix_pairs[2].nonpaired, left+right)) # ignore unipolar neurons, not in set of brain neurons
     all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
 
