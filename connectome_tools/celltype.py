@@ -76,6 +76,41 @@ class Celltype:
         LNs = [x[2] for sublist in LNs for x in sublist]
         LNs = list(np.setdiff1d(LNs, exclude)) # don't count neurons flagged as excludes: for example, MBONs/MBINs/RGNs probably shouldn't be LNs
         return(LNs, skid_percent_output)
+    
+    def identify_in_out_LNs(self, threshold, summed_adj, outputs, inputs, exclude, pairs = pm.Promat.get_pairs(), sort = True):
+
+        mat_output = summed_adj.loc[:, np.intersect1d(summed_adj.index, self.skids)]
+        mat_output = mat_output.sum(axis=1)
+        mat_input = summed_adj.loc[np.intersect1d(summed_adj.index, self.skids), :]
+        mat_input = mat_input.sum(axis=0)
+        
+        # convert to % outputs
+        skid_percent_in_out = []
+        for skid in summed_adj.index:
+            skid_output = 0
+            output = sum(outputs.loc[skid, :])
+            if(output != 0):
+                if(skid in mat_output.index):
+                    skid_output = skid_output + mat_output.loc[skid]/output
+
+            skid_input = 0
+            input_ = sum(inputs.loc[skid, :])
+            if(input_ != 0):
+                if(skid in mat_input.index):
+                    skid_input = skid_input + mat_input.loc[skid]/input_
+            
+            skid_percent_in_out.append([skid, skid_input, skid_output])
+
+        skid_percent_in_out = pm.Promat.convert_df_to_pairwise(pd.DataFrame(skid_percent_in_out, columns=['skid', 'percent_input_from_group', 'percent_output_to_group']).set_index('skid'))
+
+        # identify neurons with >=50% output within group (or axoaxonic onto input neurons to group)
+        LNs = skid_percent_in_out.groupby('pair_id').sum()      
+        LNs = LNs[((LNs>=threshold*2).sum(axis=1)==2).values]
+        LNs = list(LNs.index) # identify pair_ids of all neurons pairs/nonpaired over threshold
+        LNs = [list(skid_percent_in_out.loc[(slice(None), skid), :].index) for skid in LNs] # pull all left/right pairs or just nonpaired neurons
+        LNs = [x[2] for sublist in LNs for x in sublist]
+        LNs = list(np.setdiff1d(LNs, exclude)) # don't count neurons flagged as excludes: for example, MBONs/MBINs/RGNs probably shouldn't be LNs
+        return(LNs, skid_percent_in_out)
 
 
 class Celltype_Analyzer:
