@@ -26,7 +26,7 @@ plt.rcParams['font.family'] = 'arial'
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
+adj = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
 
 # load inputs and pair data
 inputs = pd.read_csv('data/graphs/inputs.csv', index_col = 0)
@@ -111,7 +111,7 @@ left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
 br = pymaid.get_skids_by_annotation('mw brain neurons')
 
-projectome = pd.read_csv('interhemisphere/data/projectome_mw_brain_matrix_A1_split.csv', index_col = 0, header = 0)
+projectome = pd.read_csv('data/projectome/projectome_mw brain paper all neurons_split.csv', index_col = 0, header = 0)
 
 is_left = []
 for skid in projectome.skeleton:
@@ -171,6 +171,8 @@ projectome['summed_left'] = projectome[meshes_left].sum(axis=1)
 projectome['summed_right'] = projectome[meshes_right].sum(axis=1)
 proj_group = projectome.groupby(['skeleton', 'is_left','is_axon', 'is_input'])['summed_left', 'summed_right'].sum()
 
+A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
+A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
 A1_local = list(np.setdiff1d(A1, A1_ascending))
 right_contra_axon_outputs = proj_group.loc[(A1, 0, 1, 0), :] # right side, axon outputs
 left_contra_axon_outputs = proj_group.loc[(A1, 1, 1, 0), :] # left side, axon outputs
@@ -194,11 +196,11 @@ fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.distplot(right_den_inputs.ratio, ax=ax, kde=False, bins=20)
 sns.distplot(left_den_inputs.ratio, ax=ax, kde=False, bins=20, color='gray')
 ax.set(yticks=[], xticks=[])
+ax.set_yscale('log')
 fig.savefig('interhemisphere/plots/A1_dendrite-input_ipsi-vs-contralateral.pdf', format='pdf', bbox_inches='tight')
 # %%
 # pair-wise contra/bilateral character
 # use this to proofread pairs and define all neurons as ipsi-, bi-, or contralateral
-from connectome_tools.process_matrix import Adjacency_matrix, Promat
 
 meshes_left = ['Brain Hemisphere left', 'SEZ_left', 'T1_left', 'T2_left', 'T3_left', 'A1_left', 'A2_left', 'A3_left', 'A4_left', 'A5_left', 'A6_left', 'A7_left', 'A8_left']
 meshes_right = ['Brain Hemisphere right', 'SEZ_right', 'T1_right', 'T2_right', 'T3_right', 'A1_right', 'A2_right', 'A3_right', 'A4_right', 'A5_right', 'A6_right', 'A7_right', 'A8_right']
@@ -208,7 +210,7 @@ projectome['summed_left'] = projectome[meshes_left].sum(axis=1)
 projectome['summed_right'] = projectome[meshes_right].sum(axis=1)
 proj_group = projectome.groupby(['skeleton', 'is_left','is_axon', 'is_input'])['summed_left', 'summed_right'].sum()
 #proj_group = projectome.groupby(['skeleton', 'is_left','is_axon', 'is_input'])['Brain Hemisphere left', 'Brain Hemisphere right'].sum()
-br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 
 right_contra_axon_outputs = proj_group.loc[(br, 0, 1, 0), :] # right side, axon outputs
 left_contra_axon_outputs = proj_group.loc[(br, 1, 1, 0), :] # left side, axon outputs
@@ -216,7 +218,7 @@ left_contra_axon_outputs = proj_group.loc[(br, 1, 1, 0), :] # left side, axon ou
 right_contra_axon_outputs['ratio'] = right_contra_axon_outputs['summed_left']/(right_contra_axon_outputs['summed_left'] + right_contra_axon_outputs['summed_right'])
 left_contra_axon_outputs['ratio'] = left_contra_axon_outputs['summed_right']/(left_contra_axon_outputs['summed_left'] + left_contra_axon_outputs['summed_right'])
 
-br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 
 contra_pairs = []
 for i in range(len(br_pairs)):
@@ -240,7 +242,7 @@ left_den_inputs = proj_group.loc[(br, 1, 0, 1), :] # left side, dendrite inputs
 right_den_inputs['ratio'] = right_den_inputs['summed_left']/(right_den_inputs['summed_left'] + right_den_inputs['summed_right'])
 left_den_inputs['ratio'] = left_den_inputs['summed_right']/(left_den_inputs['summed_left'] + left_den_inputs['summed_right'])
 
-br_pairs = Promat.extract_pairs_from_list(br, pairs)[0]
+br_pairs = pm.Promat.extract_pairs_from_list(br, pairs)[0]
 
 dend_pairs = []
 for i in range(len(br_pairs)):
@@ -303,14 +305,14 @@ pymaid.add_annotations(contra_skids, 'mw contralateral axon')
 pymaid.add_annotations(bilateral_skids, 'mw bilateral axon')
 '''
 # %%
-# plot ipsi, bi, contra
+# plot ipsi, bi, contra axons
 ipsi_annotated = pymaid.get_skids_by_annotation('mw ipsilateral axon')
 bilateral_annotated = pymaid.get_skids_by_annotation('mw bilateral axon')
 contra_annotated = pymaid.get_skids_by_annotation('mw contralateral axon')
 
-ipsi_skids_pair = Promat.extract_pairs_from_list(ipsi_annotated, pairs)[0]
-contra_skids_pair = Promat.extract_pairs_from_list(contra_annotated, pairs)[0]
-bilateral_skids_pair = Promat.extract_pairs_from_list(bilateral_annotated, pairs)[0]
+ipsi_skids_pair = pm.Promat.extract_pairs_from_list(ipsi_annotated, pairs)[0]
+contra_skids_pair = pm.Promat.extract_pairs_from_list(contra_annotated, pairs)[0]
+bilateral_skids_pair = pm.Promat.extract_pairs_from_list(bilateral_annotated, pairs)[0]
 
 contra_pairs.index = contra_pairs.leftid
 
@@ -321,16 +323,47 @@ max_val = max_val + step + step/2
 bins = [x for x in np.arange(0, max_val, step-step/2)]
 
 fig, ax = plt.subplots(1,1, figsize=(1,2))
-sns.distplot(contra_pairs.loc[ipsi_skids_pair.leftid.values].ratio_aver, kde=False, bins=bins, ax=ax)
-sns.distplot(contra_pairs.loc[bilateral_skids_pair.leftid.values].ratio_aver, kde=False, bins=bins, ax=ax)
-sns.distplot(contra_pairs.loc[contra_skids_pair.leftid.values].ratio_aver, kde=False, bins=bins, ax=ax)
+sns.distplot(contra_pairs.loc[np.intersect1d(ipsi_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
+sns.distplot(contra_pairs.loc[np.intersect1d(bilateral_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
+sns.distplot(contra_pairs.loc[np.intersect1d(contra_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
 ax.set(yticks=[])
 
 fig, ax = plt.subplots(1,1, figsize=(1,2))
-ax.hist(contra_pairs.loc[ipsi_skids_pair.leftid.values].ratio_aver, bins=bins)
-ax.hist(contra_pairs.loc[bilateral_skids_pair.leftid.values].ratio_aver, bins=bins)
-ax.hist(contra_pairs.loc[contra_skids_pair.leftid.values].ratio_aver, bins=bins)
+ax.hist(contra_pairs.loc[np.intersect1d(ipsi_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, bins=bins)
+ax.hist(contra_pairs.loc[np.intersect1d(bilateral_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, bins=bins)
+ax.hist(contra_pairs.loc[np.intersect1d(contra_skids_pair.leftid.values, contra_pairs.index)].ratio_aver, bins=bins)
 fig.savefig('interhemisphere/plots/pairs_Br_axon-output_ipsi-vs-contralateral_colored.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# plot ipsi, bi, contra dendrites
+ipsi_annotated = pymaid.get_skids_by_annotation('mw ipsilateral dendrite')
+bilateral_annotated = pymaid.get_skids_by_annotation('mw bilateral dendrite')
+contra_annotated = pymaid.get_skids_by_annotation('mw contralateral dendrite')
+
+ipsi_skids_pair = pm.Promat.extract_pairs_from_list(ipsi_annotated, pairs)[0]
+contra_skids_pair = pm.Promat.extract_pairs_from_list(contra_annotated, pairs)[0]
+bilateral_skids_pair = pm.Promat.extract_pairs_from_list(bilateral_annotated, pairs)[0]
+
+dend_pairs.index = dend_pairs.leftid
+
+# set up bins
+max_val = 1
+step = max_val/10
+max_val = max_val + step + step/2
+bins = [x for x in np.arange(0, max_val, step-step/2)]
+
+fig, ax = plt.subplots(1,1, figsize=(1,2))
+sns.distplot(dend_pairs.loc[np.intersect1d(ipsi_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
+sns.distplot(dend_pairs.loc[np.intersect1d(bilateral_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
+sns.distplot(dend_pairs.loc[np.intersect1d(contra_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, kde=False, bins=bins, ax=ax)
+ax.set(yticks=[])
+
+fig, ax = plt.subplots(1,1, figsize=(1,2))
+ax.hist(dend_pairs.loc[np.intersect1d(ipsi_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, bins=bins)
+ax.hist(dend_pairs.loc[np.intersect1d(bilateral_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, bins=bins)
+ax.hist(dend_pairs.loc[np.intersect1d(contra_skids_pair.leftid.values, dend_pairs.index)].ratio_aver, bins=bins)
+ax.set_yscale('log')
+fig.savefig('interhemisphere/plots/pairs_Br_dendrite-input_ipsi-vs-contralateral_colored.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # ipsi/contra/bilateral per cluster
