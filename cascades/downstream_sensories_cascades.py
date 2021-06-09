@@ -36,7 +36,7 @@ adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
 
 #%%
 # pull sensory annotations and then pull associated skids
-order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
 sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 input_skids_list = [x.get_skids() for x in sens]
 input_skids = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
@@ -316,6 +316,7 @@ principalDf['type'] = data['type']
 ylim = (-2.25, 2.25)
 xlim = (-5, 6)
 size = 3
+alpha = 0.75
 
 # plot dVNC PCA
 plot_data = principalDf[principalDf.type=='dVNC']
@@ -327,7 +328,7 @@ plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
 plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
 
 fig, ax = plt.subplots(1,1,figsize=(2,2))
-sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['high', 'med', 'low'], s=size, linewidth=0, alpha=alpha, ax=ax)
 ax.set(xlim=xlim, ylim=ylim)
 fig.savefig('cascades/plots/signal-to-dVNC_PCA.pdf', format='pdf', bbox_inches='tight')
 
@@ -341,7 +342,7 @@ plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
 plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
 
 fig, ax = plt.subplots(1,1,figsize=(2,2))
-sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['high', 'med', 'low'], s=size, linewidth=0, alpha=alpha, ax=ax)
 ax.set(xlim=xlim, ylim=ylim)
 fig.savefig('cascades/plots/signal-to-dSEZ_PCA.pdf', format='pdf', bbox_inches='tight')
 
@@ -355,7 +356,7 @@ plot_data.loc[med, 'type'] = ['med']*len(plot_data.loc[med, 'type'])
 plot_data.loc[low, 'type'] = ['low']*len(plot_data.loc[low, 'type'])
 
 fig, ax = plt.subplots(1,1,figsize=(2,2))
-sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['low', 'high', 'med'], s=size, linewidth=0, alpha=0.5, ax=ax)
+sns.scatterplot(data = plot_data, x='pc1', y='pc2', hue='type', hue_order = ['high', 'med', 'low'], s=size, linewidth=0, alpha=alpha, ax=ax)
 ax.set(xlim=xlim, ylim=ylim)
 fig.savefig('cascades/plots/signal-to-RGN_PCA.pdf', format='pdf', bbox_inches='tight')
 
@@ -375,7 +376,7 @@ integration_data = [['dVNC', 'high', sum(dVNC_dist>=10)],
 integration_data = pd.DataFrame(integration_data, columns = ['class', 'type', 'count'])
 
 fig, ax = plt.subplots(1,1,figsize=(2,2))
-sns.barplot(data = integration_data, x='class', y='count', hue='type', ax=ax)
+sns.barplot(data = integration_data, x='class', y='count', hue='type', hue_order = ['high', 'med', 'low'], ax=ax)
 fig.savefig('cascades/plots/signal-integration-counts_dVNCs.pdf', format='pdf', bbox_inches='tight')
 
 # %%

@@ -36,7 +36,7 @@ adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
 
 #%%
 # pull sensory annotations and then pull associated skids
-order = ['olfactory', 'gustatory-external', 'gustatory-internal', 'enteric', 'thermo', 'visual', 'noci', 'mechano', 'proprio', 'touch', 'intero']
+order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
 sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 input_skids_list = [x.get_skids() for x in sens]
 input_skids = [val for sublist in input_skids_list for val in sublist]
@@ -91,7 +91,7 @@ upset_data = upset_analyzer.memberships(raw_num=True) # the data is all out of o
 # %%
 # matched the order of the upset manually (couldn't find out quickly how to pull the data from the plot)
 # *** MANUAL INPUT REQUIRED HERE ***
-col_order = [11, 9, 8, 7, 6, 5, 3, 2, 1, 0, 12, 10, 4, 13, 14, 15, 16, 17]
+col_order = [10, 8, 7, 6, 5, 4, 3, 2, 1, 0, 11, 9, 12, 13, 14, 15, 16]
 col_name_order = [upset_data.columns[i] for i in col_order]
 
 # %%

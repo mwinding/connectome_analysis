@@ -207,7 +207,7 @@ fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
 plt.savefig('identify_neuron_classes/plots/cell-identites_4th-order.pdf', bbox_inches='tight', format = 'pdf')
 
-# celltype identities not split by modality
+# celltype identities not split by modality (4th- and 5th-order)
 order4_all = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order')
 order5_all = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order')
 
@@ -243,11 +243,11 @@ adjs = [adj_ad, adj_aa, adj_dd, adj_da]
 
 vmaxs = [75, 30, 30, 10]
 for i, adj in enumerate(adjs):
-    neuron_types_cta = ct.Celltype_Analyzer(order2 + order3 + order4)
+    neuron_types_cta = ct.Celltype_Analyzer(order2 + order3 + [ct.Celltype('4th_order', order4_all)] + [ct.Celltype('5th_order', order5_all)])
     summed_mat = neuron_types_cta.connectivity(adj=adj, normalize_post_num=True)
     fig, ax = plt.subplots(1,1,figsize=(5,5))
     sns.heatmap(summed_mat, square=True, vmax=vmaxs[i])
-    plt.savefig(f'identify_neuron_classes/plots/connectivity-between-neuropils_{adj_names[i]}.pdf', bbox_inches='tight', format = 'pdf')
+    plt.savefig(f'identify_neuron_classes/plots/connectivity-between-neuropils_{adj_names[i]}_vmax-{vmaxs[i]}.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
 # cascades through sensory neuropils
@@ -283,5 +283,25 @@ plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils.pdf', bbox_inc
 fig, ax = plt.subplots(1,1, figsize=(2,1))
 sns.heatmap(cascades_neuropil.T.iloc[:, 0:len(order)*2], ax=ax, cmap='Reds', vmax=1, square=True)
 plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils_2nd-3rd-order.pdf', bbox_inches='tight', format = 'pdf')
+
+
+# combine all 4th and 5th together
+order4_all = ct.Celltype('4th_order', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order'))
+order5_all = ct.Celltype('5th_order', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order'))
+
+all_cta = ct.Celltype_Analyzer(order2 + order3 + [order4_all] + [order5_all])
+
+columns = []
+for hit_hist in input_hit_hist_list:
+    column = hit_hist.cascades_in_celltypes(cta=all_cta, hops=hops, n_init=n_init).visits_norm
+    column.name = hit_hist.get_name()
+    column.index = [x.get_name() for x in all_cta.Celltypes]
+    columns.append(column)
+
+cascades_neuropil = pd.concat(columns, axis=1)
+
+fig, ax = plt.subplots(1,1, figsize=(4,1.5))
+sns.heatmap(cascades_neuropil.T, ax=ax, cmap='Reds', vmax=1, square=True)
+plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils_combined4th-5th.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
