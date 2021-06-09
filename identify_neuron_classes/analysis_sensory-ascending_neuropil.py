@@ -53,7 +53,7 @@ order4_cats = order4_ct.upset_members(path='identify_neuron_classes/plots/4th-or
 # manually generate Sankey-like plots
 # use numbers extracted here for sizes of each bar
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
+sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
 order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
 order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
@@ -96,6 +96,7 @@ for i in range(0, len(sens)):
     columns.append([0, order2_LN, order2_other, order2_RGN, order2_dSEZ, order2_dVNC])
     columns.append([0, order3_LN, order3_other, order3_RGN, order3_dSEZ, order3_dVNC])
     columns.append([0, order4_LN, order4_other, order4_RGN, order4_dSEZ, order4_dVNC])
+    columns.append([0, 0, 0, 0, 0, 0]) # add space between each modality in subsequent plots
 
 df = pd.DataFrame(columns, columns = ['Sens', 'LN', 'Other', 'RGN', 'dSEZ', 'dVNC'])
 
@@ -111,6 +112,21 @@ ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['
 ax.axis('off')
 
 plt.savefig('identify_neuron_classes/plots/source_for_sankey_plot.pdf', bbox_inches='tight', format = 'pdf')
+
+# plot counts of each type
+row_sum = df.sum(axis=1).values
+
+df=df.fillna(0) # fill NaN from divide by 0 with 0
+
+fig, ax = plt.subplots(1,1,figsize=(15,6))
+ax.bar(x = df.index, height = df['Sens'])
+ax.bar(x = df.index, height = df['LN'])
+ax.bar(x = df.index, height = df['Other'], bottom = df['LN'])
+ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'])
+ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'])
+ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'])
+
+plt.savefig('identify_neuron_classes/plots/counts_LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot fraction of each type
 row_sum = df.sum(axis=1).values
