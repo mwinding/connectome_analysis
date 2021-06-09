@@ -81,7 +81,7 @@ input_types['order6'] = order6
 all_order6 = list(np.unique([x for sublist in input_types.order6 for x in sublist]))
 
 # export IDs
-
+'''
 [pymaid.add_annotations(input_types.order2.loc[index], f'mw {input_types.type.loc[index]} 2nd_order') for index in input_types.index]
 pymaid.add_meta_annotations([f'mw {input_types.type.loc[index]} 2nd_order' for index in input_types.index], 'mw brain inputs 2nd_order')
 [pymaid.add_annotations(input_types.order3.loc[index], f'mw {input_types.type.loc[index]} 3rd_order') for index in input_types.index]
@@ -90,41 +90,42 @@ pymaid.add_meta_annotations([f'mw {input_types.type.loc[index]} 3rd_order' for i
 pymaid.add_meta_annotations([f'mw {input_types.type.loc[index]} 4th_order' for index in input_types.index], 'mw brain inputs 4th_order')
 [pymaid.add_annotations(input_types.order5.loc[index], f'mw {input_types.type.loc[index]} 5th_order') for index in input_types.index if len(input_types.order5.loc[index])!=0]
 pymaid.add_meta_annotations([f'mw {input_types.type.loc[index]} 5th_order' for index in input_types.index if len(input_types.order5.loc[index])!=0], 'mw brain inputs 5th_order')
-
+'''
 input_types = input_types.set_index('type') # for future chunks
 
 # %%
 # intersection between 2nd/3rd/4th neuropils
-
-order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'mechano-II/III', 'respiratory','thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'proprio']
+order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
+#order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'mechano-II/III', 'respiratory','thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'proprio']
+sim_type = 'cosine'
 
 # look at overlap between order2 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order3 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order4 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order5 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [ct.Celltype(i + ' 5th-order', input_types.order5.loc[i]) for i in order if len(input_types.order5.loc[i])!=0]
 cts_analyze = ct.Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type='iou'), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity_sens_5th-order.pdf', format='pdf', bbox_inches='tight')
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_5th-order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # identify LNs in each layer
