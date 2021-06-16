@@ -209,8 +209,9 @@ class Celltype_Analyzer:
         
         return(fraction_type)
 
-    def plot_memberships(self, path, figsize):
-        memberships = self.memberships()
+    def plot_memberships(self, path, figsize, rotated_labels = True, raw_num = False, memberships=None, ylim=None):
+        if(type(memberships)!=pd.DataFrame):
+            memberships = self.memberships(raw_num=raw_num)
         celltype_colors = [x.get_color() for x in self.get_known_types()]
 
         # plot memberships
@@ -221,6 +222,11 @@ class Celltype_Analyzer:
         for i in range(1, len(memberships.index)):
             plt.bar(ind, memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
             bottom = bottom + memberships.iloc[i, :]
+
+        if(rotated_labels):
+            plt.xticks(rotation=45, ha='right')
+        if(ylim!=None):
+            plt.ylim(ylim[0], ylim[1])
         plt.savefig(path, format='pdf', bbox_inches='tight')
 
     def connectivity(self, adj, use_stored_adj=None, normalize_pre_num = False, normalize_post_num = False):
@@ -366,15 +372,17 @@ class Celltype_Analyzer:
 
         # official order; note that it will have to change if any new groups are added
         official_order = ['sensories', 'PNs', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
-        colors_order = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
-        if(len(official_order)!=len(colors_order)):
+        colors_names = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
+        if(len(official_order)!=len(colors_names)):
             print('warning: issue with annotations! Check "official_order" in Celltype_Analyzer.default_celltypes()')
             
         # ordered properly and linked to colors
         groups_sort = [np.where(x==np.array(official_order))[0][0] for x in names]
         names = [element for _, element in sorted(zip(groups_sort, names))]
         skid_groups = [element for _, element in sorted(zip(groups_sort, skid_groups))]
-        colors = [element for _, element in sorted(zip(groups_sort, colors))]
+
+        color_sort = [np.where(x.replace('mw brain ', '')==np.array(official_order))[0][0] for x in colors_names]
+        colors = [element for _, element in sorted(zip(color_sort, colors))]
 
         data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['name', 'skids', 'color'])
         celltype_objs = list(map(lambda x: Celltype(*x), zip(names, skid_groups, colors)))
