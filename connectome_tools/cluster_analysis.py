@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 import sys
-from connectome_tools.process_matrix import Promat
+import connectome_tools.process_matrix as pm
 
 class Analyze_Cluster():
 

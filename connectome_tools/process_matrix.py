@@ -471,7 +471,7 @@ class Adjacency_matrix():
                     if(row.type=='contralateral'):
                         all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
 
-        all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_pair_id', 'downstream_pair_id', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
+        all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_skid', 'downstream_skid', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
         return(all_edges_combined_split)
         
     # generate edge list for whole matrix
@@ -661,16 +661,15 @@ class Promat():
 
         if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
             print(f"skid {skid} is not in paired list")
-            return(skid)
+            return([skid])
 
         return([pair_left, pair_right])
 
     # converts array of skids into left-right pairs in separate columns
     # puts unpaired and nonpaired neurons in different lists
     @staticmethod
-    def extract_pairs_from_list(skids, pairList=None):
-        if(pairList is None):
-            pairList = Promat.get_pairs()
+    def extract_pairs_from_list(skids, pairList):
+
         pairs = pd.DataFrame([], columns = ['leftid', 'rightid'])
         unpaired = pd.DataFrame([], columns = ['unpaired'])
         nonpaired = pd.DataFrame([], columns = ['nonpaired'])
