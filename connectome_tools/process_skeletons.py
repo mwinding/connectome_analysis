@@ -11,6 +11,10 @@ import navis
 # split axons and dendrites and return neurons
 def split_axons_dendrites(list_neurons, split):
 
+    # convert to list if given single skid so it will run
+    if(type(list_neurons)!=list):
+        list_neurons = [list_neurons]
+
     axons = []
     dendrites = []
     for neuron in list_neurons:
@@ -27,6 +31,104 @@ def split_axons_dendrites(list_neurons, split):
             print(f'{neuron.id}: no split tag!!')
         
     return(axons, dendrites)
+
+# pull connector groups after axon_dendrite split
+def get_connectors_group(skids, output_separate=False):
+
+    # convert to list if given single skid so it will run
+    if(type(skids)!=list):
+        skids = [skids]
+
+    neurons = []
+    for skid in skids:
+        neurons.append(pymaid.get_neuron(skid))
+    axons, dendrites = split_axons_dendrites(neurons, 'mw axon split')
+
+    axon_outputs = []
+    dendrite_inputs = []
+    for axon, dendrite in zip(axons, dendrites):
+        axon_outputs.append(axon.connectors[axon.connectors['type']==0])
+        dendrite_inputs.append(dendrite.connectors[dendrite.connectors['type']==1])
+
+    if(output_separate):
+        return(axon_outputs, dendrite_inputs)
+    if(output_separate==False):
+        return(pd.concat(axon_outputs, axis=0), pd.concat(dendrite_inputs, axis=0))
+
+def axon_dendrite_centroid(skid):
+
+    axon_outputs, dendrite_inputs = get_connectors_group(skid, output_separate=True)
+    try:
+        axon_outputs = axon_outputs[0]
+        dendrite_inputs = dendrite_inputs[0]
+
+        # middle of commissure; less than 50500 is right, greater/equal is left
+        commissure_x = 50500
+        
+        # collect a few annotations to deal with some edge cases
+        bilateral_axon = pymaid.get_skids_by_annotation('mw bilateral axon')
+        ipsi_dendrite = pymaid.get_skids_by_annotation('mw ipsilateral dendrite')
+        bilateral_dendrite = pymaid.get_skids_by_annotation('mw bilateral dendrite')
+        left = pymaid.get_skids_by_annotation('mw left')
+        right = pymaid.get_skids_by_annotation('mw right')
+
+        # normal ipsilateral axons/ipsilateral dendrites and contralateral axons/ipsilaateral dendrites
+        axon_x = axon_outputs.mean(axis=0).x/1000
+        axon_y = axon_outputs.mean(axis=0).y/1000
+        axon_z = axon_outputs.mean(axis=0).z/1000
+
+        dendrite_x = dendrite_inputs.mean(axis=0).x/1000
+        dendrite_y = dendrite_inputs.mean(axis=0).y/1000
+        dendrite_z = dendrite_inputs.mean(axis=0).z/1000
+
+        # identify and deal with edge-cases
+        if(skid in bilateral_axon):
+            if(skid in ipsi_dendrite):
+
+                dendrite_x = dendrite_inputs.mean(axis=0).x/1000
+                dendrite_y = dendrite_inputs.mean(axis=0).y/1000
+                dendrite_z = dendrite_inputs.mean(axis=0).z/1000
+
+                if(skid in left):
+                    axon_x = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+                    axon_y = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+                    axon_z = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+
+                if(skid in right):
+                    axon_x = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+                    axon_y = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+                    axon_z = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+
+            if(skid in bilateral_dendrite):
+
+                dendrite_x_left = dendrite_inputs[dendrite_inputs.x>=commissure_x].mean(axis=0).x/1000
+                dendrite_y_left = dendrite_inputs[dendrite_inputs.x>=commissure_x].mean(axis=0).y/1000
+                dendrite_z_left = dendrite_inputs[dendrite_inputs.x>=commissure_x].mean(axis=0).z/1000
+                axon_x_left = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+                axon_y_left = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+                axon_z_left = axon_outputs[axon_outputs.x>=commissure_x].mean(axis=0).x/1000
+
+                dendrite_x_right = dendrite_inputs[dendrite_inputs.x<commissure_x].mean(axis=0).x/1000
+                dendrite_y_right = dendrite_inputs[dendrite_inputs.x<commissure_x].mean(axis=0).y/1000
+                dendrite_z_right = dendrite_inputs[dendrite_inputs.x<commissure_x].mean(axis=0).z/1000
+                axon_x_right = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+                axon_y_right = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+                axon_z_right = axon_outputs[axon_outputs.x<commissure_x].mean(axis=0).x/1000
+
+                dendrite_x = (dendrite_x_left + dendrite_x_right)/2
+                dendrite_y = (dendrite_y_left + dendrite_y_right)/2
+                dendrite_z = (dendrite_z_left + dendrite_z_right)/2
+
+                axon_x = (axon_x_left + axon_x_right)/2
+                axon_y = (axon_y_left + axon_y_right)/2
+                axon_z = (axon_z_left + axon_z_right)/2
+
+        distance = ((dendrite_x-axon_x)**2 + (dendrite_y-axon_y)**2 + (dendrite_z-axon_z)**2)**(1/2)
+        centroids = pd.DataFrame([[skid, (axon_x, axon_y, axon_z), (dendrite_x, dendrite_y, dendrite_z), distance]], columns = ['skid', 'axon_centroids', 'dendrite_centroids', 'distance'])
+        return(centroids)
+        
+    except:
+        print('issue') 
 
 # import skeleton CSV (of single skeleton) in CATMAID export skeleton format
 def skid_as_networkx_graph(skeleton):
