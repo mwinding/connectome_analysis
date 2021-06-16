@@ -1,16 +1,14 @@
 #%%
 import os
 import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
-
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
+
+import connectome_tools.process_matrix as pm
+import connectome_tools.celltype as ct
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -28,31 +26,20 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-rm = pymaid.CatmaidInstance(url, token, name, password)
 
-#adj = mg.adj  # adjacency matrix from the "mg" object
-adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
-adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
-
-# remove A1 except for ascendings
-A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
-pruned_index = list(np.setdiff1d(adj.index, A1_local)) 
-adj = adj.loc[pruned_index, pruned_index] # remove all local A1 skids from adjacency matrix
+# load axodendritic adjacency matrix
+adj = pm.Promat.pull_adj(type_adj = 'ad', subgraph = 'brain')
 
 # load inputs and pair data
-inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
-inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+inputs = pd.read_csv('data/graphs/inputs.csv', index_col=0)
+pairs = pm.Promat.get_pairs()
 
 # load projectome 
-projectome = pd.read_csv('interhemisphere/data/projectome_mw_brain_matrix_A1_split.csv', index_col = 0, header = 0)
+projectome = pd.read_csv('data/projectome/projectome_mw brain paper all neurons_split.csv', index_col = 0, header = 0)
 
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 # %%
-# 
-import connectome_tools.process_matrix as pm
+# prep bilateral data; splitting output functions
 
 left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
@@ -77,16 +64,15 @@ skeletons = projectome.set_index(['skeleton', 'is_left', 'is_axon', 'is_input', 
 # load paired bilateral neurons
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 br = pymaid.get_skids_by_annotation('mw brain neurons')
-dVNC = pymaid.get_skids_by_annotation('mw dVNC')
-dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+outputs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs')
 
 bilateral = list(np.intersect1d(bilateral, br))
 
-bilateral_no_brain_input = projectome.groupby('skeleton')['Brain Hemisphere left', 'Brain Hemisphere right'].sum()
-exclude = list(bilateral_no_brain_input[(bilateral_no_brain_input.loc[:, 'Brain Hemisphere left']==0) & (bilateral_no_brain_input.loc[:, 'Brain Hemisphere right']==0)].index)
-bilateral = list(np.setdiff1d(bilateral, exclude + dVNC + dSEZ))
+#bilateral_no_brain_input = projectome.groupby('skeleton')['Brain Hemisphere left', 'Brain Hemisphere right'].sum()
+#exclude = list(bilateral_no_brain_input[(bilateral_no_brain_input.loc[:, 'Brain Hemisphere left']==0) & (bilateral_no_brain_input.loc[:, 'Brain Hemisphere right']==0)].index)
+bilateral = list(np.setdiff1d(bilateral, outputs))
 
-bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
+bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral)[0]
 
 def ad_edges(connector, projectome):
     connector_details = projectome[projectome.loc[:, 'connector']==connector]
@@ -145,6 +131,9 @@ def ipsi_contra_ds_partners(bilateral_leftid, bilateral_rightid, skeletons, inpu
         return([])
 
     # contralateral partners
+    contra_sources = list(np.unique(bi_ad_connect_index1.loc[('contralateral')].index))
+    if(bilateral_leftid not in contra_sources): print(f'skid {bilateral_leftid} has no a-d contralateral partners!')
+    if(bilateral_rightid not in contra_sources): print(f'skid {bilateral_rightid} has no a-d contralateral partners!')
     contra_left_partners = bi_ad_connect_index1.loc[('contralateral')].target.loc[bilateral_leftid]
     contra_right_partners = bi_ad_connect_index1.loc[('contralateral')].target.loc[bilateral_rightid]
 
@@ -177,6 +166,9 @@ def ipsi_contra_ds_partners(bilateral_leftid, bilateral_rightid, skeletons, inpu
 
 
     # ipsilateral partners
+    ipsi_sources = list(np.unique(bi_ad_connect_index1.loc[('ipsilateral')].index))
+    if(bilateral_leftid not in ipsi_sources): print(f'skid {bilateral_leftid} has no a-d ipsilateral partners!')
+    if(bilateral_rightid not in ipsi_sources): print(f'skid {bilateral_rightid} has no a-d ipsilateral partners!')
     ipsi_left_partners = bi_ad_connect_index1.loc[('ipsilateral')].target.loc[bilateral_leftid]
     ipsi_right_partners = bi_ad_connect_index1.loc[('ipsilateral')].target.loc[bilateral_rightid]
 
@@ -210,19 +202,19 @@ def ipsi_contra_ds_partners(bilateral_leftid, bilateral_rightid, skeletons, inpu
     return(data)
 
 # %%
-#
+# find partners
 
 from tqdm import tqdm
 
 issues_list = []
 data_list = []
-for i in tqdm(range(1, len(bilateral_pairs))):
-    try:
-        data = ipsi_contra_ds_partners(bilateral_pairs.leftid[i], bilateral_pairs.rightid[i], skeletons, inputs, normalize=True)
-        data_list.append(data)
-    except:
-        print(f'problem with index {i}, skids {bilateral_pairs.leftid[i]}, {bilateral_pairs.rightid[i]}')
-        issues_list.append(i)
+for i in tqdm(range(49, 50)):
+    #try:
+    data = ipsi_contra_ds_partners(bilateral_pairs.leftid[i], bilateral_pairs.rightid[i], skeletons, inputs, normalize=True)
+    data_list.append(data)
+    #except:
+    #    print(f'problem with index {i}, skids {bilateral_pairs.leftid[i]}, {bilateral_pairs.rightid[i]}')
+    #    issues_list.append(i)
 
 filtered_data = [x for x in data_list if type(x)==pd.DataFrame]
 data = pd.concat((x for x in filtered_data), axis=0)
