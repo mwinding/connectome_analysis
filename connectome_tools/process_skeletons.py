@@ -7,6 +7,7 @@ from tqdm import tqdm
 import csv
 import pymaid
 import navis
+import connectome_tools.process_matrix as pm
 
 # split axons and dendrites and return neurons
 def split_axons_dendrites(list_neurons, split):
@@ -123,12 +124,26 @@ def axon_dendrite_centroid(skid):
                 axon_y = (axon_y_left + axon_y_right)/2
                 axon_z = (axon_z_left + axon_z_right)/2
 
+        # contralateral axon cases (should project centroid to other hemisphere to compare to ipsilateral dendrite)
+        # not done right now
+
         distance = ((dendrite_x-axon_x)**2 + (dendrite_y-axon_y)**2 + (dendrite_z-axon_z)**2)**(1/2)
         centroids = pd.DataFrame([[skid, (axon_x, axon_y, axon_z), (dendrite_x, dendrite_y, dendrite_z), distance]], columns = ['skid', 'axon_centroids', 'dendrite_centroids', 'distance'])
         return(centroids)
-        
+
     except:
         print('issue') 
+
+def axon_dendrite_centroids_pairwise(ct):
+    df = []
+    for skid in ct.get_skids():
+        df.append(axon_dendrite_centroid(skid))
+
+    df = pd.concat(df)
+    df['celltype'] = len(df.index)*[ct.get_name()]
+    df = pm.Promat.convert_df_to_pairwise(df.set_index('skid'))
+    return(df)
+
 
 # import skeleton CSV (of single skeleton) in CATMAID export skeleton format
 def skid_as_networkx_graph(skeleton):
