@@ -97,7 +97,7 @@ input_types = input_types.set_index('type') # for future chunks
 # intersection between 2nd/3rd/4th neuropils
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
 #order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'mechano-II/III', 'respiratory','thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'proprio']
-sim_type = 'cosine'
+sim_type = 'dice'
 
 # look at overlap between order2 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
@@ -182,6 +182,42 @@ pymaid.add_meta_annotations([f'mw brain 2nd_order LN_io {name}' for i, name in e
 pymaid.add_meta_annotations([f'mw brain 3rd_order LN_io {name}' for i, name in enumerate(order) if len(LNs_io_3rd[i])>0], 'mw brain inputs 3rd_order LN_io')
 [pymaid.add_annotations(LNs_io_4th[i], f'mw brain 4th_order LN_io {name}') for i, name in enumerate(order) if len(LNs_io_4th[i])>0]
 pymaid.add_meta_annotations([f'mw brain 4th_order LN_io {name}' for i, name in enumerate(order) if len(LNs_io_4th[i])>0], 'mw brain inputs 4th_order LN_io')
+
+LNs_o = [x for sublist in LNs_2nd for x in sublist] + [x for sublist in LNs_3rd for x in sublist] + [x for sublist in LNs_4th for x in sublist]
+LNs_io = [x for sublist in LNs_io_2nd for x in sublist] + [x for sublist in LNs_io_3rd for x in sublist] + [x for sublist in LNs_io_4th for x in sublist]
+pymaid.add_annotations(LNs_o, 'mw LNs_cohort')
+pymaid.add_annotations(LNs_io, 'mw LNs_noncohort')
+
+# %%
+# identity similarity between LNs in each neuropils
+# NOT READY for publication; just exploratory
+pymaid.clear_cache()
+
+all_2nd_LNs = [ct.Celltype(f'LN 2nd-order {order[i]}' ,LNs_2nd[i] + LNs_io_2nd[i]) for i in range(0, len(LNs_2nd))]
+all_3rd_LNs = [ct.Celltype(f'LN 3rd-order {order[i]}' ,LNs_3rd[i] + LNs_io_3rd[i]) for i in range(0, len(LNs_3rd))]
+all_4th_LNs = [ct.Celltype(f'LN 4th-order {order[i]}' ,LNs_4th[i] + LNs_io_4th[i]) for i in range(0, len(LNs_4th))]
+
+all_2nd_LNs = ct.Celltype_Analyzer(all_2nd_LNs)
+all_3rd_LNs = ct.Celltype_Analyzer(all_3rd_LNs)
+all_4th_LNs = ct.Celltype_Analyzer(all_4th_LNs)
+
+sim_type = 'dice'
+
+all_2nd_LNs.compare_membership(sim_type='dice')
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+sns.heatmap(all_2nd_LNs.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_LNs_2nd-order.pdf', format='pdf', bbox_inches='tight')
+
+all_3rd_LNs.compare_membership(sim_type='dice')
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+sns.heatmap(all_3rd_LNs.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_LNs_2nd-order.pdf', format='pdf', bbox_inches='tight')
+
+all_4th_LNs.compare_membership(sim_type='dice')
+fig, ax = plt.subplots(1,1, figsize=(3,2))
+sns.heatmap(all_4th_LNs.compare_membership(sim_type=sim_type), ax=ax, square=True)
+fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_LNs_2nd-order.pdf', format='pdf', bbox_inches='tight')
+
 
 # %%
 # plot sensories/ascendings

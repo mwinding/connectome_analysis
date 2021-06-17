@@ -59,31 +59,56 @@ order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {
 order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
 LNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+LNs_o = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
+LNs_io = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_noncohort'), pymaid.get_skids_by_annotation('mw LNs_cohort')))
+LNs_both = list(np.intersect1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
+
+KC = pymaid.get_skids_by_annotation('mw KC')
+MBON = pymaid.get_skids_by_annotation('mw MBON')
+MBIN = pymaid.get_skids_by_annotation('mw MBIN')
+MB = KC + MBON + MBIN
+
 RGN = pymaid.get_skids_by_annotation('mw RGN')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 
 columns = []
+columns_expanded = []
 for i in range(0, len(sens)):
     sens_len = len(sens[i].get_skids())
 
     order2_LN = len(np.intersect1d(order2[i].get_skids(), LNs))
+    order2_LN_o = len(np.intersect1d(order2[i].get_skids(), LNs_o))
+    order2_LN_io = len(np.intersect1d(order2[i].get_skids(), LNs_io))
+    order2_LN_both = len(np.intersect1d(order2[i].get_skids(), LNs_both))
+    order2_MB = len(np.intersect1d(order2[i].get_skids(), MB))
     order2_RGN = len(np.intersect1d(order2[i].get_skids(), RGN))
     order2_dSEZ = len(np.intersect1d(order2[i].get_skids(), dSEZ))
     order2_dVNC = len(np.intersect1d(order2[i].get_skids(), dVNC))
-    order2_other = len(np.setdiff1d(order2[i].get_skids(), LNs + RGN + dSEZ + dVNC))
+    order2_other = len(np.setdiff1d(order2[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order2_other_expanded = len(np.setdiff1d(order2[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
 
     order3_LN = len(np.intersect1d(order3[i].get_skids(), LNs))
+    order3_LN_o = len(np.intersect1d(order3[i].get_skids(), LNs_o))
+    order3_LN_io = len(np.intersect1d(order3[i].get_skids(), LNs_io))
+    order3_LN_both = len(np.intersect1d(order3[i].get_skids(), LNs_both))
+    order3_MB = len(np.intersect1d(order3[i].get_skids(), MB))
     order3_RGN = len(np.intersect1d(order3[i].get_skids(), RGN))
     order3_dSEZ = len(np.intersect1d(order3[i].get_skids(), dSEZ))
     order3_dVNC = len(np.intersect1d(order3[i].get_skids(), dVNC))
-    order3_other = len(np.setdiff1d(order3[i].get_skids(), LNs + RGN + dSEZ + dVNC))
+    order3_other = len(np.setdiff1d(order3[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order3_other_expanded = len(np.setdiff1d(order3[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
 
     order4_LN = len(np.intersect1d(order4[i].get_skids(), LNs))
+    order4_LN_o = len(np.intersect1d(order4[i].get_skids(), LNs_o))
+    order4_LN_io = len(np.intersect1d(order4[i].get_skids(), LNs_io))
+    order4_LN_both = len(np.intersect1d(order4[i].get_skids(), LNs_both))
+    order4_MB = len(np.intersect1d(order4[i].get_skids(), MB))
     order4_RGN = len(np.intersect1d(order4[i].get_skids(), RGN))
     order4_dSEZ = len(np.intersect1d(order4[i].get_skids(), dSEZ))
     order4_dVNC = len(np.intersect1d(order4[i].get_skids(), dVNC))
-    order4_other = len(np.setdiff1d(order4[i].get_skids(), LNs + RGN + dSEZ + dVNC))
+    order4_other = len(np.setdiff1d(order4[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order4_other_expanded = len(np.setdiff1d(order4[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
 
     print(f'{order[i]}:')
     print(f'sensory count: {sens_len}')
@@ -93,12 +118,19 @@ for i in range(0, len(sens)):
     print('')
 
     columns.append([sens_len, 0, 0, 0, 0, 0])
-    columns.append([0, order2_LN, order2_other, order2_RGN, order2_dSEZ, order2_dVNC])
-    columns.append([0, order3_LN, order3_other, order3_RGN, order3_dSEZ, order3_dVNC])
-    columns.append([0, order4_LN, order4_other, order4_RGN, order4_dSEZ, order4_dVNC])
+    columns.append([0, order2_LN, order2_MB, order2_other, order2_RGN, order2_dSEZ, order2_dVNC])
+    columns.append([0, order3_LN, order3_MB, order3_other, order3_RGN, order3_dSEZ, order3_dVNC])
+    columns.append([0, order4_LN, order4_MB, order4_other, order4_RGN, order4_dSEZ, order4_dVNC])
     columns.append([0, 0, 0, 0, 0, 0]) # add space between each modality in subsequent plots
 
-df = pd.DataFrame(columns, columns = ['Sens', 'LN', 'Other', 'RGN', 'dSEZ', 'dVNC'])
+    # for more complicated plots with all sub-LN types
+    columns_expanded.append([0, order2_LN_o, order2_LN_io, order2_LN_both, order2_MB, order2_other, order2_RGN, order2_dSEZ, order2_dVNC])
+    columns_expanded.append([0, order3_LN_o, order3_LN_io, order3_LN_both, order3_MB, order3_other, order3_RGN, order3_dSEZ, order3_dVNC])
+    columns_expanded.append([0, order4_LN_o, order4_LN_io, order4_LN_both, order4_MB, order4_other, order4_RGN, order4_dSEZ, order4_dVNC])
+    columns_expanded.append([0, 0, 0, 0, 0, 0]) # add space between each modality in subsequent plots
+
+df = pd.DataFrame(columns, columns = ['Sens', 'LN', 'MB', 'Other', 'RGN', 'dSEZ', 'dVNC'])
+df_expanded = pd.DataFrame(columns_expanded, columns = ['Sens', 'LN_o', 'LN_io', 'LN_both', 'MB', 'Other', 'RGN', 'dSEZ', 'dVNC'])
 
 spacer = 10
 width = 0.4
@@ -106,9 +138,10 @@ fig, ax = plt.subplots(1,1,figsize=(15,6))
 ax.bar(x = df.index, height = df['Sens'], width = width)
 ax.bar(x = df.index, height = df['LN'], width = width)
 ax.bar(x = df.index, height = df['Other'], bottom = df['LN']+ spacer, width = width)
-ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other']+ spacer*2, width = width)
-ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN']+ spacer*3, width = width)
-ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ']+ spacer*4, width = width)
+ax.bar(x = df.index, height = df['MB'], bottom = df['LN']+ df['Other']+spacer*2, width = width)
+ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'] + df['MB'] + spacer*3, width = width)
+ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['MB'] + spacer*4, width = width)
+ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'] + df['MB'] + spacer*5, width = width)
 ax.axis('off')
 
 plt.savefig('identify_neuron_classes/plots/source_for_sankey_plot.pdf', bbox_inches='tight', format = 'pdf')
@@ -119,30 +152,34 @@ row_sum = df.sum(axis=1).values
 df=df.fillna(0) # fill NaN from divide by 0 with 0
 
 fig, ax = plt.subplots(1,1,figsize=(15,6))
-ax.bar(x = df.index, height = df['Sens'])
-ax.bar(x = df.index, height = df['LN'])
-ax.bar(x = df.index, height = df['Other'], bottom = df['LN'])
-ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'])
-ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'])
-ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'])
+ax.bar(x = df.index, height = df['Sens'], color = '#007640')
+ax.bar(x = df.index, height = df['LN'], color = '#4F7577')
+ax.bar(x = df.index, height = df['Other'], bottom = df['LN'], color = '#00ADEE')
+ax.bar(x = df.index, height = df['MB'], bottom = df['LN']+ df['Other'], color = '#C1C1C1')
+ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'] + df['MB'], color = '#9167AB')
+ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['MB'], color = '#D77F51')
+ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'] + df['MB'], color = '#A5292A')
 
 plt.savefig('identify_neuron_classes/plots/counts_LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot fraction of each type
-row_sum = df.sum(axis=1).values
+row_sum = df_expanded.sum(axis=1).values
 
-for i in range(0, len(df)):
-    df.iloc[i, :] = df.iloc[i, :]/row_sum[i]
+for i in range(0, len(df_expanded)):
+    df_expanded.iloc[i, :] = df_expanded.iloc[i, :]/row_sum[i]
 
-df=df.fillna(0) # fill NaN from divide by 0 with 0
+df_expanded=df_expanded.fillna(0) # fill NaN from divide by 0 with 0
+df = df_expanded
 
 fig, ax = plt.subplots(1,1,figsize=(15,6))
-ax.bar(x = df.index, height = df['Sens'])
-ax.bar(x = df.index, height = df['LN'])
-ax.bar(x = df.index, height = df['Other'], bottom = df['LN'])
-ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'])
-ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'])
-ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'])
+ax.bar(x = df.index, height = df['LN_o'], color = '#4F7577')
+ax.bar(x = df.index, height = df['LN_io'], bottom = df['LN_o'], color = '#2E5151')
+ax.bar(x = df.index, height = df['LN_both'], bottom = df['LN_o'] + df['LN_io'], color = '#7FBFBF')
+ax.bar(x = df.index, height = df['Other'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'], color = '#00ADEE')
+ax.bar(x = df.index, height = df['MB'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'] + df['Other'], color = '#C1C1C1')
+ax.bar(x = df.index, height = df['RGN'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'] + df['MB'] + df['Other'], color = '#9167AB')
+ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'] + df['MB'] + df['Other'] + df['RGN'], color='#D77F51')
+ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'] + df['MB'] + df['Other'] + df['RGN'] + df['dSEZ'], color='#A5292A')
 ax.axis('off')
 
 plt.savefig('identify_neuron_classes/plots/fraction-LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
