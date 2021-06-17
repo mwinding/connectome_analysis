@@ -32,7 +32,9 @@ figure_scripts = [[1, 'A', '', ''],
                     [4, 'G', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
                     [4, 'H', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
                     [4, 'I', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
-                    [4, 'J', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', '']]
+                    [4, 'J', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
+                    [5, 'A', None, None],
+                    [5, 'B', 'synapse_distributions/synapse_dist_Br_ipsi-contra.py', 'all']]
 
 figure_scripts = pd.DataFrame(figure_scripts, columns = ['figure', 'panel', 'path', 'chunk'])
 
