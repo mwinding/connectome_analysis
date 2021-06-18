@@ -139,6 +139,47 @@ class Analyze_Nx_G():
             path[i][0] = int(path[i][0]) # convert source str to int
         return(path)
 
+    def partner_loop_probability(self, pairs, length):
+        # requires Analyze_Nx_G(..., split_pairs=True)
+
+        if(length<2):
+            print('length must be 2 or greater!')
+            return
+
+        partner_loop = []
+        nonpartner_loop = []
+        all_paths = []
+        for i in pairs.index:
+            leftid = pairs.loc[i].leftid
+            rightid = pairs.loc[i].rightid
+            paths = self.all_simple_self_loop_paths(source = leftid, cutoff=length)
+            paths = [path for path in paths if len(path)==(length+1)]
+            all_paths.append(paths)
+
+            # when loops exist
+            if(len(paths)>0):
+                loop_partners = [path[1:length] for path in paths] # collect all partners that mediate loops
+                if(type(loop_partners[0])==list): loop_partners = [x for sublist in loop_partners for x in sublist]
+                loop_partners = list(np.unique(loop_partners))
+
+                if(rightid in loop_partners): partner_loop.append(1)
+                if(rightid not in loop_partners): partner_loop.append(0)
+
+                for skid in pairs.rightid.values:
+                    if(skid in loop_partners): nonpartner_loop.append(1)
+                    if(skid not in loop_partners): nonpartner_loop.append(0)
+                    
+            # when loops don't exist
+            if(len(paths)==0):
+                partner_loop.append(0)
+                for skid in pairs.rightid:
+                    nonpartner_loop.append(0)
+
+        prob_partner_loop = sum(partner_loop)/len(partner_loop)
+        prob_nonpartner_loop = sum(nonpartner_loop)/len(nonpartner_loop)
+
+        return(prob_partner_loop, prob_nonpartner_loop, all_paths)
+
     # identify loops in all sets of pairs
     def identify_loops(self, pairs, cutoff):
         paths = [self.all_simple_self_loop_paths(pair_id, cutoff) for pair_id in pairs]
