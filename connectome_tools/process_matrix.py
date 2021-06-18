@@ -708,6 +708,22 @@ class Promat():
             combined = pairs_pair_id + nonpaired_pair_id
             return(combined)
 
+    # loads neurons pairs from selected pymaid annotation
+    @staticmethod
+    def get_pairs_from_list(skids, pairList, return_type='pairs'):
+        pairs = Promat.extract_pairs_from_list(skids, pairList)
+        if(return_type=='pairs'):
+            return(pairs[0])
+        if(return_type=='unpaired'):
+            return(pairs[1])
+        if(return_type=='nonpaired'):
+            return(pairs[2])
+        if(return_type=='all_pair_ids'):
+            pairs_pair_id = list(pairs[0].leftid)
+            nonpaired_pair_id = list(pairs[2].nonpaired)
+            combined = pairs_pair_id + nonpaired_pair_id
+            return(combined)
+
     # generates interlaced left-right pair adjacency matrix with nonpaired neurons at bottom and right
     @staticmethod
     def interlaced_matrix(adj_df, pairs):
