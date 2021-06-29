@@ -706,6 +706,15 @@ class Promat():
             pairs_pair_id = list(pairs[0].leftid)
             nonpaired_pair_id = list(pairs[2].nonpaired)
             combined = pairs_pair_id + nonpaired_pair_id
+        if(return_type=='all_pair_sorted'):
+            pairs_pair_id = list(pairs[0].leftid)
+            nonpaired_pair_id = list(pairs[2].nonpaired)
+            combined_left = pairs_pair_id + nonpaired_pair_id
+
+            pairs_id_right = list(pairs[0].rightid)
+            combined_right = pairs_id_right + nonpaired_pair_id
+
+            combined = pd.DataFrame(zip(combined_left, combined_right), columns=['leftid', 'rightid'])
             return(combined)
 
     # loads neurons pairs from selected pymaid annotation
