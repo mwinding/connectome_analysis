@@ -33,7 +33,7 @@ import connectome_tools.cascade_analysis as casc
 import connectome_tools.celltype as ct
 import connectome_tools.process_matrix as pm
 
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
+adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accesssory')
 
 #%%
 # pull sensory annotations and then pull associated skids
@@ -292,7 +292,17 @@ fig, ax = plt.subplots(1,1, figsize=(1.5,1.5), sharey=True)
 sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax)
 fig.savefig('interhemisphere/plots/left-right-visits_brain_outputs_cbar.pdf', format='pdf', bbox_inches='tight')
 # %%
-# 
+# lateralization metric to determine how much left/right mixing happens per neuron
+
+left_signal = all_inputs_hit_hist_left/n_init
+left_signal = left_signal.sum(axis=1)
+
+right_signal = all_inputs_hit_hist_right/n_init
+right_signal = -(right_signal.sum(axis=1))
+
+integration = (left_signal + right_signal)
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index)
+
 
 pairs = pm.Promat.get_pairs()
 dVNC = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_sorted')
@@ -319,7 +329,7 @@ for i in dVNC.index:
     int_right = integration_df.loc[rightid, 'left_right_signal']
     left_int.append(int_left)
     right_int.append(int_right)
-    left_right_int.append((abs(int_left)+abs(int_right))/2)
+    left_right_int.append(((int_left)+-(int_right))/2)
 
 dVNC['left_integration'] = left_int
 dVNC['right_integration'] = right_int
@@ -336,7 +346,7 @@ for i in dSEZ.index:
     int_right = integration_df.loc[rightid, 'left_right_signal']
     left_int.append(int_left)
     right_int.append(int_right)
-    left_right_int.append((abs(int_left)+abs(int_right))/2)
+    left_right_int.append(((int_left)+-(int_right))/2)
 
 dSEZ['left_integration'] = left_int
 dSEZ['right_integration'] = right_int
@@ -353,7 +363,7 @@ for i in RGN.index:
     int_right = integration_df.loc[rightid, 'left_right_signal']
     left_int.append(int_left)
     right_int.append(int_right)
-    left_right_int.append((abs(int_left)+abs(int_right))/2)
+    left_right_int.append(((int_left)+-(int_right))/2)
 
 RGN['left_integration'] = left_int
 RGN['right_integration'] = right_int
@@ -364,16 +374,17 @@ fig, ax = plt.subplots(1,1,figsize=(2,2))
 sns.scatterplot(x=[x for x in range(0, len(dVNC))], y=dVNC.lateralization.sort_values(), color='#A52A2A', ax=ax, s=s)
 sns.scatterplot(x=[x+len(dVNC) for x in range(0, len(dSEZ))], y=dSEZ.lateralization.sort_values(), color='#C47451', ax=ax, s=s)
 sns.scatterplot(x=[x+len(dVNC)+len(dSEZ) for x in range(0, len(RGN))], y=RGN.lateralization.sort_values(), color='#9467BD', ax=ax, s=s)
-ax.set(ylim=(-0.05,1))
+ax.set(ylim=(-1,1))
 plt.savefig('interhemisphere/plots/signal-lateralization.pdf', format='pdf', bbox_inches='tight')
 
 s = 2
-fig, ax = plt.subplots(1,1,figsize=(2,2))
+fig, ax = plt.subplots(1,1,figsize=(1,2))
 sns.scatterplot(x=[x for x in range(0, len(dVNC))], y=dVNC.lateralization.sort_values(), color='#A52A2A', ax=ax, s=s)
 sns.scatterplot(x=[x for x in range(0, len(dSEZ))], y=dSEZ.lateralization.sort_values(), color='#C47451', ax=ax, s=s)
 sns.scatterplot(x=[x for x in range(0, len(RGN))], y=RGN.lateralization.sort_values(), color='#9467BD', ax=ax, s=s)
-ax.set(ylim=(-0.05,1))
+ax.set(ylim=(-1,1))
 plt.savefig('interhemisphere/plots/signal-lateralization_overlapping.pdf', format='pdf', bbox_inches='tight')
+
 '''
 # rasterplot
 fig, ax = plt.subplots(1,1,figsize=(2,2))
@@ -395,9 +406,9 @@ plt.savefig('interhemisphere/plots/signal-lateralization_catplot.pdf', format='p
 '''
 
 # percent >0.25
-dVNC_lateralized = dVNC[dVNC.lateralization>0.25].leftid
-dSEZ_lateralized = dSEZ[dSEZ.lateralization>0.25].leftid
-RGN_lateralized = RGN[RGN.lateralization>0.25].leftid
+dVNC_lateralized = dVNC[abs(dVNC.lateralization)>0.25].leftid
+dSEZ_lateralized = dSEZ[abs(dSEZ.lateralization)>0.25].leftid
+RGN_lateralized = RGN[abs(RGN.lateralization)>0.25].leftid
 
 lateralized = pd.DataFrame([[len(dVNC_lateralized)/len(dVNC), 'lateralized', 'dVNC'],
                             [1-len(dVNC_lateralized)/len(dVNC), 'mixed', 'dVNC'],
@@ -412,5 +423,67 @@ fig, ax = plt.subplots(1,1, figsize=(2,2))
 ax.bar(x = lateralized.columns, height = lateralized.loc['lateralized', :])
 ax.bar(x = lateralized.columns, height = lateralized.loc['mixed', :], bottom = lateralized.loc['lateralized', :])
 plt.savefig('interhemisphere/plots/signal-lateralization_summary.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# lateralization of all brain neurons
+brain_skids = np.setdiff1d(pymaid.get_skids_by_annotation('mw brain paper clustered neurons') + pymaid.get_skids_by_annotation('mw brain accessory neurons'), input_skids + ascending_unknown)
+brain_skids = np.intersect1d(integration_df.index, brain_skids)
+brain = pm.Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_sorted', skids=brain_skids, use_skids=True)
+
+left_int = []
+right_int = []
+left_right_int = []
+for i in brain.index:
+    leftid = brain.loc[i, 'leftid']
+    rightid = brain.loc[i, 'rightid']
+    
+    int_left = integration_df.loc[leftid, 'left_right_signal']
+    int_right = integration_df.loc[rightid, 'left_right_signal']
+    left_int.append(int_left)
+    right_int.append(int_right)
+    left_right_int.append(((int_left)+-(int_right))/2)
+
+brain['left_integration'] = left_int
+brain['right_integration'] = right_int
+brain['lateralization'] = left_right_int
+
+# flip value of FFN-18 (unannotated contra axon, contra/bilateral dendrite)
+brain.loc[brain[brain.leftid==3622234].index, 'lateralization'] = -brain[brain.leftid==3622234].lateralization
+
+# plot all brain lateralization 
+brain_sort_subthres = brain.lateralization.sort_values()[brain.lateralization.sort_values()<=threshold]
+brain_sort_thres = brain.lateralization.sort_values()[brain.lateralization.sort_values()>threshold]
+
+s=6
+alpha = 0.25
+fig, ax = plt.subplots(1,1,figsize=(1,2))
+plt.scatter(x=[x for x in range(0, len(brain_sort_subthres))], y=brain_sort_subthres, color='none', edgecolor=sns.color_palette()[0], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(len(brain_sort_subthres), len(brain_sort_subthres)+len(brain_sort_thres))], y=brain_sort_thres, color='none', edgecolor=sns.color_palette()[1], linewidths=0.2, alpha=alpha, s=s)
+ax.set(ylim=(-1.05,1.05))
+plt.savefig('interhemisphere/plots/signal-lateralization_whole-brain.pdf', format='pdf', bbox_inches='tight')
+
+# identify neurons with >0.25 lateralization
+threshold = 0.25
+brain_lateralized_ipsi_left = list(brain[(brain.lateralization>threshold)].leftid) 
+brain_lateralized_ipsi_right = list(brain[(brain.lateralization>threshold)].rightid)
+brain_lateralized_ipsi = brain_lateralized_ipsi_left + brain_lateralized_ipsi_right
+brain_lateralized_ipsi_ct = ct.Celltype('lateralized', brain_lateralized_ipsi, color=sns.color_palette()[1])
+
+brain_lateralized_contra_left = list(brain[(brain.lateralization<-threshold)].leftid) 
+brain_lateralized_contra_right = list(brain[(brain.lateralization<-threshold)].rightid)
+brain_lateralized_contra = brain_lateralized_contra_left + brain_lateralized_contra_right
+brain_lateralized_contra_ct = ct.Celltype('lateralized', brain_lateralized_contra, color=sns.color_palette()[3])
+
+brain_nonlat_left = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].leftid) 
+brain_nonlat_right = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].rightid) 
+brain_nonlateralized = brain_nonlat_left + brain_nonlat_right
+brain_nonlateralized_ct = ct.Celltype('non_lateralized', brain_nonlateralized, color=sns.color_palette()[0])
+
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+_, celltypes = ct.Celltype_Analyzer.default_celltypes(exclude=pdiff)
+celltype_analyzer = ct.Celltype_Analyzer(celltypes)
+celltype_analyzer.set_known_types([brain_lateralized_ipsi_ct, brain_lateralized_contra_ct, brain_nonlateralized_ct])
+memberships = celltype_analyzer.memberships()
+celltype_analyzer.plot_memberships('interhemisphere/plots/signal-lateralization_by-celltype.pdf', figsize=(4,2))
 
 # %%
