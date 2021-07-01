@@ -81,23 +81,23 @@ loop_df_plotting = pd.DataFrame(loop_df_plotting, columns = ['celltype', 'path_l
 
 length = 2
 data = loop_df_plotting[loop_df_plotting.path_length == length]
-fig, ax = plt.subplots(1,1, figsize=(1,2))
-sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.5, alpha=0.5)
-ax.set(ylim=(-0.01, 0.20), title = f'Edges in Loop:{length}')
+fig, ax = plt.subplots(1,1, figsize=(.8,1.5))
+sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.25, alpha=0.5)
+ax.set(ylim=(-0.01, 0.15), title = f'Edges in Loop:{length}', yticks=[0,0.05, .1, .15])
 plt.savefig(f'interhemisphere/plots/partner-loops_length-{length}.pdf', format='pdf', bbox_inches='tight')
 
 length = 3
 data = loop_df_plotting[loop_df_plotting.path_length == length]
-fig, ax = plt.subplots(1,1, figsize=(2,2))
+fig, ax = plt.subplots(1,1, figsize=(1.5,2))
 sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.5, alpha=0.5)
 ax.set(ylim=(-0.01, 0.20), title = f'Edges in Loop:{length}')
 plt.savefig(f'interhemisphere/plots/partner-loops_length-{length}.pdf', format='pdf', bbox_inches='tight')
 
 length = 4
 data = loop_df_plotting[loop_df_plotting.path_length == length]
-fig, ax = plt.subplots(1,1, figsize=(2,2))
+fig, ax = plt.subplots(1,1, figsize=(1.5,2))
 sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.5, alpha=0.5)
-ax.set(ylim=(-0.01, 0.20), title = f'Edges in Loop:{length}')
+ax.set(ylim=(-0.01, 0.50), title = f'Edges in Loop:{length}')
 plt.savefig(f'interhemisphere/plots/partner-loops_length-{length}.pdf', format='pdf', bbox_inches='tight')
 
 length = 5
@@ -112,17 +112,26 @@ plt.savefig(f'interhemisphere/plots/partner-loops_length-{length}.pdf', format='
 n_rows = 1
 n_cols = 4
 
-fig, axs = plt.subplots(n_rows,n_cols, figsize=(9, 3))
-fig.tight_layout(pad=3.0)
+fig, axs = plt.subplots(n_rows,n_cols, figsize=(2.5, 1.5), sharey=True)
+fig.tight_layout(pad=0)
 for i, length in enumerate(path_lengths):
     #inds = np.unravel_index(i, shape=(n_rows, n_cols))
     ax = axs[i]
 
     data = loop_df_plotting[loop_df_plotting.path_length == length]
-    sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.5, alpha=0.5)
-    ax.set(ylim=(-0.01, 0.20), title = f'Edges in Loop:{length}')
+    sns.pointplot(data = data, x='loop_type', y='connection_probability', hue='celltype', ax=ax, scale=0.25, alpha=0.5)
+    ax.set(ylim=(-0.01, 0.2), title = f'Edges in Loop:{length}', ylabel='', yticks=[0, 0.05, .1, .15, 0.2])
+    if(i>0):
+        ax.legend([],[], frameon=False)
 
 plt.savefig(f'interhemisphere/plots/partner-loops_all.pdf', format='pdf', bbox_inches='tight')
+
+# rearrange as matrix
+# use this for main figure
+data = loop_df_plotting.pivot(index=['path_length' , 'loop_type'], columns=['celltype']).loc[:, list(zip(['connection_probability']*3, ['ipsi', 'bilateral', 'contra']))]
+fig, axs = plt.subplots(1,1, figsize=(0.75, 1))
+sns.heatmap(data, cmap = 'Blues', vmax=0.2)
+plt.savefig(f'interhemisphere/plots/partner-loops-all_heatmap.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # connection probability between ipsi/bilateral/contra
