@@ -355,6 +355,11 @@ class Celltype_Analyzer:
             for j in range(0, len(priority_skid_groups[i])):
                 skids_temp = pymaid.get_skids_by_annotation(pymaid.get_annotated(priority_skid_groups[i][j]).name)
                 skids_temp = list(np.intersect1d(skids_temp, priority_skids_unique[i])) # make sure skid in subgroup is set in correct priority list
+                
+                # remove neurons in optional "exclude" list
+                if(len(exclude)>0):
+                    skids_temp = list(np.setdiff1d(skids_temp, exclude))
+
                 group.append(skids_temp)
             skid_groups.append(group)
 

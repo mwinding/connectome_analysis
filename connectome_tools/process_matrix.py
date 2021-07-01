@@ -693,8 +693,10 @@ class Promat():
 
     # loads neurons pairs from selected pymaid annotation
     @staticmethod
-    def load_pairs_from_annotation(annot, pairList, return_type='pairs'):
-        skids = pymaid.get_skids_by_annotation(annot)
+    def load_pairs_from_annotation(annot, pairList, return_type='pairs', skids=None, use_skids=False):
+        if(use_skids==False):
+            skids = pymaid.get_skids_by_annotation(annot)
+            
         pairs = Promat.extract_pairs_from_list(skids, pairList)
         if(return_type=='pairs'):
             return(pairs[0])
@@ -706,6 +708,8 @@ class Promat():
             pairs_pair_id = list(pairs[0].leftid)
             nonpaired_pair_id = list(pairs[2].nonpaired)
             combined = pairs_pair_id + nonpaired_pair_id
+
+        # include nonpaired neurons and flip left/right contra-contra neurons (both dendrites/axons on opposite side of brain as cell body)
         if(return_type=='all_pair_sorted'):
             pairs_pair_id = list(pairs[0].leftid)
             nonpaired_pair_id = list(pairs[2].nonpaired)
@@ -713,8 +717,22 @@ class Promat():
 
             pairs_id_right = list(pairs[0].rightid)
             combined_right = pairs_id_right + nonpaired_pair_id
-
             combined = pd.DataFrame(zip(combined_left, combined_right), columns=['leftid', 'rightid'])
+
+            # identify contra-contra neurons
+            contra_contra = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite'))
+            contra_contra = np.intersect1d(skids, contra_contra)
+            contra_contra_pairs = Promat.extract_pairs_from_list(contra_contra, Promat.get_pairs())[0]
+            if(len(contra_contra_pairs)>0):
+                
+                # flip left/right neurons in contra-contra neurons
+                for index in contra_contra_pairs.index:
+                    cc_left = contra_contra_pairs.loc[index, 'leftid']
+                    cc_right = contra_contra_pairs.loc[index, 'rightid']
+
+                    combined.loc[combined[combined.leftid==cc_left].index, 'rightid'] = cc_left
+                    combined.loc[combined[combined.leftid==cc_left].index, 'leftid'] = cc_right
+
             return(combined)
 
     # loads neurons pairs from selected pymaid annotation
@@ -928,6 +946,10 @@ class Promat():
         
         if(subgraph=='brain'):
             brain = pymaid.get_skids_by_annotation('mw brain paper clustered neurons')
+            adj = adj.loc[np.intersect1d(adj.index, brain), np.intersect1d(adj.index, brain)]
+
+        if(subgraph=='brain and accessory'):
+            brain = pymaid.get_skids_by_annotation('mw brain paper clustered neurons') + pymaid.get_skids_by_annotation('mw brain accessory neurons')
             adj = adj.loc[np.intersect1d(adj.index, brain), np.intersect1d(adj.index, brain)]
 
         #if(subgraph=='brain-A1'):
