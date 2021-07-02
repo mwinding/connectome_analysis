@@ -708,6 +708,7 @@ class Promat():
             pairs_pair_id = list(pairs[0].leftid)
             nonpaired_pair_id = list(pairs[2].nonpaired)
             combined = pairs_pair_id + nonpaired_pair_id
+            return(combined)
 
         # include nonpaired neurons and flip left/right contra-contra neurons (both dendrites/axons on opposite side of brain as cell body)
         if(return_type=='all_pair_sorted'):
