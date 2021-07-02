@@ -1,1 +1,1 @@
-tools to manipulate, process, and analyze the Drosophila larval brain connectome (or other large connectomes)
+tools to manipulate, process, and analyze the Drosophila larval brain connectome
