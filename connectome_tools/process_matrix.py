@@ -579,17 +579,54 @@ class Promat():
 
     # default method to import pair list and process it to deal with duplicated neurons
     @staticmethod
-    def get_pairs(pairs_path='data/pairs/pairs-2021-04-06.csv'):
+    def get_pairs(pairs_path='data/pairs/pairs-2021-04-06.csv', flip_weirdos=True):
         print(f'Path to pairs list is: {pairs_path}')
 
         pairs = pd.read_csv(pairs_path, header = 0) # import pairs, manually determined with help from Heather Patsolic and Ben Pedigo's scripts
+        pairs = pairs.loc[:, ['leftid', 'rightid']] # only include useful columns
 
         # duplicated right-side neurons to throw out for simplicity 
         duplicated = pymaid.get_skids_by_annotation('mw duplicated neurons to delete')
         duplicated_index = np.where(sum([pairs.rightid==x for x in duplicated])==1)[0]
         pairs = pairs.drop(duplicated_index)
 
+        # change left/right ids of contra-contra neurons so they behave properly in downstream analysis
+        #   these neurons have somas on one brain hemisphere and dendrites/axons on the other
+        #   and so they functionally all completely contralateral and can therefore be considered ipsilateral neurons
+        if(flip_weirdos):
+            # identify contra-contra neurons
+            contra_contra = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite'))
+            contra_contra_pairs = Promat.extract_pairs_from_list(contra_contra, pairs)[0]
+            if(len(contra_contra_pairs)>0):
+                
+                # flip left/right neurons in contra-contra neurons
+                for index in contra_contra_pairs.index:
+                    cc_left = contra_contra_pairs.loc[index, 'leftid']
+                    cc_right = contra_contra_pairs.loc[index, 'rightid']
+
+                    pairs.loc[pairs[pairs.leftid==cc_left].index, 'rightid'] = cc_left
+                    pairs.loc[pairs[pairs.leftid==cc_left].index, 'leftid'] = cc_right
+
         return(pairs)
+
+    # returns all skids in left or right side of the brain, depending on whether side = 'left' or 'right'
+    def get_hemis(side=None, flip_weirdos=True):
+        left = pymaid.get_skids_by_annotation('mw left')
+        right = pymaid.get_skids_by_annotation('mw right')
+
+        if(flip_weirdos):
+            # identifying contra-contra neurons so they can be flipped to opposite side of brain
+            neurons_to_flip = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite'))
+            neurons_to_flip_left = [skid for skid in neurons_to_flip if skid in left]
+            neurons_to_flip_right = [skid for skid in neurons_to_flip if skid in right]
+
+            # removing neurons_to_flip and adding to the other side
+            left = list(np.setdiff1d(left, neurons_to_flip_left)) + neurons_to_flip_right
+            right = list(np.setdiff1d(right, neurons_to_flip_right)) + neurons_to_flip_left
+
+        if(side=='left'): return(left)
+        if(side=='right'): return(right)
+        if(side==None): return([left, right])
 
     # converts any df with df.index = list of skids to a multiindex with ['pair_status', 'pair_id', 'skid']
     #   'pair_status': pairs / nonpaired
@@ -668,7 +705,7 @@ class Promat():
     # converts array of skids into left-right pairs in separate columns
     # puts unpaired and nonpaired neurons in different lists
     @staticmethod
-    def extract_pairs_from_list(skids, pairList, flip_weirdos=True):
+    def extract_pairs_from_list(skids, pairList):
 
         pairs = pd.DataFrame([], columns = ['leftid', 'rightid'])
         unpaired = pd.DataFrame([], columns = ['unpaired'])
@@ -687,25 +724,6 @@ class Promat():
                 unpaired = unpaired.append({'unpaired': int(i)}, ignore_index=True)
 
         pairs = pd.DataFrame(pairs)
-
-        # change left/right ids of contra-contra neurons so they behave properly in downstream analysis
-        #   these neurons have somas on one brain hemisphere and dendrites/axons on the other
-        #   and so they functionally all completely contralateral and can therefore be considered ipsilateral neurons
-        if(flip_weirdos):
-            # identify contra-contra neurons
-            contra_contra = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite'))
-            contra_contra = np.intersect1d(skids, contra_contra)
-            contra_contra_pairs = Promat.extract_pairs_from_list(contra_contra, Promat.get_pairs(), flip_weirdos=False)[0]
-            if(len(contra_contra_pairs)>0):
-                
-                # flip left/right neurons in contra-contra neurons
-                for index in contra_contra_pairs.index:
-                    cc_left = contra_contra_pairs.loc[index, 'leftid']
-                    cc_right = contra_contra_pairs.loc[index, 'rightid']
-
-                    pairs.loc[pairs[pairs.leftid==cc_left].index, 'rightid'] = cc_left
-                    pairs.loc[pairs[pairs.leftid==cc_left].index, 'leftid'] = cc_right
-
         unpaired = pd.DataFrame(unpaired)
         nonpaired = pd.DataFrame(nonpaired)
         return(pairs, unpaired, nonpaired)
@@ -729,8 +747,8 @@ class Promat():
             combined = pairs_pair_id + nonpaired_pair_id
             return(combined)
 
-        # include nonpaired neurons and flip left/right contra-contra neurons (both dendrites/axons on opposite side of brain as cell body)
-        if(return_type=='all_pair_sorted'):
+        # include nonpaired neurons and ['leftid', 'rightid'] columns; duplicated leftid/rightid for nonpaired neurons
+        if(return_type=='all_pair_ids_bothsides'):
             pairs_pair_id = list(pairs[0].leftid)
             nonpaired_pair_id = list(pairs[2].nonpaired)
             combined_left = pairs_pair_id + nonpaired_pair_id
@@ -738,20 +756,6 @@ class Promat():
             pairs_id_right = list(pairs[0].rightid)
             combined_right = pairs_id_right + nonpaired_pair_id
             combined = pd.DataFrame(zip(combined_left, combined_right), columns=['leftid', 'rightid'])
-
-            # identify contra-contra neurons
-            contra_contra = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite'))
-            contra_contra = np.intersect1d(skids, contra_contra)
-            contra_contra_pairs = Promat.extract_pairs_from_list(contra_contra, Promat.get_pairs())[0]
-            if(len(contra_contra_pairs)>0):
-                
-                # flip left/right neurons in contra-contra neurons
-                for index in contra_contra_pairs.index:
-                    cc_left = contra_contra_pairs.loc[index, 'leftid']
-                    cc_right = contra_contra_pairs.loc[index, 'rightid']
-
-                    combined.loc[combined[combined.leftid==cc_left].index, 'rightid'] = cc_left
-                    combined.loc[combined[combined.leftid==cc_left].index, 'leftid'] = cc_right
 
             return(combined)
 
