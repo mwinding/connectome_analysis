@@ -1,15 +1,11 @@
 #%%
 import os
 import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -19,6 +15,7 @@ import numpy.random as random
 import gzip
 import csv
 
+import connectome_tools.celltype as ct
 import connectome_tools.process_matrix as pm
 import connectome_tools.process_graph as pg
 from tqdm import tqdm
@@ -33,23 +30,8 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-rm = pymaid.CatmaidInstance(url, token, name, password)
-
-adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
-adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
-
-# remove A1 except for ascendings
-A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
-pruned_index = list(np.setdiff1d(adj.index, A1_local)) 
-adj = adj.loc[pruned_index, pruned_index] # remove all local A1 skids from adjacency matrix
-
-# load inputs and pair data
-inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
-inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
-pairs.drop(1121, inplace=True) # remove duplicate rightid
+# load pairs
+pairs = pm.Promat.get_pairs()
 
 ipsi_pair_ids = pm.Promat.load_pairs_from_annotation('mw ipsilateral axon', pairs, return_type='all_pair_ids')
 bilateral_pair_ids = pm.Promat.load_pairs_from_annotation('mw bilateral axon', pairs, return_type='all_pair_ids')
@@ -61,10 +43,11 @@ RGN_pair_ids = pm.Promat.load_pairs_from_annotation('mw RGN', pairs, return_type
 
 sensories_pair_ids = [pm.Promat.load_pairs_from_annotation(x, pairs, return_type='all_pair_ids') for x in pymaid.get_annotated('mw brain inputs').name]
 all_sensories = [x for sublist in sensories_pair_ids for x in sublist]
+
 # %%
 # EXPERIMENT 1: removing edges from contralateral and bilateral neurons -> effect on path length?
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
+all_edges_combined = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
 
 # iterations for random edge removal as control
 n_init = 40
@@ -186,7 +169,7 @@ path_counts_length_data_counts.to_csv(f'interhemisphere/csv/paths/processed/wild
 # 
 
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
+all_edges_combined = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
 
 # iterations for random edge removal as control
 n_init = 8
@@ -284,52 +267,13 @@ process_paths_ipsi_contra(random_ipsi_paths, random_contra_paths, count_removed)
 # %%
 ##########
 # EXPERIMENT 3: removing random number of ipsi vs contra edges, effect on paths on just one side of brain
-# 
+#
 
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
+all_edges_combined_split = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
 
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
-
-all_edges_combined_split = []
-for i in range(len(all_edges_combined.index)):
-    row = all_edges_combined.iloc[i]
-    if((row.upstream_status=='paired') & (row.downstream_status=='paired')):
-        if(row.type=='ipsilateral'):
-            all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.type=='contralateral'):
-            all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
-            all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-
-    if((row.upstream_status=='nonpaired') & (row.downstream_status=='paired')):
-        if(row.upstream_pair_id in left):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.upstream_pair_id in right):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-
-    if((row.upstream_status=='paired') & (row.downstream_status=='nonpaired')):
-        if(row.downstream_pair_id in left):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.downstream_pair_id in right):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
-
-    #if((row.upstream_status=='nonpaired') & (row.downstream_status=='nonpaired')):
-
-all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_pair_id', 'downstream_pair_id', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
+left = pm.Promat.get_hemis('left')
+right = pm.Promat.get_hemis('right')
 
 # iterations for random edge removal as control
 n_init = 8
@@ -338,8 +282,7 @@ dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dVNC_left = list(np.intersect1d(dVNC, left))
 dVNC_right = list(np.intersect1d(dVNC, right))
 
-sensories_pair_ids = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain inputs').name]
-all_sensories = [x for sublist in sensories_pair_ids for x in sublist]
+all_sensories = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 all_sensories_left = list(np.intersect1d(all_sensories, left))
 all_sensories_right = list(np.intersect1d(all_sensories, right))
 
@@ -351,7 +294,8 @@ random_ipsi500_left, random_ipsi500_right, random_contra500 = pg.Prograph.excise
 random_ipsi1000_left, random_ipsi1000_right, random_contra1000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 1000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 random_ipsi2000_left, random_ipsi2000_right, random_contra2000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 2000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 random_ipsi4000_left, random_ipsi4000_right, random_contra4000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 4000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
-random_ipsi8000_left, random_ipsi8000_right, random_contra8000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 7943, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
+random_ipsi8000_left, random_ipsi8000_right, random_contra8000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 8000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
+#random_ipsi8764_left, random_ipsi8764_right, random_contra8764 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 8764, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 
 # %%
 # generate and save paths
@@ -401,6 +345,16 @@ save_path = f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/all-
 Parallel(n_jobs=-1)(delayed(pg.Prograph.generate_save_simple_paths)(random_ipsi8000_right[i].G, all_sensories_left, dVNC_left, cutoff=cutoff, save_path=f'{save_path}{i}') for i in tqdm((range(n_init))))
 save_path = f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/all-paths-sens-to-dVNC_cutoff{cutoff}_minus-edges-contra-{count}-N'
 Parallel(n_jobs=-1)(delayed(pg.Prograph.generate_save_simple_paths)(random_contra8000[i].G, all_sensories_left, dVNC_left, cutoff=cutoff, save_path=f'{save_path}{i}') for i in tqdm((range(n_init))))
+
+'''
+count = 8764
+save_path = f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/all-paths-sens-to-dVNC_cutoff{cutoff}_minus-edges-ipsi-left-{count}-N'
+Parallel(n_jobs=-1)(delayed(pg.Prograph.generate_save_simple_paths)(random_ipsi8000_left[i].G, all_sensories_left, dVNC_left, cutoff=cutoff, save_path=f'{save_path}{i}') for i in tqdm((range(n_init))))
+save_path = f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/all-paths-sens-to-dVNC_cutoff{cutoff}_minus-edges-ipsi-right-{count}-N'
+Parallel(n_jobs=-1)(delayed(pg.Prograph.generate_save_simple_paths)(random_ipsi8000_right[i].G, all_sensories_left, dVNC_left, cutoff=cutoff, save_path=f'{save_path}{i}') for i in tqdm((range(n_init))))
+save_path = f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/all-paths-sens-to-dVNC_cutoff{cutoff}_minus-edges-contra-{count}-N'
+Parallel(n_jobs=-1)(delayed(pg.Prograph.generate_save_simple_paths)(random_contra8000[i].G, all_sensories_left, dVNC_left, cutoff=cutoff, save_path=f'{save_path}{i}') for i in tqdm((range(n_init))))
+'''
 
 # %%
 # analyze paths: total and count per # hops
@@ -512,10 +466,20 @@ total_paths = pd.concat([total_paths, pd.DataFrame([[wildtype['count'].values[0]
                                         pd.DataFrame([[wildtype['count'].values[0], 'ipsi-left', 0]], columns = total_paths.columns), 
                                         pd.DataFrame([[wildtype['count'].values[0], 'ipsi-right', 0]], columns = total_paths.columns)], axis=0)
 
+# plot raw number of paths (all lengths), after removing edges of different types
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.lineplot(data = total_paths, x='edges_removed', y='count', hue='condition', err_style='bars', linewidth=0.75, err_kws={'elinewidth':0.75}, ax=ax)
 ax.set(ylim=(0, 1100000))
 plt.savefig('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/path-counts_left-to-left_removing-edge-types.pdf', format='pdf', bbox_inches='tight')
+
+# normalized plot of all paths (all lengths), after removing edges of different types
+max_control_paths = total_paths[total_paths.edges_removed==0].iloc[0, 0]
+total_paths.loc[:, 'count'] = total_paths.loc[:, 'count']/max_control_paths
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+sns.lineplot(data = total_paths, x='edges_removed', y='count', hue='condition', err_style='bars', linewidth=0.75, err_kws={'elinewidth':0.75}, ax=ax)
+ax.set(ylim=(0, 1.05))
+plt.savefig('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/path-counts_left-to-left_removing-edge-types_normalized.pdf', format='pdf', bbox_inches='tight')
+
 
 # plot total paths per path length from left -> left paths
 total_paths = pd.concat([pd.read_csv('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/excised_graph_random-ipsi-contra_500-removed_path-lengths.csv'),
@@ -549,49 +513,10 @@ for removed in [500, 1000, 2000, 4000, 8000]:
 # 
 
 # load previously generated paths
-all_edges_combined = pd.read_csv('interhemisphere/csv/all_paired_edges.csv', index_col=0)
+all_edges_combined_split = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
 
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
-
-all_edges_combined_split = []
-for i in range(len(all_edges_combined.index)):
-    row = all_edges_combined.iloc[i]
-    if((row.upstream_status=='paired') & (row.downstream_status=='paired')):
-        if(row.type=='ipsilateral'):
-            all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.type=='contralateral'):
-            all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
-            all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-
-    if((row.upstream_status=='nonpaired') & (row.downstream_status=='paired')):
-        if(row.upstream_pair_id in left):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'left', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.upstream_pair_id in right):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, pm.Promat.identify_pair(row.downstream_pair_id, pairs), 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-
-    if((row.upstream_status=='paired') & (row.downstream_status=='nonpaired')):
-        if(row.downstream_pair_id in left):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'left', row.left, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'left', row.right, row.type, row.upstream_status, row.downstream_status])
-        if(row.downstream_pair_id in right):
-            if(row.type=='ipsilateral'):
-                all_edges_combined_split.append([pm.Promat.identify_pair(row.upstream_pair_id, pairs), row.downstream_pair_id, 'right', 'right', row.right, row.type, row.upstream_status, row.downstream_status])
-            if(row.type=='contralateral'):
-                all_edges_combined_split.append([row.upstream_pair_id, row.downstream_pair_id, 'left', 'right', row.left, row.type, row.upstream_status, row.downstream_status])
-
-    #if((row.upstream_status=='nonpaired') & (row.downstream_status=='nonpaired')):
-
-all_edges_combined_split = pd.DataFrame(all_edges_combined_split, columns = ['upstream_pair_id', 'downstream_pair_id', 'upstream_side', 'downstream_side', 'edge_weight', 'type', 'upstream_status', 'downstream_status'])
+left = pm.Promat.get_hemis('left')
+right = pm.Promat.get_hemis('right')
 
 # iterations for random edge removal as control
 n_init = 8
@@ -600,8 +525,7 @@ dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dVNC_left = list(np.intersect1d(dVNC, left))
 dVNC_right = list(np.intersect1d(dVNC, right))
 
-sensories_pair_ids = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain inputs').name]
-all_sensories = [x for sublist in sensories_pair_ids for x in sublist]
+all_sensories = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 all_sensories_left = list(np.intersect1d(all_sensories, left))
 all_sensories_right = list(np.intersect1d(all_sensories, right))
 
@@ -613,7 +537,7 @@ random_ipsi500_left, random_ipsi500_right, random_contra500 = pg.Prograph.excise
 random_ipsi1000_left, random_ipsi1000_right, random_contra1000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 1000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 random_ipsi2000_left, random_ipsi2000_right, random_contra2000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 2000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 random_ipsi4000_left, random_ipsi4000_right, random_contra4000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 4000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
-random_ipsi8000_left, random_ipsi8000_right, random_contra8000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 7943, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
+random_ipsi8000_left, random_ipsi8000_right, random_contra8000 = pg.Prograph.excise_ipsi_contra_edge_experiment(all_edges_combined_split, 8000, n_init, 0, left, right, exclude_nodes=(all_sensories+dVNC), split_pairs=True)
 
 # %%
 # generate and save paths
@@ -774,10 +698,19 @@ total_paths = pd.concat([total_paths, pd.DataFrame([[wildtype['count'].values[0]
                                         pd.DataFrame([[wildtype['count'].values[0], 'ipsi-left', 0]], columns = total_paths.columns), 
                                         pd.DataFrame([[wildtype['count'].values[0], 'ipsi-right', 0]], columns = total_paths.columns)], axis=0)
 
+# raw plot of all paths (all lengths), after removing edges of different types
 fig, ax = plt.subplots(1,1, figsize=(1.5,1.5))
 sns.lineplot(data = total_paths, x='edges_removed', y='count', hue='condition', err_style='bars', linewidth=0.5, err_kws={'elinewidth':0.5}, ax=ax)
 ax.set(ylim=(0, 1100000))
 plt.savefig('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/path-counts_left-to-right_removing-edge-types.pdf', format='pdf', bbox_inches='tight')
+
+# normalized plot of all paths (all lengths), after removing edges of different types
+max_control_paths = total_paths[total_paths.edges_removed==0].iloc[0, 0]
+total_paths.loc[:, 'count'] = total_paths.loc[:, 'count']/max_control_paths
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+sns.lineplot(data = total_paths, x='edges_removed', y='count', hue='condition', err_style='bars', linewidth=0.75, err_kws={'elinewidth':0.75}, ax=ax)
+ax.set(ylim=(0, 1.05))
+plt.savefig('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/path-counts_left-to-right_removing-edge-types_normalized.pdf', format='pdf', bbox_inches='tight')
 
 # plot total paths per path length from left -> left paths
 total_paths = pd.concat([pd.read_csv('interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/excised_graph-to-dVNC-right_random-ipsi-contra_500-removed_path-lengths.csv'),
