@@ -93,11 +93,11 @@ adjs = [adj_all_mat, adj_ad_mat, adj_aa_mat, adj_dd_mat, adj_da_mat, adj_allaa_m
 adjs_names = ['summed', 'ad', 'aa', 'dd', 'da', 'all-aa', 'ad_da']
 
 threshold = 0.01
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
+left = pm.Promat.get_hemis('left')
+right = pm.Promat.get_hemis('right')
 
 for i, adj_mat in enumerate(adjs):
-    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids)
+    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)
     matrix_nonpaired = list(np.intersect1d(matrix_pairs[2].nonpaired, left+right)) # ignore unipolar neurons, not in set of brain neurons
     all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
 
@@ -109,11 +109,11 @@ for i, adj_mat in enumerate(adjs):
 '''
 # all edges
 threshold = 0
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
+left = pm.Promat.get_hemis('left')
+right = pm.Promat.get_hemis('right')
 
 for i, adj_mat in enumerate(adjs):
-    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids)
+    matrix_pairs = pm.Promat.extract_pairs_from_list(adj_mat.skids, pairs)
     matrix_nonpaired = list(np.intersect1d(matrix_pairs[2].nonpaired, left+right)) # ignore unipolar neurons, not in set of brain neurons
     all_sources = list(matrix_pairs[0].leftid) + matrix_nonpaired
 
