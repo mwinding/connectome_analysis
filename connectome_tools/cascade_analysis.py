@@ -109,3 +109,25 @@ class Cascade_Analyzer:
         job = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.run_cascade)(i, cdispatch) for i in source_indices_list)
         data = [Cascade_Analyzer(name=source_names[i], hit_hist=hit_hist, skids_in_hit_hist=False, adj_index=adj.index) for i, hit_hist in enumerate(job)]
         return(data)
+
+    @staticmethod
+    def run_single_cascade(name, source_skids, stop_skids, adj, p, max_hops, n_init, simultaneous):
+
+        source_indices = np.where([x in source_skids for x in adj.index])[0]
+        stop_indices = np.where([x in stop_skids for x in adj.index])[0]
+        transition_probs = to_transmission_matrix(adj.values, p)
+
+        cdispatch = TraverseDispatcher(
+            Cascade,
+            transition_probs,
+            stop_nodes = stop_indices,
+            max_hops=max_hops,
+            allow_loops = False,
+            n_init=n_init,
+            simultaneous=simultaneous,
+        )
+
+        cascade = Cascade_Analyzer.run_cascade(i = source_indices, cdispatch = cdispatch)
+        data = Cascade_Analyzer(name=name, hit_hist=cascade, skids_in_hit_hist=False, adj_index=adj.index)
+        return(data)
+
