@@ -74,26 +74,6 @@ adj_allaa.columns = adj_allaa.columns.astype(int)
 adj_ad_da.columns = adj_ad_da.columns.astype(int)
 
 # %%
-# prune out A1 neurons from adjacency matrices (optional)
-
-# remove A1 except for ascendings, also paritally differentiated neurons
-A1_ascending = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain ascendings').name))
-A1_ascending = [x for sublist in A1_ascending for x in sublist]
-A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
-prune_all = A1_local + pymaid.get_skids_by_annotation('mw partially differentiated') #+ pymaid.get_skids_by_annotation('mw brain accessory neurons')
-pruned_index = [list(np.setdiff1d(x.index, A1_local))  for x in [adj_all, adj_ad, adj_aa, adj_dd, adj_da, adj_allaa, adj_ad_da]]
-
-# remove all local A1 skids from adjacency matrix
-adj_all = adj_all.loc[pruned_index[0], pruned_index[0]] 
-adj_ad = adj_ad.loc[pruned_index[1], pruned_index[1]] 
-adj_aa = adj_aa.loc[pruned_index[2], pruned_index[2]] 
-adj_dd = adj_dd.loc[pruned_index[3], pruned_index[3]] 
-adj_da = adj_da.loc[pruned_index[4], pruned_index[4]] 
-adj_allaa = adj_allaa.loc[pruned_index[5], pruned_index[5]] 
-adj_ad_da = adj_ad_da.loc[pruned_index[6], pruned_index[6]] 
-
-# %%
 # load adj matrices
 
 adj_all_mat = pm.Adjacency_matrix(adj_all, inputs, 'summed')
