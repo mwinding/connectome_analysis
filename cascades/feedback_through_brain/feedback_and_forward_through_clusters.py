@@ -1,169 +1,63 @@
 #%%
+import sys
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
 
-# %%
-import sys
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+sys.path.append('/Users/mwinding/repos/maggot_models')
+
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
 
-from graspy.plot import gridplot, heatmap
-from graspy.utils import binarize, pass_to_ranks
 from src.data import load_metagraph
 from src.visualization import CLASS_COLOR_DICT, adjplot
+from src.traverse import Cascade, to_transmission_matrix
+from src.traverse import TraverseDispatcher
+from src.visualization import matrixplot
+
+import connectome_tools.process_matrix as pm
+import connectome_tools.cascade_analysis as casc
+import connectome_tools.celltype as ct
+import connectome_tools.cluster_analysis as clust
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
-plt.rcParams.update({'font.size': 6})
+plt.rcParams.update({'font.size': 5})
 
-rm = pymaid.CatmaidInstance(url, token, name, password)
+# cluster object
+cluster_level = 6
+clusters = clust.Analyze_Cluster(cluster_lvl=cluster_level)
 
-mg_ad = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg_ad.calculate_degrees(inplace=True)
-adj_ad = mg_ad.adj  # adjacency matrix from the "mg" object
+# load adj matrices
+adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accessory')
+adj_aa = pm.Promat.pull_adj(type_adj='aa', subgraph='brain and accessory')
 
-mg_aa = load_metagraph("Gaa", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg_aa.calculate_degrees(inplace=True)
-adj_aa = mg_aa.adj
-
-mg_dd = load_metagraph("Gdd", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg_dd.calculate_degrees(inplace=True)
-adj_dd = mg_dd.adj
-
-mg_da = load_metagraph("Gda", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-mg_da.calculate_degrees(inplace=True)
-adj_da = mg_da.adj
-
-clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
-lvl7 = clusters.groupby('lvl7_labels')
-
-# separate meta file with median_node_visits from sensory for each node
-# determined using iterative random walks
-meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
-
-order_df = []
-for key in lvl7.groups:
-    skids = lvl7.groups[key]
-    node_visits = meta_with_order.loc[skids, :].median_node_visits
-    order_df.append([key, np.nanmean(node_visits)])
-
-order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
-order_df = order_df.sort_values(by = 'node_visit_order')
-
-order = list(order_df.cluster)
+# load input and output neurons
+all_sensories = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
+all_outputs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs')
 
 # %%
-# pull sensory annotations and then pull associated skids
-input_names = pymaid.get_annotated('mw brain inputs').name
-input_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain inputs').name))
-input_skids = [val for sublist in input_skids_list for val in sublist]
-
-output_order = [1, 0, 2]
-output_names = pymaid.get_annotated('mw brain outputs').name
-output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
-output_skids = [val for sublist in output_skids_list for val in sublist]
-
-output_names_reordered = [output_names[i] for i in output_order]
-output_skids_list_reordered = [output_skids_list[i] for i in output_order]
-
-# level 7 clusters
-clusters = pd.read_csv('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', index_col = 0, header = 0)
-lvl7 = clusters.groupby('lvl7_labels')
-
-meta_with_order = pd.read_csv('data/meta_data_w_order.csv', index_col = 0, header = 0)
-
-# ordering by mean node visit from sensory
-order_df = []
-for key in lvl7.groups:
-    skids = lvl7.groups[key]
-    node_visits = meta_with_order.loc[skids, :].median_node_visits
-    order_df.append([key, np.nanmean(node_visits)])
-
-order_df = pd.DataFrame(order_df, columns = ['cluster', 'node_visit_order'])
-order_df = order_df.sort_values(by = 'node_visit_order')
-
-order = list(order_df.cluster)
-
-# getting skids of each cluster
-cluster_lvl7 = []
-for key in order:
-    cluster_lvl7.append(lvl7.groups[key].values)
-
-# %%
-## cascades from each cluster, ending at brain inputs/outputs
-# maybe should switch to sensory second-order?
-
-def skid_to_index(skid, mg):
-    index_match = np.where(mg.meta.index == skid)[0]
-    if(len(index_match)==1):
-        return(index_match[0])
-    if(len(index_match)!=1):
-        print('Not one match for skid %i!' %skid)
-
-from src.traverse import Cascade, to_transmission_matrix
-from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
-from joblib import Parallel, delayed
-from tqdm import tqdm
-
-# convert cluster skids to indices
-cluster_lvl7_indices_list = []
-for skids in cluster_lvl7:
-    indices = []
-    for skid in skids:
-        index = skid_to_index(skid, mg_ad)
-        indices.append(index)
-    cluster_lvl7_indices_list.append(indices)
-
-#all_input_indices = np.where([x in input_skids for x in mg.meta.index])[0]
-#all_output_indices = np.where([x in output_skids for x in mg.meta.index])[0]
-
-def run_cascade(i, cdispatch):
-    return(cdispatch.multistart(start_nodes = i))
-
-def run_cascades_parallel(indices_list, adj, p, max_hops, n_init, simultaneous):
-
-    transition_probs = to_transmission_matrix(adj, p)
-
-    cdispatch = TraverseDispatcher(
-        Cascade,
-        transition_probs,
-        stop_nodes = [],
-        max_hops=max_hops,
-        allow_loops = False,
-        n_init=n_init,
-        simultaneous=simultaneous,
-    )
-
-    job = Parallel(n_jobs=-1)(delayed(run_cascade)(i, cdispatch) for i in indices_list)
-    return(job)
+## cascades starting at each cluster
 
 p = 0.05
-max_hops = 10
+max_hops = 4
 n_init = 100
-simultaneous = True
 
-cluster_hit_hist_list_ad = run_cascades_parallel(cluster_lvl7_indices_list, adj_ad, p, max_hops, n_init, simultaneous)
-print('finished ad cascades')
-cluster_hit_hist_list_aa = run_cascades_parallel(cluster_lvl7_indices_list, adj_aa, p, max_hops, n_init, simultaneous)
-print('finished aa cascades')
-#cluster_hit_hist_list_dd = run_cascades_parallel(cluster_lvl7_indices_list, adj_dd, p, max_hops, n_init, simultaneous)
-#cluster_hit_hist_list_da = run_cascades_parallel(cluster_lvl7_indices_list, adj_da, p, max_hops, n_init, simultaneous)
+cluster_cascades = clusters.ff_fb_cascades(adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init)
+ff_fb_df = clusters.all_ff_fb_df(cluster_cascades, divide_by_skids=True)
+
+sns.heatmap(ff_fb_df.T, square=True, robust=True, cmap='Reds')
+plt.savefig('cascades/test.pdf')
 
 # %%
+# OLD CODE
 # categorize neurons in each cluster cascade by cluster
 
 def hit_hist_to_clusters(hit_hist_list, lvl7, order):
