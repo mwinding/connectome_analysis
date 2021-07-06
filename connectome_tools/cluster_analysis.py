@@ -3,31 +3,67 @@
 import numpy as np
 import pandas as pd
 import sys
+import pymaid as pymaid
+from pymaid_creds import url, name, password, token
+rm = pymaid.CatmaidInstance(url, token, name, password)
+
 import connectome_tools.process_matrix as pm
+import connectome_tools.cascade_analysis as casc
+import connectome_tools.celltype as ct
 
 class Analyze_Cluster():
 
-    def __init__(self, cluster_info_path, cluster_sort_path, lvl_label_str):
-        # load cluster data
-        self.clusters_info = pd.read_csv(cluster_info_path, index_col = 0, header = 0)
+    # cluster_lvl should be integer between 0 and max levels of cluster hierarchy
+    # meta_data_path is the path to a meta_data file in 'data/graphs/'; contains cluster and sort information
+    def __init__(self, cluster_lvl, meta_data_path = 'data/graphs/meta_data.csv', skids = pymaid.get_skids_by_annotation('mw brain paper clustered neurons')):
 
-        # separate meta file with median_node_visits from sensory for each node
+        self.meta_data = pd.read_csv(meta_data_path, index_col = 0, header = 0) # load meta_data file
+        self.skids = skids
+
+        # determine where neurons are in the signal from sensory -> descending neurons
         # determined using iterative random walks
-        self.meta_with_order = pd.read_csv(cluster_sort_path, index_col = 0, header = 0)
-        self.clusters, self.cluster_order = self.cluster_order(lvl_label_str)
+        self.cluster_order, self.cluster_df = self.cluster_order(cluster_lvl = cluster_lvl)
+        self.cluster_cta = ct.Celltype_Analyzer([ct.Celltype(self.cluster_order[i], skids) for i, skids in enumerate(list(self.cluster_df.skids))])
 
-    def cluster_order(self, lvl_label_str):
-        lvl = self.clusters_info.groupby(lvl_label_str)
-        order_df = []
-        for key in lvl.groups:
-            skids = lvl.groups[key]
-            node_visits = self.meta_with_order.loc[skids, :].median_node_visits
-            order_df.append([key, list(skids), np.nanmean(node_visits)])
+    def cluster_order(self, cluster_lvl):
 
-        order_df = pd.DataFrame(order_df, columns = ['cluster', 'skids', 'node_visit_order'])
-        order_df = order_df.sort_values(by = 'node_visit_order')
-        order_df.reset_index(inplace=True, drop=True)
+        brain_clustered = self.skids
 
-        return(order_df, list(order_df.cluster))
+        meta_data_df = self.meta_data.copy()
+        meta_data_df['skid']=meta_data_df.index
+
+        cluster_df = pd.DataFrame(list(meta_data_df.groupby(f'dc_level_{cluster_lvl}_n_components=10_min_split=32')['skid']), columns=['cluster', 'skids'])
+        cluster_df['skids'] = [x.values for x in cluster_df.skids]
+        cluster_df['sum_walk_sort'] = [np.nanmean(x[1].values) for x in list(meta_data_df.groupby(f'dc_level_{cluster_lvl}_n_components=10_min_split=32')['sum_walk_sort'])]
+        cluster_df.sort_values(by='sum_walk_sort', inplace=True)
+        cluster_df.reset_index(inplace=True, drop=True)
+
+        # returns cluster order and clusters dataframe (with order, skids, walk_sort values)
+        return(list(cluster_df.cluster), cluster_df) 
+
+    def ff_fb_cascades(self, adj, p, max_hops, n_init):
+
+        skids_list = list(self.cluster_df.skids)
+        source_names = list(self.cluster_df.cluster)
+        stop_skids = []
+        simultaneous = True
+        hit_hists_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list = skids_list, source_names = source_names, stop_skids=stop_skids,
+                                                                    adj=adj, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
+        return(hit_hists_list)
+        
+    def all_ff_fb_df(self, cascs_list, divide_by_skids):
+
+        rows = []
+        for casc_analyzer in cascs_list:
+            casc_row = casc_analyzer.cascades_in_celltypes(cta=self.cluster_cta, hops=4, start_hop=0, divide_by_skids=divide_by_skids)
+            rows.append(casc_row)
+
+        ff_fb_df = pd.concat(rows, axis=1)
+        ff_fb_df.drop(columns='neuropil', inplace=True)
+        ff_fb_df.columns = ff_fb_df.index
+        return(ff_fb_df)            
+        
+
+
 
     
