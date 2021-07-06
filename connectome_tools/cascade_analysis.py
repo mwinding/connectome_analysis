@@ -12,9 +12,10 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 class Cascade_Analyzer:
-    def __init__(self, name, hit_hist, skids_in_hit_hist=True, adj_index=None): # changed mg to adj_index for custom/modified adj matrices
+    def __init__(self, name, hit_hist, n_init, skids_in_hit_hist=True, adj_index=None): # changed mg to adj_index for custom/modified adj matrices
         self.hit_hist = hit_hist
         self.name = name
+        self.n_init = n_init
         if(skids_in_hit_hist):
             self.adj_index = hit_hist.index
             self.skid_hit_hist = hit_hist
@@ -68,12 +69,14 @@ class Cascade_Analyzer:
         skids = np.concatenate([neurons_pairs.leftid, neurons_pairs.rightid, neurons_nonpaired.nonpaired])
         return(skids)
 
-    def cascades_in_celltypes(self, cta, hops, n_init):
+    def cascades_in_celltypes(self, cta, hops, start_hop=1, divide_by_skids=False):
         skid_hit_hist = self.skid_hit_hist
+        n_init = self.n_init
         hits = []
         for celltype in cta.Celltypes:
-            total = skid_hit_hist.loc[celltype.get_skids(), :].sum(axis=0).iloc[1:hops+1].sum()
-            total = total/(len(celltype.get_skids())*n_init)
+            total = skid_hit_hist.loc[np.intersect1d(celltype.get_skids(), skid_hit_hist.index), :].sum(axis=0).iloc[start_hop:hops+1].sum()
+            if(divide_by_skids==False): total = total/(len(celltype.get_skids())*n_init)
+            if(divide_by_skids): total = total/(len(celltype.get_skids()))
             hits.append([celltype.get_name(), total])
 
         data = pd.DataFrame(hits, columns=['neuropil', 'visits_norm'])
@@ -82,7 +85,7 @@ class Cascade_Analyzer:
     @staticmethod
     def run_cascade(i, cdispatch):
         return(cdispatch.multistart(start_nodes = i))
-        
+
     @staticmethod
     def run_cascades_parallel(source_skids_list, source_names, stop_skids, adj, p, max_hops, n_init, simultaneous):
         # adj format must be pd.DataFrame with skids for index/columns
@@ -106,8 +109,8 @@ class Cascade_Analyzer:
             simultaneous=simultaneous,
         )
 
-        job = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.run_cascade)(i, cdispatch) for i in source_indices_list)
-        data = [Cascade_Analyzer(name=source_names[i], hit_hist=hit_hist, skids_in_hit_hist=False, adj_index=adj.index) for i, hit_hist in enumerate(job)]
+        job = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.run_cascade)(source_indices_list[i], cdispatch) for i in tqdm(range(0, len(source_indices_list))))
+        data = [Cascade_Analyzer(name=source_names[i], hit_hist=hit_hist, n_init=n_init, skids_in_hit_hist=False, adj_index=adj.index) for i, hit_hist in enumerate(job)]
         return(data)
 
     @staticmethod
