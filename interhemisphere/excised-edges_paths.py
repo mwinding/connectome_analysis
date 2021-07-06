@@ -508,6 +508,10 @@ for removed in [500, 1000, 2000, 4000, 8000]:
     plt.savefig(f'interhemisphere/csv/paths/random-ipsi-contra-edges_left-paths/processed/path-length-counts_left-to-left_removing-{removed}-edge-types.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# how many nodes are in each type of path?
+
+
+# %%
 ##########
 # EXPERIMENT 4: removing random number of ipsi vs contra edges, effect on paths on just one side of brain to opposite side
 # 
