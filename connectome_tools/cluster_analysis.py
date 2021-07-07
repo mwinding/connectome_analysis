@@ -51,16 +51,18 @@ class Analyze_Cluster():
                                                                     adj=adj, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
         return(hit_hists_list)
         
-    def all_ff_fb_df(self, cascs_list, divide_by_skids):
+    def all_ff_fb_df(self, cascs_list, normalize='visits'):
 
         rows = []
-        for casc_analyzer in cascs_list:
-            casc_row = casc_analyzer.cascades_in_celltypes(cta=self.cluster_cta, hops=4, start_hop=0, divide_by_skids=divide_by_skids)
+        for i, casc_analyzer in enumerate(cascs_list):
+            precounts = len(self.cluster_df.skids[i])
+            casc_row = casc_analyzer.cascades_in_celltypes(cta=self.cluster_cta, hops=4, start_hop=0, normalize=normalize, pre_counts=precounts)
             rows.append(casc_row)
 
         ff_fb_df = pd.concat(rows, axis=1)
         ff_fb_df.drop(columns='neuropil', inplace=True)
-        ff_fb_df.columns = ff_fb_df.index
+        ff_fb_df.columns = self.cluster_order
+        ff_fb_df.index = self.cluster_order
         return(ff_fb_df)            
         
 
