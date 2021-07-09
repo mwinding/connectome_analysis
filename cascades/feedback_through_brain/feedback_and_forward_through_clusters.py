@@ -49,7 +49,7 @@ all_outputs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outp
 ## cascades starting at each cluster
 
 p = 0.05
-max_hops = 4
+max_hops = 3
 n_init = 100
 
 cluster_cascades = clusters.ff_fb_cascades(adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init)
@@ -110,76 +110,6 @@ for cluster_num in cluster_nums:
 
 ff_fb = []
 for i in range(0, len(ff_fb_df.index)):
-    row = ff_fb_df.iloc[i, :]
-    if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i-1, i:len(row)])#/(len(row)-i)
-    if(i==len(row)): feedforward = 0
-    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i])#/(i)
-    if(i==0): feedback = 0
-    ff_fb.append([ff_fb_df.index[i], feedforward, feedback])
-
-ff_fb = pd.DataFrame(ff_fb, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
-
-fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
-sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
-sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
-plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_{max_hops-1}hops.pdf')
-
-ff_fb_binary = []
-for i in range(0, len(ff_fb_df.index)):
-    row = ff_fb_df.iloc[i, :]
-    if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i-1, i:len(row)]>0)#/(len(row)-i)
-    if(i==len(row)): feedforward = 0
-    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i]>0)#/(i)
-    if(i==0): feedback = 0
-    ff_fb_binary.append([ff_fb_df.index[i], feedforward, feedback])
-
-ff_fb_binary = pd.DataFrame(ff_fb_binary, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
-
-fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
-sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
-sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
-plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_binary_{max_hops-1}hops.pdf', bbox_inches='tight')
-
-# normalize by total possible feedforward/feedback clusters that could be communicated with
-ff_fb = []
-for i in range(0, len(ff_fb_df.index)):
-    row = ff_fb_df.iloc[i, :]
-    if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i-1, i:len(row)])/len(row)
-    if(i==len(row)): feedforward = 0
-    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i])/i
-    if(i==0): feedback = 0
-    ff_fb.append([ff_fb_df.index[i], feedforward, feedback])
-
-ff_fb = pd.DataFrame(ff_fb, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
-
-fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
-sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
-sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
-plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_norm_{max_hops-1}hops.pdf', bbox_inches='tight')
-
-ff_fb_binary = []
-for i in range(0, len(ff_fb_df.index)):
-    row = ff_fb_df.iloc[i, :]
-    if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i-1, i:len(row)]>0)/len(row)
-    if(i==len(row)): feedforward = 0
-    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i]>0)/i
-    if(i==0): feedback = 0
-    ff_fb_binary.append([ff_fb_df.index[i], feedforward, feedback])
-
-ff_fb_binary = pd.DataFrame(ff_fb_binary, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
-
-fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
-sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
-sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
-plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_binary_norm_{max_hops-1}hops.pdf', bbox_inches='tight')
-
-# %%
-# determine feedforward and feedback input character of each cluster
-
-threshold = 0
-
-ff_fb = []
-for i in range(0, len(ff_fb_df.index)):
     row = ff_fb_df.iloc[:, i]
     if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i, (i+1):len(row)])#/(len(row)-i)
     if(i==len(row)): feedforward = 0
@@ -192,7 +122,35 @@ ff_fb = pd.DataFrame(ff_fb, columns = ['cluster', 'feedforward_signal', 'feedbac
 fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
 sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
 sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
-plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_{max_hops-1}hops.pdf')
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_{max_hops-1}hops.pdf', bbox_inches='tight')
+
+percent_ff_list = []
+percent_fb_list = []
+neither_list = []
+for i in ff_fb.index:
+    ff = ff_fb.loc[i, 'feedforward_signal']
+    fb = ff_fb.loc[i, 'feedback_signal']
+    percent_ff_list.append(ff/(ff+fb))
+    percent_fb_list.append(fb/(ff+fb))
+
+    # to label clusters with no ff/fb signal
+    if((ff+fb)==0): neither_list.append(1)
+    if((ff+fb)>0): neither_list.append(0)
+
+ff_fb['percent_feedforward'] = percent_ff_list
+ff_fb['percent_feedback'] = percent_fb_list
+ff_fb['percent_neither'] = neither_list
+ff_fb.fillna(0, inplace=True)
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_feedforward')
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_feedback', bottom = 'percent_feedforward')
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_neither', color='tab:gray')
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_{max_hops-1}hops_percent.pdf', bbox_inches='tight')
+
+# alternative ways of thresholding or normalizing
+'''
+threshold = 0
 
 ff_fb_binary = []
 for i in range(0, len(ff_fb_df.index)):
@@ -232,7 +190,7 @@ for i in range(0, len(ff_fb_df.index)):
     row = ff_fb_df.iloc[i, :]
     if(i<len(row)): feedforward = sum(ff_fb_df.iloc[i, (i+1):len(row)]>threshold)/(len(row)-i)
     if(i==len(row)): feedforward = 0
-    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i]>threshold)/(i)
+    if(i>0): feedback = sum(ff_fb_df.iloc[i, 0:i]>threshold)/i
     if(i==0): feedback = 0
     ff_fb_binary.append([ff_fb_df.index[i], feedforward, feedback])
 
@@ -242,7 +200,103 @@ fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
 sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
 sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
 plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_binary_norm_{max_hops-1}hops.pdf', bbox_inches='tight')
+'''
+# %%
+# determine feedforward and feedback input character of each cluster
 
+ff_fb = []
+for i in range(0, len(ff_fb_df.columns)):
+    row = ff_fb_df.iloc[:, i]
+    if(i<len(row)): feedback = sum(ff_fb_df.iloc[(i+1):len(row), i])#/(len(row)-i)
+    if(i==len(row)): feedback = 0
+    if(i>0): feedforward = sum(ff_fb_df.iloc[0:i, i])#/(i)
+    if(i==0): feedforward = 0
+    ff_fb.append([ff_fb_df.index[i], feedforward, feedback])
+
+ff_fb = pd.DataFrame(ff_fb, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
+sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_input_{max_hops-1}hops.pdf', bbox_inches='tight')
+
+percent_ff_list = []
+percent_fb_list = []
+neither_list = []
+for i in ff_fb.index:
+    ff = ff_fb.loc[i, 'feedforward_signal']
+    fb = ff_fb.loc[i, 'feedback_signal']
+    percent_ff_list.append(ff/(ff+fb))
+    percent_fb_list.append(fb/(ff+fb))
+
+    # to label clusters with no ff/fb signal
+    if((ff+fb)==0): neither_list.append(1)
+    if((ff+fb)>0): neither_list.append(0)
+
+ff_fb['percent_feedforward'] = percent_ff_list
+ff_fb['percent_feedback'] = percent_fb_list
+ff_fb['percent_neither'] = neither_list
+ff_fb.fillna(0, inplace=True)
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_feedforward')
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_feedback', bottom = 'percent_feedforward')
+plt.bar(data = ff_fb, x=ff_fb.index, height='percent_neither', color='tab:gray')
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_input_{max_hops-1}hops_percent.pdf', bbox_inches='tight')
+
+# alternative ways of thresholding or normalizing
+'''
+threshold = 0
+
+ff_fb_binary = []
+for i in range(0, len(ff_fb_df.index)):
+    row = ff_fb_df.iloc[i, :]
+    if(i<len(row)): feedback = sum(ff_fb_df.iloc[(i+1):len(row), i]>threshold)#/(len(row)-i)
+    if(i==len(row)): feedback = 0
+    if(i>0): feedforward = sum(ff_fb_df.iloc[0:i, i]>threshold)#/(i)
+    if(i==0): feedforward = 0
+    ff_fb_binary.append([ff_fb_df.index[i], feedforward, feedback])
+
+ff_fb_binary = pd.DataFrame(ff_fb_binary, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
+sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_input_binary_{max_hops-1}hops.pdf', bbox_inches='tight')
+
+# normalize by total possible feedforward/feedback clusters that could be communicated with
+ff_fb = []
+for i in range(0, len(ff_fb_df.index)):
+    row = ff_fb_df.iloc[i, :]
+    if(i<len(row)): feedback = sum(ff_fb_df.iloc[(i+1):len(row), i])/(len(row)-i)
+    if(i==len(row)): feedback = 0
+    if(i>0): feedforward = sum(ff_fb_df.iloc[0:i, i])/i
+    if(i==0): feedforward = 0
+    ff_fb.append([ff_fb_df.index[i], feedforward, feedback])
+
+ff_fb = pd.DataFrame(ff_fb, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
+sns.lineplot(data = ff_fb, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_input_norm_{max_hops-1}hops.pdf', bbox_inches='tight')
+
+ff_fb_binary = []
+for i in range(0, len(ff_fb_df.index)):
+    row = ff_fb_df.iloc[i, :]
+    if(i<len(row)): feedback = sum(ff_fb_df.iloc[(i+1):len(row), i]>threshold)/(len(row)-i)
+    if(i==len(row)): feedback = 0
+    if(i>0): feedforward = sum(ff_fb_df.iloc[0:i, i]>threshold)/i
+    if(i==0): feedforward = 0
+    ff_fb_binary.append([ff_fb_df.index[i], feedforward, feedback])
+
+ff_fb_binary = pd.DataFrame(ff_fb_binary, columns = ['cluster', 'feedforward_signal', 'feedback_signal'])
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,.8))
+sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedforward_signal', ax=ax, linewidth=0.5)
+sns.lineplot(data = ff_fb_binary, x=ff_fb.index, y='feedback_signal', ax=ax, linewidth=0.5)
+plt.savefig(f'cascades/feedback_through_brain/plots/ff_fb_lineplot_input_binary_norm_{max_hops-1}hops.pdf', bbox_inches='tight')
+'''
 # %%
 # OLD CODE
 # categorize neurons in each cluster cascade by cluster
@@ -264,7 +318,7 @@ def hit_hist_to_clusters(hit_hist_list, lvl7, order):
         output_hit_hist_lvl7.append(clustered_hist)
     
     return(output_hit_hist_lvl7)
-
+ 
 def sum_cluster_hit_hist(hit_hist_cluster, order, normalized = True):
     # summed signal cascades per cluster group (hops remain intact)
     summed_hist = []
