@@ -129,6 +129,8 @@ class Celltype_Analyzer:
         self.generate_adj()
 
     def set_known_types(self, list_Celltypes, unknown=True):
+
+        if(list_Celltypes=='default'): data, list_Celltypes = Celltype_Analyzer.default_celltypes()
         if(unknown==True):
             unknown_skids = np.setdiff1d(self.skids, np.unique([skid for celltype in list_Celltypes for skid in celltype.get_skids()]))
             unknown_type = [Celltype('unknown', unknown_skids, 'tab:gray')]
