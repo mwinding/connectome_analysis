@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import sys
 import pymaid
 import matplotlib.pyplot as plt
@@ -394,6 +395,67 @@ class Celltype_Analyzer:
         data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['name', 'skids', 'color'])
         celltype_objs = list(map(lambda x: Celltype(*x), zip(names, skid_groups, colors)))
         return(data, celltype_objs)
+
+
+    @staticmethod
+    def layer_id(layers, layer_names, celltype_skids):
+        max_layers = max([len(layer) for layer in layers])
+
+        mat_neurons = np.zeros(shape = (len(layers), max_layers))
+        mat_neuron_skids = pd.DataFrame()
+        for i in range(0,len(layers)):
+            skids = []
+            for j in range(0,len(layers[i])):
+                neurons = np.intersect1d(layers[i][j], celltype_skids)
+                count = len(neurons)
+
+                mat_neurons[i, j] = count
+                skids.append(neurons)
+            
+            if(len(skids) != max_layers):
+                skids = skids + [[]]*(max_layers-len(skids)) # make sure each column has same num elements
+
+            mat_neuron_skids[layer_names[i]] = skids
+
+        id_layers = pd.DataFrame(mat_neurons, index = layer_names, columns = [f'Layer {i+1}' for i in range(0,max_layers)])
+        id_layers_skids = mat_neuron_skids
+
+        return(id_layers, id_layers_skids)
+
+    @staticmethod
+    def plot_layer_types(layer_types, layer_names, layer_colors, layer_vmax, pair_ids, figsize, save_path, threshold, hops):
+
+        col = layer_colors
+
+        pair_list = []
+        for pair in pair_ids:
+            mat = np.zeros(shape=(len(layer_types), len(layer_types[0].columns)))
+            for i, layer_type in enumerate(layer_types):
+                mat[i, :] = layer_type.loc[pair]
+
+            pair_list.append(mat)
+
+        # loop through pairs to plot
+        for i, pair in enumerate(pair_list):
+
+            data = pd.DataFrame(pair, index = layer_names)
+            mask_list = []
+            for i_iter in range(0, len(data.index)):
+                mask = np.full((len(data.index),len(data.columns)), True, dtype=bool)
+                mask[i_iter, :] = [False]*len(data.columns)
+                mask_list.append(mask)
+
+            fig, axs = plt.subplots(
+                1, 1, figsize=figsize
+            )
+            for j, mask in enumerate(mask_list):
+                vmax = layer_vmax[j]
+                ax = axs
+                annotations = data.astype(int).astype(str)
+                annotations[annotations=='0']=''
+                sns.heatmap(data, annot = annotations, fmt = 's', mask = mask, cmap=col[j], vmax = vmax, cbar=False, ax = ax)
+
+            plt.savefig(f'{save_path}hops{hops}_{i}_{pair_ids[i]}_Threshold-{threshold}_individual-path.pdf', bbox_inches='tight')
 
 
 def plot_cell_types_cluster(lvl_labels, path):
