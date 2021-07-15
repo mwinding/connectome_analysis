@@ -1,95 +1,51 @@
 #%%
 import os
 import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+import connectome_tools.process_matrix as pm
+import connectome_tools.process_graph as pg
+import connectome_tools.cascade_analysis as casc
+import connectome_tools.celltype as ct
+import connectome_tools.cluster_analysis as clust
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['font.size'] = 5
+plt.rcParams['font.family'] = 'arial'
 
-rm = pymaid.CatmaidInstance(url, token, name, password)
-adj = pd.read_csv('VNC_interaction/data/brA1_axon-dendrite.csv', header = 0, index_col = 0)
-adj.columns = adj.columns.astype(int) #convert column names to int for easier indexing
+adj = pm.Promat.pull_adj('ad', subgraph='brain and accessory')
+edges = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
 
-inputs = pd.read_csv('VNC_interaction/data/brA1_input_counts.csv', index_col = 0)
-inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+pairs = pm.Promat.get_pairs()
+dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
+dVNCs = [x if x!=21790197 else 15672263 for x in dVNCs] # a single descending neuron was incorrectly merged and split, so skid is different...
 
-# %%
-from connectome_tools.process_matrix import Adjacency_matrix, Promat
-from datetime import date
-
-A1_ascending = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-br = pymaid.get_skids_by_annotation('mw brain neurons')
-MBON = pymaid.get_skids_by_annotation('mw MBON')
-MBIN = pymaid.get_skids_by_annotation('mw MBIN')
-LHN = pymaid.get_skids_by_annotation('mw LHN')
-CN = pymaid.get_skids_by_annotation('mw CN')
-KC = pymaid.get_skids_by_annotation('mw KC')
-dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC 1%')
-dVNC = pymaid.get_skids_by_annotation('mw dVNC')
-uPN = pymaid.get_skids_by_annotation('mw uPN')
-tPN = pymaid.get_skids_by_annotation('mw tPN')
-vPN = pymaid.get_skids_by_annotation('mw vPN')
-mPN = pymaid.get_skids_by_annotation('mw mPN')
-PN = uPN + tPN + vPN + mPN
-FBN = pymaid.get_skids_by_annotation('mw FBN')
-FB2N = pymaid.get_skids_by_annotation('mw FB2N')
-FBN_all = FBN + FB2N
-
-input_names = pymaid.get_annotated('mw brain inputs').name
-input_names = input_names.drop(6)
-general_names = ['ORN', 'thermo', 'photo', 'AN', 'MN', 'vtd']
-input_skids_list = list(map(pymaid.get_skids_by_annotation, input_names))
-sens_all = [x for sublist in input_skids_list for x in sublist]
-
-asc_noci = pymaid.get_skids_by_annotation('mw A1 ascending noci')
-asc_mechano = pymaid.get_skids_by_annotation('mw A1 ascending mechano')
-asc_proprio = pymaid.get_skids_by_annotation('mw A1 ascending proprio')
-asc_classII_III = pymaid.get_skids_by_annotation('mw A1 ascending class II_III')
-asc_all = pymaid.get_skids_by_annotation('mw A1 neurons paired ascending')
-
-CN = list(np.setdiff1d(CN, LHN + FBN_all)) # 'CN' means exclusive CNs that are not FBN or LHN
-pre_dVNC = list(np.setdiff1d(pre_dVNC, MBON + MBIN + LHN + CN + KC + dSEZ + dVNC + PN + FBN_all + asc_all)) # 'pre_dVNC' must have no other category assignment
-dSEZ = list(np.setdiff1d(dSEZ, MBON + MBIN + LHN + CN + KC + dVNC + PN + FBN_all))
-
-A1_local = list(np.setdiff1d(A1, A1_ascending)) # all A1 without A1_ascending
-pruned_index = list(np.setdiff1d(adj.index, A1_local)) 
-adj = adj.loc[pruned_index, pruned_index] # remove all local A1 skids from adjacency matrix
-
-br_adj = Adjacency_matrix(adj.values, adj.index, pairs, inputs,'axo-dendritic')
+dVNC_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_ids_bothsides', skids=dVNCs, use_skids=True)
 
 # %%
-# projectome plot and ordering
-# needs work; lots of conflicting ordering sections added for testing purposes
+# dVNC projectome data prep
 
 import cmasher as cmr
 
-projectome = pd.read_csv('descending_neurons_analysis/data/projectome_adjacency.csv', index_col = 0, header = 0)
+projectome = pd.read_csv('data/projectome/projectome_adjacency.csv', index_col = 0, header = 0)
 projectome.index = [str(x) for x in projectome.index]
 
 # identify meshes
-meshes = ['SEZ_left', 'SEZ_right', 'T1_left', 'T1_right', 'T2_left', 'T2_right', 'T3_left', 'T3_right', 'A1_left', 'A1_right', 'A2_left', 'A2_right', 'A3_left', 'A3_right', 'A4_left', 'A4_right', 'A5_left', 'A5_right', 'A6_left', 'A6_right', 'A7_left', 'A7_right', 'A8_left', 'A8_right']
+meshes = ['Brain Hemisphere left', 'Brain Hemisphere right', 'SEZ_left', 'SEZ_right', 'T1_left', 'T1_right', 'T2_left', 'T2_right', 'T3_left', 'T3_right', 'A1_left', 'A1_right', 'A2_left', 'A2_right', 'A3_left', 'A3_right', 'A4_left', 'A4_right', 'A5_left', 'A5_right', 'A6_left', 'A6_right', 'A7_left', 'A7_right', 'A8_left', 'A8_right']
 
-pairOrder_dVNC = []
-for skid in dVNC:
-    if(skid in pairs["leftid"].values):
-        pair_skid = pairs["rightid"][pairs["leftid"]==skid].iloc[0]
-        pairOrder_dVNC.append(skid)
-        pairOrder_dVNC.append(pair_skid)
+pairOrder_dVNC = [x for sublist in zip(dVNC_pairs.leftid, dVNC_pairs.rightid) for x in sublist]
 
 input_projectome = projectome.loc[meshes, [str(x) for x in pairOrder_dVNC]]
 output_projectome = projectome.loc[[str(x) for x in pairOrder_dVNC], meshes]
@@ -106,8 +62,8 @@ for i in np.arange(0, len(output_projectome.index), 2):
     dVNC_projectome_pairs_summed_output.append(combined_hemisegs)
     indices.append(output_projectome.index[i])
 
-dVNC_projectome_pairs_summed_output = pd.DataFrame(dVNC_projectome_pairs_summed_output, index = indices, columns = ['SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])
-dVNC_projectome_pairs_summed_output = dVNC_projectome_pairs_summed_output.iloc[:, 1:len(dVNC_projectome_pairs_summed_output)]
+dVNC_projectome_pairs_summed_output = pd.DataFrame(dVNC_projectome_pairs_summed_output, index = indices, columns = ['brain','SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])
+#dVNC_projectome_pairs_summed_output = dVNC_projectome_pairs_summed_output.iloc[:, 1:len(dVNC_projectome_pairs_summed_output)]
 
 #normalize # of presynaptic sites
 dVNC_projectome_pairs_summed_output_norm = dVNC_projectome_pairs_summed_output.copy()
@@ -116,8 +72,52 @@ for i in range(len(dVNC_projectome_pairs_summed_output)):
     for j in range(len(dVNC_projectome_pairs_summed_output.columns)):
         dVNC_projectome_pairs_summed_output_norm.iloc[i, j] = dVNC_projectome_pairs_summed_output_norm.iloc[i, j]/sum_row
 
+# remove brain from columns
+dVNC_projectome_pairs_summed_output_norm_no_brain = dVNC_projectome_pairs_summed_output_norm.iloc[:, 1:len(dVNC_projectome_pairs_summed_output)]
+dVNC_projectome_pairs_summed_output_no_brain = dVNC_projectome_pairs_summed_output.iloc[:, 1:len(dVNC_projectome_pairs_summed_output)]
+
+# %%
+# ordering and plotting
+
+# sorting with normalized data
+sort_threshold = 0
+dVNC_projectome_pairs_summed_output_sort_norm = dVNC_projectome_pairs_summed_output_norm_no_brain.copy()
+dVNC_projectome_pairs_summed_output_sort_norm[dVNC_projectome_pairs_summed_output_sort_norm<sort_threshold]=0
+order = ['SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']
+order.reverse()
+dVNC_projectome_pairs_summed_output_sort_norm.sort_values(by=order, ascending=False, inplace=True)
+sort = dVNC_projectome_pairs_summed_output_sort_norm.index
+
+cmap = plt.cm.get_cmap('Blues') # modify 'Blues' cmap to have a white background
+blue_cmap = cmap(np.linspace(0, 1, 20))
+blue_cmap[0] = np.array([1, 1, 1, 1])
+blue_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Blues', colors=blue_cmap)
+
+cmap = blue_cmap
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.heatmap(dVNC_projectome_pairs_summed_output_norm.loc[sort, :], ax=ax, cmap=cmap)
+plt.savefig(f'VNC_interaction/plots/projectome/A8-T1_sort_projectome_normalized_sortThres{sort_threshold}.pdf', bbox_inches='tight')
+
+# sorting with raw data
+sort_threshold = 0
+dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output_no_brain.copy()
+dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<sort_threshold]=0
+order = ['SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']
+order.reverse()
+dVNC_projectome_pairs_summed_output_sort.sort_values(by=order, ascending=False, inplace=True)
+sort = dVNC_projectome_pairs_summed_output_sort.index
+
+vmax = 70
+cmap = blue_cmap
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.heatmap(dVNC_projectome_pairs_summed_output.loc[sort, :], ax=ax, cmap=cmap, vmax=vmax)
+plt.savefig(f'VNC_interaction/plots/projectome/A8-T1_sort_projectome_sortThres{sort_threshold}.pdf', bbox_inches='tight')
+
+# %%
+# old prototype code; lots of conflicting ordering sections added for testing purposes
+'''
 # order based on clustering raw data
-cluster = sns.clustermap(dVNC_projectome_pairs_summed_output, col_cluster = False, figsize=(6,4), rasterized=True)
+cluster = sns.clustermap(dVNC_projectome_pairs_summed_output, col_cluster = False, figsize=(6,4))
 row_order = cluster.dendrogram_row.reordered_ind
 #fig, ax = plt.subplots(figsize=(6,4))
 #sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], rasterized=True, ax=ax)
@@ -159,7 +159,7 @@ for i in range(1, 51):
     fig, ax = plt.subplots(figsize=(6,4))
     sns.heatmap(dVNC_projectome_pairs_summed_output.loc[row_order, :], ax=ax, rasterized=True)
     plt.savefig(f'VNC_interaction/plots/projectome/projectome_{i}-sort-threshold.pdf', bbox_inches='tight')
-'''
+
 fig, ax = plt.subplots(figsize=(3,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], ax=ax)
 plt.savefig('VNC_interaction/plots/projectome/output_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
@@ -185,173 +185,83 @@ fig, ax = plt.subplots(figsize=(3,2))
 sns.heatmap(dVNC_projectome_pairs_summed_input.iloc[row_order, :], cmap=cmr.freeze, ax=ax)
 plt.savefig('VNC_interaction/plots/projectome/input_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
 '''
-# %%
-# load dVNC pairs
-
-dVNC_pairs = Promat.extract_pairs_from_list(dVNC, pairs)[0]
-#dVNC_pairs = dVNC_pairs.loc[row_order]
-#dVNC_pairs.reset_index(inplace=True, drop=True)
-
-# add a single dSEZ neuron associated with a split-GAL4 and phenotype
-dVNC_pairs = dVNC_pairs.append(pd.DataFrame([[10382686, 16100103]], index=[len(dVNC_pairs)], columns = ['leftid', 'rightid']))
-dVNC_pairs = dVNC_pairs.append(pd.DataFrame([[3044500, 6317793]], index=[len(dVNC_pairs)], columns = ['leftid', 'rightid']))
 
 # %%
 # paths 2-hop upstream of each dVNC
 from tqdm import tqdm
 
+# sort dVNC pairs
+sort = [int(x) for x in sort]
+dVNC_pairs.set_index('leftid', drop=False, inplace=True)
+dVNC_pairs = dVNC_pairs.loc[sort, :]
+dVNC_pairs.reset_index(inplace=True, drop=True)
+
 hops = 2
 threshold = 0.01
 
-dVNC_pair_paths = []
-for i in tqdm(range(0, len(dVNC_pairs))):
-    us_dVNC = br_adj.upstream_multihop(list(dVNC_pairs.loc[i]), threshold, min_members = 0, hops=hops, strict=False)
-    dVNC_pair_paths.append(us_dVNC)
-
-dVNC_pair_paths_output = []
-for i in tqdm(range(0, len(dVNC_pairs))):
-    ds_dVNC = br_adj.downstream_multihop(list(dVNC_pairs.loc[i]), threshold, min_members = 0, hops=hops, strict=False)
-    dVNC_pair_paths_output.append(ds_dVNC)
+dVNC_pair_paths_us = [pm.Promat.upstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops) for i in tqdm(range(0, len(dVNC_pairs)))]
+dVNC_pair_paths_ds = [pm.Promat.downstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops) for i in tqdm(range(0, len(dVNC_pairs)))]
 
 # %%
 # plotting individual dVNC paths
 
+_, celltypes = ct.Celltype_Analyzer.default_celltypes()
+
+skids_list = [list(adj.index)] + [x.get_skids() for x in celltypes]
+
 # UPSTREAM
+all_layers_us = [ct.Celltype_Analyzer.layer_id(dVNC_pair_paths_us, dVNC_pairs.leftid, skids_type)[0] for skids_type in skids_list]
+layer_names = ['Total'] + [x.get_name() for x in celltypes]
+
 threshold = 0.01
-all_type_layers,all_type_layers_skids = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, list(adj.index))
-dVNC_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, dVNC)
-predVNC_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, pre_dVNC)
-dSEZ_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, dSEZ)
-asc_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, asc_all)
-LHN_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, LHN)
-CN_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, CN)
-MBON_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, MBON)
-MBIN_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, MBIN)
-FBN_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, FBN_all)
-KC_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, KC)
-PN_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, PN)
-#sens_type_layers,_ = br_adj.layer_id(dVNC_pair_paths, dVNC_pairs.leftid, sens_all)
 
-layer_types = [all_type_layers, PN_type_layers, LHN_type_layers, MBIN_type_layers, MBON_type_layers, KC_type_layers, 
-                FBN_type_layers, CN_type_layers, asc_type_layers, dSEZ_type_layers, predVNC_type_layers, dVNC_type_layers]
-layer_names = ['Total', 'PN', 'LHN', 'MBIN', 'MBON', 'KC','MB-FBN', 'CN', 'A1-asc', 'dSEZ', 'pre-dVNC', 'dVNC']
-layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds']
-#layer_vmax = [500, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50]
-save_path = 'VNC_interaction/plots/dVNC_upstream/'
-
-plt.rcParams['font.size'] = 5
-
-br_adj.plot_layer_types(layer_types=layer_types, layer_names=layer_names, layer_colors=layer_colors,
+layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds']
+layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50, 50, 50, 50, 50, 50]
+save_path = 'VNC_interaction/plots/dVNC_partners/Upstream_'
+ct.Celltype_Analyzer.plot_layer_types(layer_types=all_layers_us, layer_names=layer_names, layer_colors=layer_colors,
                         layer_vmax=layer_vmax, pair_ids=dVNC_pairs.leftid, figsize=(.5*hops/3, 1.5), save_path=save_path, threshold=threshold, hops=hops)
 
-# DOWNSTREAM in brain
+# DOWNSTREAM
+all_layers_ds = [ct.Celltype_Analyzer.layer_id(dVNC_pair_paths_ds, dVNC_pairs.leftid, skids_type)[0] for skids_type in skids_list]
+layer_names = ['Total'] + [x.get_name() for x in celltypes]
 threshold = 0.01
-all_type_layers_ds,all_type_layers_skids_ds = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, list(adj.index))
-dVNC_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, dVNC)
-predVNC_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, pre_dVNC)
-dSEZ_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, dSEZ)
-asc_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, asc_all)
-LHN_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, LHN)
-CN_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, CN)
-MBON_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, MBON)
-MBIN_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, MBIN)
-FBN_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, FBN_all)
-KC_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, KC)
-PN_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, PN)
-#sens_type_layers_ds,_ = br_adj.layer_id(dVNC_pair_paths_output, dVNC_pairs.leftid, sens_all)
 
-layer_types_ds = [all_type_layers_ds, PN_type_layers_ds, LHN_type_layers_ds, MBIN_type_layers_ds, MBON_type_layers_ds, KC_type_layers_ds, 
-                FBN_type_layers_ds, CN_type_layers_ds, asc_type_layers_ds, dSEZ_type_layers_ds, predVNC_type_layers_ds, dVNC_type_layers_ds]
-layer_names = ['Total', 'PN', 'LHN', 'MBIN', 'MBON', 'KC','MB-FBN', 'CN', 'A1-asc', 'dSEZ', 'pre-dVNC', 'dVNC']
-layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds']
-#layer_vmax = [500, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50]
-save_path = 'VNC_interaction/plots/dVNC_upstream/Downstream-in-brain_'
-
-plt.rcParams['font.size'] = 5
-
-br_adj.plot_layer_types(layer_types=layer_types_ds, layer_names=layer_names, layer_colors=layer_colors,
+layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds']
+layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50, 50, 50, 50, 50, 50]
+save_path = 'VNC_interaction/plots/dVNC_partners/Downstream-in-brain_'
+ct.Celltype_Analyzer.plot_layer_types(layer_types=all_layers_ds, layer_names=layer_names, layer_colors=layer_colors,
                         layer_vmax=layer_vmax, pair_ids=dVNC_pairs.leftid, figsize=(.5*hops/3, 1.5), save_path=save_path, threshold=threshold, hops=hops)
 
 # %%
 # make bar plots for 1-hop and 2-hop
 
+_, celltypes = ct.Celltype_Analyzer.default_celltypes()
+
+figsize = (2,0.5)
 # UPSTREAM
-ind = [x for x in range(0, len(dVNC_pair_paths))]
+us_1order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_us)])
+us_2order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_us)])
+us_1order.set_known_types(celltypes)
+us_2order.set_known_types(celltypes)
 
-# determine fraction of neuron types in 1-hop and 2-hop
-fraction_types = [PN_type_layers, LHN_type_layers, MBIN_type_layers, MBON_type_layers, 
-                FBN_type_layers, CN_type_layers, asc_type_layers, dSEZ_type_layers, predVNC_type_layers, dVNC_type_layers]
-fraction_types = [x/layer_types[0] for x in fraction_types]
-fraction_types_names = ['PN', 'LHN', 'MBIN', 'MBON','MB-FBN', 'CN', 'A1-asc', 'dSEZ', 'pre-dVNC', 'dVNC']
-colors = ['#1D79B7', '#D4E29E', '#FF8734', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#D88052', '#E0B1AD', '#A52A2A']
+path = 'VNC_interaction/plots/dVNC_partners/summary_plot_1st_order_upstream.pdf'
+us_1order.plot_memberships(path = path, figsize=figsize)
 
-# summary plot of 1st order upstream of dVNCs
-plt.bar(ind, fraction_types[0].iloc[:, 0], color = colors[0])
-bottom = fraction_types[0].iloc[:, 0]
+path = 'VNC_interaction/plots/dVNC_partners/summary_plot_2nd_order_upstream.pdf'
+us_2order.plot_memberships(path = path, figsize=figsize)
 
-for i in range(1, len(fraction_types)):
-    plt.bar(ind, fraction_types[i].iloc[:, 0], bottom = bottom, color = colors[i])
-    bottom = bottom + fraction_types[i].iloc[:, 0]
+# DOWNSTREAM
+ds_1order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_ds)])
+ds_2order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_ds)])
+ds_1order.set_known_types(celltypes)
+ds_2order.set_known_types(celltypes)
 
-remaining = [1 for x in range(0, len(dVNC_pair_paths))] - bottom
-plt.bar(ind, remaining, bottom = bottom, color = 'tab:grey')
-plt.savefig('VNC_interaction/plots/dVNC_upstream/summary_plot_1st_order.pdf', format='pdf', bbox_inches='tight')
+path = 'VNC_interaction/plots/dVNC_partners/summary_plot_1st_order_downstream.pdf'
+ds_1order.plot_memberships(path = path, figsize=figsize)
 
-# summary plot of 2nd order upstream of dVNCs
-plt.bar(ind, fraction_types[0].iloc[:, 1], color = colors[0])
-bottom = fraction_types[0].iloc[:, 1]
+path = 'VNC_interaction/plots/dVNC_partners/summary_plot_2nd_order_downstream.pdf'
+ds_2order.plot_memberships(path = path, figsize=figsize)
 
-for i in range(1, len(fraction_types)):
-    plt.bar(ind, fraction_types[i].iloc[:, 1], bottom = bottom, color = colors[i])
-    bottom = bottom + fraction_types[i].iloc[:, 1]
-
-remaining = [1 for x in range(0, len(dVNC_pair_paths))] - bottom
-plt.bar(ind, remaining, bottom = bottom, color = 'tab:grey')
-plt.savefig('VNC_interaction/plots/dVNC_upstream/summary_plot_2nd_order.pdf', format='pdf', bbox_inches='tight')
-# %%
-# make bar plots for 1-hop and 2-hop
-
-# DOWNSTREAM in brain
-ind = [x for x in range(0, len(dVNC_pair_paths_output))]
-
-# determine fraction of neuron types in 1-hop and 2-hop
-fraction_types_ds = [PN_type_layers_ds, LHN_type_layers_ds, MBIN_type_layers_ds, MBON_type_layers_ds, 
-                FBN_type_layers_ds, CN_type_layers_ds, asc_type_layers_ds, dSEZ_type_layers_ds, predVNC_type_layers_ds, dVNC_type_layers_ds]
-fraction_types_ds = [(x/layer_types_ds[0]).fillna(-1) for x in fraction_types_ds]
-fraction_types_names = ['PN', 'LHN', 'MBIN', 'MBON','MB-FBN', 'CN', 'A1-asc', 'dSEZ', 'pre-dVNC', 'dVNC']
-colors = ['#1D79B7', '#D4E29E', '#FF8734', '#F9EB4D', '#C144BC', '#8C7700', '#77CDFC', '#D88052', '#E0B1AD', '#A52A2A']
-
-# summary plot of 1st order downstream of dVNCs in brain
-plt.bar(ind, fraction_types_ds[0].iloc[:, 0], color = colors[0])
-bottom = fraction_types_ds[0].iloc[:, 0]
-
-for i in range(1, len(fraction_types_ds)):
-    plt.bar(ind, fraction_types_ds[i].iloc[:, 0], bottom = bottom, color = colors[i])
-    bottom = bottom + fraction_types_ds[i].iloc[:, 0]
-
-bottom[bottom==-10]=1
-remaining = [1 for x in range(0, len(dVNC_pair_paths_output))] - bottom
-#remaining = [x if x!=-1 else 0.0 for x in remaining]
-plt.bar(ind, remaining, bottom = bottom, color = 'tab:grey')
-plt.ylim(0,1)
-plt.savefig('VNC_interaction/plots/dVNC_upstream/downstream_summary_plot_1st_order.pdf', format='pdf', bbox_inches='tight')
-
-# summary plot of 2nd order downstream of dVNCs in brain
-plt.bar(ind, fraction_types_ds[0].iloc[:, 1], color = colors[0])
-bottom = fraction_types_ds[0].iloc[:, 1]
-
-for i in range(1, len(fraction_types_ds)):
-    plt.bar(ind, fraction_types_ds[i].iloc[:, 1], bottom = bottom, color = colors[i])
-    bottom = bottom + fraction_types_ds[i].iloc[:, 1]
-
-bottom[bottom==-10]=1
-remaining = [1 for x in range(0, len(dVNC_pair_paths_output))] - bottom
-#remaining = [x if x!=-1 else 0.0 for x in remaining]
-plt.bar(ind, remaining, bottom = bottom, color = 'tab:grey')
-plt.ylim(0,1)
-plt.savefig('VNC_interaction/plots/dVNC_upstream/downstream_summary_plot_2nd_order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # combine all data types for dVNCs: us1o, us2o, ds1o, ds2o, projectome
