@@ -1,18 +1,18 @@
 # %%
 import os
 import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
+import navis
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+import connectome_tools.process_matrix as pm
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -22,13 +22,15 @@ rm = pymaid.CatmaidInstance(url, token, name, password)
 adj = pd.read_csv('VNC_interaction/data/axon-dendrite.csv', header = 0, index_col = 0)
 inputs = pd.read_csv('VNC_interaction/data/input_counts.csv', index_col = 0)
 inputs = pd.DataFrame(inputs.values, index = inputs.index, columns = ['axon_input', 'dendrite_input'])
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+pairs = pm.Promat.get_pairs() # import pairs
 
 sens_asc_mat_thresh = pd.read_csv('VNC_interaction/plots/individual_asc_paths/ascending_identity_2-hops.csv', header=0, index_col=0)
 
 # setting up volumes for future cells
 cns = pymaid.get_volume('cns')
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
+SEZ_left = pymaid.get_volume('SEZ_left')
+SEZ_right = pymaid.get_volume('SEZ_right')
 T1_left = pymaid.get_volume('T1_left')
 T1_right = pymaid.get_volume('T1_right')
 T2_left = pymaid.get_volume('T2_left')
@@ -55,8 +57,11 @@ A8_right = pymaid.get_volume('A8_right')
 mult = 0.8
 
 # Set color and alpha of volumes
-cns.color = (250, 250, 250, .05)
-neuropil.color = (250, 250, 250, .06)
+cns.color = (250, 250, 250, 0.1)
+neuropil.color = (250, 250, 250, 0.1)
+
+SEZ_left.color = (0, 0, 250, .05*mult)
+SEZ_right.color = (0, 0, 250, .05*mult)
 
 T1_left.color = (0, 0, 250, .03*mult)
 T1_right.color = (0, 0, 250, .03*mult)
@@ -94,35 +99,49 @@ A8_right.color = (250, 0, 150, .025*mult)
 # %%
 # plotting neurons
 
-def plot_pair(num, neurons, cns, neuropil, segments, view):
+def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_present=True):
+
+    if(neurons_present):
+        fig, ax = navis.plot2d([neurons, cns], method=method, color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
+    if(neurons_present==False):
+        fig, ax = navis.plot2d([cns], method=method)
+
     if(view == 'side'):
-        fig, ax = pymaid.plot2d([neurons, cns], method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
-        ax.azim=0
+        ax.azim= 0
         ax.dist = 5.2 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
-            pymaid.plot2d(segment, method='3d_complex', ax=ax)
+            navis.plot2d(segment, method=method, ax=ax)
         plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_side.png', dpi=200)
+        if(neurons_present):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_{view}.png', dpi=200)
+        if(neurons_present==False):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/CNS_morphology_{view}.png', dpi=200)
 
     if(view == 'front'):
-        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
         ax.azim = 90
-        ax.dist = 2.5 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        ax.dist = 5.2 # zoom
+        navis.plot2d(neuropil, method=method, ax=ax)
+        for segment in segments:
+            navis.plot2d(segment, method=method, ax=ax)
         plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_front.png', dpi=200)
-    
+        if(neurons_present):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_{view}.png', dpi=200)
+        if(neurons_present==False):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/CNS_morphology_{view}.png', dpi=200)
+ 
     if(view == 'top'):
-        fig, ax = pymaid.plot2d([neurons, cns] ,method='3d_complex', color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
         ax.elev=90
         ax.dist = 5.2 # zoom
-        pymaid.plot2d(neuropil, method='3d_complex', ax=ax)
+        navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
-            pymaid.plot2d(segment, method='3d_complex', ax=ax)
+            navis.plot2d(segment, method=method, ax=ax)
         plt.show()
-        fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_top.png', dpi=200)
-
+        if(neurons_present):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/{num}_{neurons[0].skeleton_id}_morphology_{view}.png', dpi=200)
+        if(neurons_present==False):
+            fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/CNS_morphology_{view}.png', dpi=200)
+ 
 
 ascendings = [int(x) for x in sens_asc_mat_thresh.columns]
 asc_pairs = [pairs[pairs.leftid==x].loc[:, ['leftid', 'rightid']].values for x in ascendings]
@@ -154,6 +173,24 @@ for i in range(0, len(asc_pairs)):
 for i in range(0, len(asc_pairs)):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'top')
+
+segments = [SEZ_left, SEZ_right,
+            T1_left, T1_right,
+            T2_left, T2_right,
+            T3_left, T3_right,
+            A1_left, A1_right,
+            A2_left, A2_right,
+            A3_left, A3_right,
+            A4_left, A4_right,
+            A5_left, A5_right,
+            A6_left, A6_right,
+            A7_left, A7_right,
+            A8_left, A8_right]
+
+method='3d_complex'
+plot_pair('', [], cns, [], segments, 'side', method=method, neurons_present=False)
+plot_pair('', [], cns, [], segments, 'front', method=method,neurons_present=False)
+plot_pair('', [], cns, [], segments, 'top', method=method,neurons_present=False)
 
 # %%
 # plot dendritic synapses
