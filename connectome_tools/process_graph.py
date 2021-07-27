@@ -16,7 +16,19 @@ import networkx.utils as nxu
 
 class Analyze_Nx_G():
 
-    def __init__(self, edges, graph_type='directed', split_pairs=False, graph=None):
+    def __init__(self, edges, graph_type='directed', split_pairs=False, graph=None, select_neurons=[]):
+        
+        if(len(select_neurons)>0):
+            if(split_pairs==False):
+                indices_us = [True if x in select_neurons else False for x in edges.upstream_pair_id.to_list()]
+                indices_ds = [True if x in select_neurons else False for x in edges.downstream_pair_id.to_list()]
+                edges = edges.loc[np.logical_and(indices_us, indices_ds), :]
+
+            if(split_pairs):
+                indices_us = [True if x in select_neurons else False for x in edges.upstream_skid.to_list()]
+                indices_ds = [True if x in select_neurons else False for x in edges.downstream_skid.to_list()]
+                edges = edges.loc[np.logical_and(indices_us, indices_ds), :]
+
         if(graph==None):
             self.edges = edges
             self.G = self.generate_graph(graph_type, split_pairs=split_pairs)

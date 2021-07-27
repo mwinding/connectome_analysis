@@ -860,6 +860,27 @@ class Promat():
 
         return(adj)
 
+    def pull_edges(type_edges, pairs_combined, select_neurons=[]):
+        
+        if(pairs_combined):
+            edges = pd.read_csv(f'data/edges_threshold/{type_edges}_all-paired-edges.csv', index_col=0)
+            if(len(select_neurons)>0):
+                indices_us = [True if x in select_neurons else False for x in edges.upstream_pair_id.to_list()]
+                indices_ds = [True if x in select_neurons else False for x in edges.downstream_pair_id.to_list()]
+                edges = edges.loc[np.logical_and(indices_us, indices_ds), :]
+
+        if(pairs_combined==False):
+            edges = pd.read_csv(f'data/edges_threshold/pairwise-threshold_{type_edges}_all-edges.csv', index_col=0)
+            if(len(select_neurons)>0):
+                indices_us = [True if x in select_neurons else False for x in edges.upstream_skid.to_list()]
+                indices_ds = [True if x in select_neurons else False for x in edges.downstream_skid.to_list()]
+                edges = edges.loc[np.logical_and(indices_us, indices_ds), :]
+
+        return(edges)
+
+
+
+
     # recursive function that identifies all downstream partners X-hops away from source
     # uses pregenerated edge list from threshold_edge_list() or the split-pair version
     @staticmethod
