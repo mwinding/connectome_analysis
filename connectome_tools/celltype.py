@@ -480,20 +480,22 @@ def plot_cell_types_cluster(lvl_labels, path):
         bottom = bottom + memberships.iloc[i, :]
     plt.savefig(path, format='pdf', bbox_inches='tight')
 
-def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, lvl_labels, path):
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None):
 
     # all cell types plot data
-    _, all_celltypes = Celltype_Analyzer.default_celltypes()
-    lvl = clust.Analyze_Cluster('cascades/data/meta-method=color_iso-d=8-bic_ratio=0.95-min_split=32.csv', 'data/meta_data_w_order.csv', lvl_labels)
+    if(all_celltypes==None):
+        _, all_celltypes = Celltype_Analyzer.default_celltypes()
+        
+    clusters = clust.Analyze_Cluster(cluster_lvl=cluster_level)
 
-    all_clusters = [Celltype(lvl.clusters.cluster[i], lvl.clusters.skids[i]) for i in range(0, len(lvl.clusters))]
-    cluster_analyze = Celltype_Analyzer(all_clusters)
+    #all_clusters = [Celltype(lvl.cluster_df.cluster[i], lvl.cluster_df.skids[i]) for i in range(0, len(lvl.clusters))]
+    cluster_analyze = clusters.cluster_cta
 
     cluster_analyze.set_known_types(all_celltypes)
     celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
     all_memberships = cluster_analyze.memberships()
-    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,15,16,12,13,14], :]
-    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,15,16,12,13,14]]
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,16,13,14,15], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,16,13,14,15]] # switching order so unknown is not above outputs and RGNs before pre-outputs
     
     # particular cell type data
     cluster_analyze.set_known_types([particular_cell_type])
