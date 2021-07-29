@@ -100,21 +100,23 @@ def pairwise_hubs(hubs_df):
 G_hubs = [pairwise_hubs(G_hub) for G_hub in G_hubs]
 
 # export hubs
-'''
 for i, hubs in enumerate(G_hubs):
 
     if('in_hub' in hubs.type.values):
         in_hubs = hubs.reset_index().groupby(['type', 'skid']).count().loc[('in_hub', slice(None))].index
         pymaid.add_annotations(in_hubs.values, f'mw {adj_names[i]} hubs_in')
+        pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_in', 'mw hubs')
 
     if('out_hub' in hubs.type.values):
         out_hubs = hubs.reset_index().groupby(['type', 'skid']).count().loc[('out_hub', slice(None))].index
         pymaid.add_annotations(out_hubs.values, f'mw {adj_names[i]} hubs_out')
+        pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_out', 'mw hubs')
 
     if('in_out_hub' in hubs.type.values):
         in_out_hubs = hubs.reset_index().groupby(['type', 'skid']).count().loc[('in_out_hub', slice(None))].index
         pymaid.add_annotations(in_out_hubs.values, f'mw {adj_names[i]} hubs_in_out')
-'''
+        pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_in_out', 'mw hubs')
+
 # %%
 # location in cluster structure
 # ad hubs
@@ -124,61 +126,33 @@ green = sns.color_palette()[2]
 red = sns.color_palette()[3]
 
 # plot all hub-types at once
-in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation('mw ad hubs_out'), orange)
-out_hubs_ct = ct.Celltype('In Hubs', pymaid.get_skids_by_annotation('mw ad hubs_in'), green)
-in_out_hubs_ct = ct.Celltype('In-Out Hubs', pymaid.get_skids_by_annotation('mw ad hubs_in_out'), red)
+for adj_name in adj_names:
+    try: in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out'), orange)
+    except: in_hubs_ct = ct.Celltype('Out Hubs', [], orange)
 
-hubs = ct.Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
-hubs.set_known_types(celltypes)
-hubs.plot_memberships('network_analysis/plots/ad_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2))
+    try: out_hubs_ct = ct.Celltype('In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in'), green)
+    except: out_hubs_ct = ct.Celltype('In Hubs', [], green)
 
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-D Out Hubs', pymaid.get_skids_by_annotation('mw ad hubs_out')), orange, 'lvl7_labels', 'network_analysis/plots/ad-out-hubs_celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-D In Hubs', pymaid.get_skids_by_annotation('mw ad hubs_in')), green, 'lvl7_labels', 'network_analysis/plots/ad-in-hubs_celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-D In-Out Hubs', pymaid.get_skids_by_annotation('mw ad hubs_in_out')), red, 'lvl7_labels', 'network_analysis/plots/ad-in-out-hubs_celltypes-clusters.pdf')
+    try: in_out_hubs_ct = ct.Celltype('In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out'), red)
+    except: in_out_hubs_ct = ct.Celltype('In-Out Hubs', [], red)
 
-# %%
-# location in cluster structure
-# aa hubs
-
-# plot all hub-types at once
-in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation('mw aa hubs_out'), orange)
-out_hubs_ct = ct.Celltype('In Hubs', pymaid.get_skids_by_annotation('mw aa hubs_in'), green)
-in_out_hubs_ct = ct.Celltype('In-Out Hubs', pymaid.get_skids_by_annotation('mw aa hubs_in_out'), red)
-
-hubs = ct.Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
-hubs.set_known_types(celltypes)
-hubs.plot_memberships('network_analysis/plots/aa_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2))
-
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-A Out Hubs', pymaid.get_skids_by_annotation('mw aa hubs_out')), orange, 'lvl7_labels', 'network_analysis/plots/aa-out-hubs_celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-A In Hubs', pymaid.get_skids_by_annotation('mw aa hubs_in')), green, 'lvl7_labels', 'network_analysis/plots/aa-in-hubs_celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('A-A In-Out Hubs', pymaid.get_skids_by_annotation('mw aa hubs_in_out')), red, 'lvl7_labels', 'network_analysis/plots/aa-in-out-hubs_celltypes-clusters.pdf')
+    hubs = ct.Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
+    hubs.set_known_types(celltypes)
+    hubs.plot_memberships(f'network_analysis/plots/{adj_name}_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
 
 # %%
 # location in cluster structure
-# dd hubs
 
-# plot all hub-types at once
-in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation('mw dd hubs_out'), orange)
+cluster_level = 6
 
-hubs = ct.Celltype_Analyzer([in_hubs_ct])
-hubs.set_known_types(celltypes)
-hubs.plot_memberships('network_analysis/plots/dd_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2))
+for adj_name in adj_names:
+    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'network_analysis/plots/{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    except: print('no annotation')
 
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('D-D Out Hubs', pymaid.get_skids_by_annotation('mw dd hubs_out')), orange, 'lvl7_labels', 'network_analysis/plots/dd-out-hubs_celltypes-clusters.pdf')
-
-# %%
-# location in cluster structure
-# da hubs
-
-# plot all hub-types at once
-in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation('mw da hubs_out'), orange)
-out_hubs_ct = ct.Celltype('In Hubs', pymaid.get_skids_by_annotation('mw da hubs_in'), green)
-
-hubs = ct.Celltype_Analyzer([in_hubs_ct, out_hubs_ct])
-hubs.set_known_types(celltypes)
-hubs.plot_memberships('network_analysis/plots/da_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2))
-
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('D-A Out Hubs', pymaid.get_skids_by_annotation('mw da hubs_out')), orange, 'lvl7_labels', 'network_analysis/plots/da-out-hubs_celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('D-A In Hubs', pymaid.get_skids_by_annotation('mw da hubs_in')), green, 'lvl7_labels', 'network_analysis/plots/da-in-hubs_celltypes-clusters.pdf')
+    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'network_analysis/plots/{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    except: print('no annotation')
+        
+    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'network_analysis/plots/{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    except: print('no annotation')
 
 # %%
