@@ -1,106 +1,70 @@
 #%%
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
-from pymaid_creds import url, name, password, token
-import pymaid
-import numpy as np
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from src.data import load_metagraph
-from src.visualization import CLASS_COLOR_DICT, adjplot
-
+from pymaid_creds import url, name, password, token
+import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-mg = load_metagraph("Gad", version="2020-06-10", path = '/Volumes/GoogleDrive/My Drive/python_code/maggot_models/data/processed/')
-inputs = pd.DataFrame([mg.meta.axon_input, mg.meta.dendrite_input]).T
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-09-22.csv', header = 0) # import pairs
+import connectome_tools.celltype as ct
+import connectome_tools.process_graph as pg
+import connectome_tools.process_matrix as pm
+import connectome_tools.process_skeletons as skel
+edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
+edge_ad = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
+pairs = pm.Promat.get_pairs()
+edge_ad.set_index('upstream_skid', inplace=True)
 
 # %%
-from connectome_tools.process_matrix import Adjacency_matrix, Promat
-from datetime import date
-
-# set up initial variables for cell identification
-brain_adj = Adjacency_matrix(mg.adj, mg.meta.index, pairs, inputs,'axo-dendritic')
+# 
 
 uPN = pymaid.get_skids_by_annotation('mw uPN')
 tPN = pymaid.get_skids_by_annotation('mw tPN')
 vPN = pymaid.get_skids_by_annotation('mw vPN')
 KC = pymaid.get_skids_by_annotation('mw KC')
 mPN = pymaid.get_skids_by_annotation('mw mPN')
+LON = pymaid.get_skids_by_annotation('mw LON')
 
 MBON = pymaid.get_skids_by_annotation('mw MBON')
 MBIN = pymaid.get_skids_by_annotation('mw MBIN')
+
+exclude = uPN + tPN + vPN + KC + mPN + LON + MBON + MBIN
 # %%
 # identify LHNs
 
-threshold = 0.01
-threshold_group = 0.05
-excluded = uPN + tPN + vPN + mPN + KC + MBON + MBIN
+ds_uPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, uPN), :].downstream_skid), exclude)
+ds_vPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, vPN), :].downstream_skid), exclude)
+ds_tPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, tPN), :].downstream_skid), exclude)
+LHN_pure = np.setdiff1d(np.unique(list(ds_uPNs)), exclude)
+LHN = np.setdiff1d(np.unique(list(ds_uPNs) + list(ds_vPNs) + list(ds_tPNs)), exclude)
 
-# identification by pairwise downstream threhold
-_, ds_uPN = brain_adj.downstream(uPN, threshold, excluded, exclude_unpaired=True)
-edges_uPN, ds_uPN = brain_adj.edge_threshold(uPN, ds_uPN, threshold, direction='downstream')
+pymaid.add_annotations(LHN_pure, 'mw LHN-from-uPN')
+#pymaid.add_annotations(LHN, 'mw LHN-from-uPN-vPN-tPN')
+pymaid.add_annotations(LHN, 'mw LHN')
+pymaid.add_annotations(ds_uPNs, 'mw ds-uPNs')
+pymaid.add_annotations(ds_vPNs, 'mw ds-vPNs')
+pymaid.add_annotations(ds_tPNs, 'mw ds-tPNs')
 
-_, ds_tPN = brain_adj.downstream(tPN, threshold, excluded, exclude_unpaired=True)
-edges_tPN, ds_tPN = brain_adj.edge_threshold(tPN, ds_tPN, threshold, direction='downstream')
-
-_, ds_vPN = brain_adj.downstream(vPN, threshold, excluded, exclude_unpaired=True)
-edges_vPN, ds_vPN = brain_adj.edge_threshold(vPN, ds_vPN, threshold, direction='downstream')
-
-LHN = list(np.unique(ds_uPN + ds_tPN + ds_vPN))
-pd.DataFrame(LHN).to_csv(f'identify_neuron_classes/csv/LHN_threshold-{threshold}_pairwise-from-uPN-tPN-vPN_{str(date.today())}.csv',
-                        index = False, header = False)
-
-# compare to identification by groups
-ds_uPN_group = brain_adj.downstream(uPN, threshold_group, excluded, by_group=True, exclude_unpaired=True)
-ds_tPN_group = brain_adj.downstream(tPN, threshold_group, excluded, by_group=True, exclude_unpaired=True)
-ds_vPN_group = brain_adj.downstream(vPN, threshold_group, excluded, by_group=True, exclude_unpaired=True)
-
-LHN_group = np.unique(ds_uPN_group + ds_tPN_group + ds_vPN_group)
-pd.DataFrame(LHN_group).to_csv(f'identify_neuron_classes/csv/LHN_threshold-{threshold}_bygroup-from-uPN-tPN-vPN_{str(date.today())}.csv',
-                        index = False, header = False)
-
-len(np.intersect1d(LHN_group, LHN))/len(np.union1d(LHN_group, LHN))
+annot = 'mw CN'
+pymaid.remove_annotations(pymaid.get_skids_by_annotation(annot), annot)
 # %%
 # identify CNs
 
-# identification by pairwise downstream threhold
-_, ds_MBON = brain_adj.downstream(MBON, threshold, excluded, exclude_unpaired=True)
-edges_MBON, ds_MBON = brain_adj.edge_threshold(MBON, ds_MBON, threshold, direction='downstream')
+LHN = pymaid.get_skids_by_annotation('mw LHN')
 
-_, ds_LHN = brain_adj.downstream(LHN, threshold, excluded + LHN, exclude_unpaired=True)
-edges_LHN, ds_LHN = brain_adj.edge_threshold(LHN, ds_LHN, threshold, direction='downstream')
+ds_MBONs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, MBON), :].downstream_skid)
+ds_LHNs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, LHN), :].downstream_skid)
 
-CN1 = list(np.intersect1d(ds_MBON, ds_LHN))
-CN2 = list(np.intersect1d(ds_MBON, LHN))
+CN1 = list(np.intersect1d(ds_MBONs, ds_LHNs))
+CN2 = list(np.intersect1d(ds_MBONs, LHN))
 
-CN = np.unique(CN1 + CN2)
-pd.DataFrame(CN).to_csv(f'identify_neuron_classes/csv/CN_threshold-{threshold}_pairwise-from-LHN-MBON-PNs_{str(date.today())}.csv',
-                        index = False, header = False)
+exclude = uPN + tPN + vPN + KC + mPN + MBIN + LON
+CN = np.setdiff1d(np.unique(CN1 + CN2), exclude)
 
-# compare to identification by groups
-ds_MBON_group = brain_adj.downstream(MBON, threshold_group, excluded, by_group=True, exclude_unpaired=True)
-ds_LHN_group = brain_adj.downstream(LHN_group, threshold_group, excluded, by_group=True, exclude_unpaired=True)
-
-CN1_group = list(np.intersect1d(ds_MBON_group, ds_LHN_group))
-CN2_group = list(np.intersect1d(ds_MBON_group, LHN_group))
-
-CN_group = np.unique(CN1_group + CN2_group)
-pd.DataFrame(CN_group).to_csv(f'identify_neuron_classes/csv/CN_threshold-{threshold}_bygroup-from-LHN-MBON-PNs_{str(date.today())}.csv',
-                        index = False, header = False)
-
-len(np.intersect1d(CN_group, CN))/len(np.union1d(CN_group, CN))
-# %%
-# LH2N neurons
-
-pd.DataFrame(ds_LHN).to_csv(f'identify_neuron_classes/csv/LH2N_threshold-{threshold}_pairwise-from-LHN_{str(date.today())}.csv',
-                        index = False, header = False)
+pymaid.add_annotations(CN, 'mw CN')
 
 # %%
