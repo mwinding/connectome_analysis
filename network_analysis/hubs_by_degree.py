@@ -60,12 +60,20 @@ for i, hubs in enumerate(G_hubs):
 
     fig, ax = plt.subplots(1,1, figsize=(2,2))
     sns.scatterplot(data=hubs_plot, x='in_degree', y='out_degree', hue='type', size='count', ax=ax, 
-                    sizes=(0.3, 10), edgecolor='none', alpha=0.9)
+                    sizes=(0.3, 8), edgecolor='none', alpha=0.8)
     ax.set(ylim=(-3, 100), xlim=(-3, 100))
     ax.axvline(x=19.5, color='grey', linewidth=0.25, alpha=0.5)
     ax.axhline(y=19.5, color='grey', linewidth=0.25, alpha=0.5)
     ax.legend().set_visible(False)
     plt.savefig(f'network_analysis/plots/hubs_{adj_names[i]}.pdf', format='pdf', bbox_inches='tight')
+
+    fig, ax = plt.subplots(1,1, figsize=(2,2))
+    sns.scatterplot(data=hubs_plot, x='in_degree', y='out_degree', hue='type', size='count', ax=ax, 
+                    sizes=(0.3, 8), edgecolor='none', alpha=0.8)
+    ax.set(ylim=(-3, 100), xlim=(-3, 100))
+    ax.axvline(x=19.5, color='grey', linewidth=0.25, alpha=0.5)
+    ax.axhline(y=19.5, color='grey', linewidth=0.25, alpha=0.5)
+    plt.savefig(f'network_analysis/plots/hubs_{adj_names[i]}_legend.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # determine pairwise hubs
@@ -143,16 +151,70 @@ for adj_name in adj_names:
 # %%
 # location in cluster structure
 
-cluster_level = 6
+cluster_level = 7
+size = (2,0.5)
 
 for adj_name in adj_names:
-    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'network_analysis/plots/{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'network_analysis/plots/{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
-    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'network_analysis/plots/{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'network_analysis/plots/{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
         
-    try: ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'network_analysis/plots/{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'network_analysis/plots/{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
+
+# %%
+# plot some examples of hubs
+import math 
+import navis
+
+ad_out = 3157405
+ad_in_out = 9423829
+ad_in = 7388340
+
+aa_out = 13988443
+aa_in_out = 16561284
+aa_in = 12299621
+
+dd_out = 18500988
+dd_out_2 = 8311264
+
+da_out = 8311264
+
+neurons_to_plot = [ad_out, ad_in_out, ad_in, 
+                    aa_out, aa_in_out, aa_in,
+                    dd_out, dd_out_2,
+                    da_out]
+
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .075)
+color = '#5D8B90'
+
+# hub types
+n_cols = 4
+n_rows = math.ceil(len(neurons_to_plot)/n_cols) # round up to determine how many rows there should be
+alpha = 1
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+
+for i, skid in enumerate(neurons_to_plot):
+    neurons = pymaid.get_neurons(skid)
+
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons, neuropil], connectors_only=False, color='gray', alpha=0.5, ax=ax)
+    navis.plot2d(x=[neurons, neuropil], connectors_only=True, color=color, alpha=alpha, ax=ax)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 6
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'network_analysis/plots/morpho_hubs.png', format='png', dpi=300, transparent=True)
 
 # %%
