@@ -47,7 +47,7 @@ non_outputs_brain = np.intersect1d(pymaid.get_skids_by_annotation('mw brain pape
 non_outputs_brain = np.setdiff1d(non_outputs_brain, ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs'))
 non_outputs_brain_pairs = pm.Promat.load_pairs_from_annotation('non-outputs', pairs, return_type='all_pair_ids_bothsides', skids=non_outputs_brain, use_skids=True)
 
-# ascnedings/dVNCs to outputs and ascendings
+# ascendings/dVNCs to outputs and ascendings
 data_adj = ad_edges.set_index(['upstream_pair_id', 'downstream_pair_id'])
 celltypes_pre = [list(asc_pairs.leftid), list(dVNC_pairs.leftid)]
 celltypes_post = [list(dVNC_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(non_outputs_brain_pairs.leftid), list(asc_pairs.leftid)]
@@ -103,21 +103,24 @@ blue_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Blues', color
 cmap = blue_cmap
 vmax = 0.02
 
-fig, ax = plt.subplots(1,1, figsize=(2.5,2))
-sns.heatmap(df, square=True, cmap=cmap, vmax=vmax)
+fig, ax = plt.subplots(1,1, figsize=(5,2))
+sns.heatmap(df, square=True, cmap=cmap, vmax=vmax, annot=True, fmt='.3f')
 plt.savefig(f'VNC_interaction/plots/connection-probability_ascendings_all-brain-celltypes.pdf', format='pdf', bbox_inches='tight')
-
 
 # dVNCs to A1
 motorneuron_pairs = pm.Promat.load_pairs_from_annotation('mw A1 MN', pairs)
-A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + ascendings_all)
+pre_motorneuron_pairids = ad_edges.set_index('downstream_pair_id').loc[np.intersect1d(motorneuron_pairs.leftid, ad_edges.downstream_pair_id), 'upstream_pair_id']
+pre_motorneuron_pairids = list(np.unique(pre_motorneuron_pairids))
+pre_motorneurons = pre_motorneuron_pairids + list(pairs.set_index('leftid').loc[pre_motorneuron_pairids, 'rightid'])
+
+A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + pre_motorneurons + ascendings_all)
 A1_pairs = pm.Promat.load_pairs_from_annotation('A1', pairs, return_type='all_pair_ids_bothsides', skids=A1_cells, use_skids=True)
 dVNC_A1_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC to A1', pairs, return_type='all_pair_ids_bothsides')
 
 dVNC_nonA1 = np.setdiff1d(pymaid.get_skids_by_annotation('mw dVNC'), pymaid.get_skids_by_annotation('mw dVNC to A1'))
 dVNC_nonA1_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC not to A1', pairs, return_type='all_pair_ids_bothsides', skids=dVNC_nonA1, use_skids=True)
 celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid)]
-celltypes_post = [list(asc_pairs.leftid), list(motorneuron_pairs.leftid), list(A1_pairs.leftid)]
+celltypes_post = [list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
 
 mat = np.zeros(shape=(len(celltypes_pre), len(celltypes_post)))
 for i, pair_type1 in enumerate(celltypes_pre):
@@ -130,7 +133,7 @@ for i, pair_type1 in enumerate(celltypes_pre):
 
             mat[i, j] = sum(connection)/len(connection)
 
-df = pd.DataFrame(mat, columns = ['A1-ascending', 'A1-motorneuron', 'A1-interneuron'],
+df = pd.DataFrame(mat, columns = ['A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'],
                         index = ['dVNC to A1', 'dVNC not to A1'])
 
 cmap = blue_cmap
@@ -141,9 +144,8 @@ sns.heatmap(df, square=True, cmap=cmap, vmax=vmax)
 plt.savefig(f'VNC_interaction/plots/connection-probability_dVNCs_A1cells.pdf', format='pdf', bbox_inches='tight')
 
 # summary connectivity probability plot
-celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), list(motorneuron_pairs.leftid)]
-celltypes_post = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), list(motorneuron_pairs.leftid)]
-
+celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
+celltypes_post = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
 
 mat = np.zeros(shape=(len(celltypes_pre), len(celltypes_post)))
 for i, pair_type1 in enumerate(celltypes_pre):
@@ -156,19 +158,18 @@ for i, pair_type1 in enumerate(celltypes_pre):
 
             mat[i, j] = sum(connection)/len(connection)
 
-df = pd.DataFrame(mat, columns = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-motorneuron'],
-                        index = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-motorneuron'])
+df = pd.DataFrame(mat, columns = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'],
+                        index = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'])
 
 cmap = blue_cmap
-vmax = 0.02
+vmax = 0.04
 
-fig, ax = plt.subplots(1,1, figsize=(2,2))
-sns.heatmap(df, square=True, cmap=cmap, vmax=vmax)
+fig, ax = plt.subplots(1,1, figsize=(3,3))
+sns.heatmap(df, square=True, cmap=cmap, vmax=vmax, annot=True, fmt='.3f')
 plt.savefig(f'VNC_interaction/plots/connection-probability_brain-A1_summary.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # connection probability of self loop (dVNC<->ascending-A1) vs zigzag motif (dVNC1->ascending-A1->dVNC2)
-
 
 # generate graph for dVNCs and A1
 
@@ -278,12 +279,11 @@ def dVNC_asc_zigzag_probability(graph, pairs, targets, length, exclude_from_path
     return(dVNC_ascending_zigzag_prob, all_paths, zigzag_paths)
 
 A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC 1%')
+pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC')
 graph_dVNC_A1 = pg.Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = list(dVNCs) + A1 + pre_dVNC) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
 
 from joblib import Parallel, delayed
 from tqdm import tqdm
-
 
 sources = dVNC_A1_pairs
 targets = dVNC_pairs.leftid.to_list()
@@ -302,7 +302,7 @@ zigzag_dVNC_paths = [x[2] for x in zigzag_dVNC[0:3]]
 # zigzags to other output types
 dSEZs = pymaid.get_skids_by_annotation('mw dSEZ')
 RGNs = pymaid.get_skids_by_annotation('mw RGN')
-pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ 1%')
+pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ')
 graph_outputs_A1 = pg.Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = np.unique(list(dVNCs) + dSEZs + pre_dSEZ + A1)) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
 targets = dSEZ_pairs.leftid.to_list()
 zigzag_dSEZ = Parallel(n_jobs=-1)(delayed(dVNC_asc_zigzag_probability)(graph_outputs_A1, sources, targets, length=lengths[i], pre=pre_dSEZ, use_pre=True) for i in tqdm(range(len(lengths))))
@@ -310,7 +310,7 @@ zigzag_dSEZ_probs = [x[0] for x in zigzag_dSEZ]
 zigzag_all_dSEZ_paths = [x[1] for x in zigzag_dSEZ]
 zigzag_dSEZ_paths = [x[2] for x in zigzag_dSEZ[0:3]]
 
-pre_RGN = pymaid.get_skids_by_annotation('mw pre-RGN 1%')
+pre_RGN = pymaid.get_skids_by_annotation('mw pre-RGN')
 graph_outputs_A1 = pg.Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = np.unique(list(dVNCs) + RGNs + pre_RGN + A1)) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
 targets = RGN_pairs.leftid.to_list()
 zigzag_RGN = Parallel(n_jobs=-1)(delayed(dVNC_asc_zigzag_probability)(graph_outputs_A1, sources, targets, length=lengths[i], pre=pre_RGN, use_pre=True) for i in tqdm(range(len(lengths))))
@@ -335,11 +335,31 @@ sns.heatmap(df, ax=ax, cmap='Greens', annot=True, vmax=0.2)
 plt.savefig(f'VNC_interaction/plots/loops-vs-zigzag_brain-A1.pdf', format='pdf', bbox_inches='tight')
 
 # plot fraction of dVNC-A1s displaying zigzags to different output types
-df = pd.DataFrame([zigzag_outputs_probs, zigzag_dVNC_probs, zigzag_dSEZ_probs, zigzag_RGN_probs], index = ['zigzag-outputs', 'zigzag-dVNC', 'zigzag-dSEZ', 'zigzag-RGN'], columns = lengths)
+df = pd.DataFrame([zigzag_dVNC_probs, zigzag_dSEZ_probs, zigzag_RGN_probs], index = ['zigzag-dVNC', 'zigzag-dSEZ', 'zigzag-RGN'], columns = lengths)
 
 fig,ax = plt.subplots(1,1,figsize=(2,2))
 sns.heatmap(df, ax=ax, cmap='Greens', annot=True, vmax=0.2)
 plt.savefig(f'VNC_interaction/plots/zigzag_different-outputs_brain-A1.pdf', format='pdf', bbox_inches='tight')
+
+# number of motifs/paths observed
+num_loop_paths = [len(x) for x in loop_paths]
+num_zigzag_dVNC_paths = [len(x) for x in zigzag_dVNC_paths]
+df = pd.DataFrame([num_loop_paths, num_zigzag_dVNC_paths], index = ['loops', 'zigzags'], columns = lengths)
+
+fig,ax = plt.subplots(1,1,figsize=(1,0.5))
+sns.heatmap(df, ax=ax, cmap='Greens', annot=True, vmax=25, square=True)
+plt.savefig(f'VNC_interaction/plots/num_loops-vs-zigzag_brain-A1.pdf', format='pdf', bbox_inches='tight')
+
+# number of zigzags observed for different output types
+num_zigzag_dVNC_paths = [len(x) for x in zigzag_dVNC_paths]
+num_zigzag_dSEZ_paths = [len(x) for x in zigzag_dSEZ_paths]
+num_zigzag_RGN_paths = [len(x) for x in zigzag_RGN_paths]
+num_output_paths = list(map(sum, zip(num_zigzag_dVNC_paths, num_zigzag_dSEZ_paths, num_zigzag_RGN_paths)))
+df = pd.DataFrame([num_output_paths, num_zigzag_dVNC_paths, num_zigzag_dSEZ_paths, num_zigzag_RGN_paths], index = ['zigzag-all', 'zigzag-dVNC', 'zigzag-dSEZ', 'zigzag-RGN'], columns = [3,4,5])
+
+fig,ax = plt.subplots(1,1,figsize=(1,0.5))
+sns.heatmap(df, ax=ax, cmap='Greens', annot=True, vmax=35, square=True)
+plt.savefig(f'VNC_interaction/plots/num_zigzag_different-outputs_brain-A1.pdf', format='pdf', bbox_inches='tight')
 
 
 # %%
@@ -438,3 +458,4 @@ plt.axhline(y=0, color='r', linestyle='-')
 plt.savefig(f'VNC_interaction/plots/parallel-coordinates_all_zigzags.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# plot number of zigzag paths
