@@ -31,9 +31,20 @@ pre_dVNCs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, dVNCs), :].upstr
 pre_dSEZs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, dSEZs), :].upstream_skid)
 pre_RGNs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, RGNs), :].upstream_skid)
 
-pymaid.add_annotations(pre_dVNCs, 'mw pre-dVNC')
-pymaid.add_annotations(pre_dSEZs, 'mw pre-dSEZ')
-pymaid.add_annotations(pre_RGNs, 'mw pre-RGN')
+#pymaid.add_annotations(pre_dVNCs, 'mw pre-dVNC')
+#pymaid.add_annotations(pre_dSEZs, 'mw pre-dSEZ')
+#pymaid.add_annotations(pre_RGNs, 'mw pre-RGN')
 
 # %%
-# 
+# identify dVNCs-to-A1 and dVNCs-not-to-A1
+
+A1s = pymaid.get_skids_by_annotation('mw A1 neurons paired')
+dVNCs_to_A1 = edge_ad.loc[np.intersect1d(A1s, edge_ad.index), 'upstream_skid']
+dVNCs_to_A1 = list(np.intersect1d(np.unique(dVNCs_to_A1), dVNCs))
+dVNCs_not_to_A1 = list(np.setdiff1d(dVNCs, dVNCs_to_A1))
+
+dVNCs_to_A1 = [x if x!=15672263 else 21790197 for x in dVNCs_to_A1]
+pymaid.add_annotations(dVNCs_to_A1, 'mw dVNC to A1')
+pymaid.add_annotations(dVNCs_not_to_A1, 'mw dVNC not to A1')
+
+# %%
