@@ -59,7 +59,7 @@ import pickle
 
 output_names = ['mw dVNC', 'mw dSEZ', 'mw RGN']
 outputs = [pymaid.get_skids_by_annotation(annot) for annot in output_names]
-preoutput_names = ['mw pre-dVNC 1%', 'mw pre-dSEZ 1%', 'mw pre-RGN 1%']
+preoutput_names = ['mw pre-dVNC', 'mw pre-dSEZ', 'mw pre-RGN']
 preoutputs = [pymaid.get_skids_by_annotation(annot) for annot in preoutput_names]
 
 adj=pm.Promat.pull_adj('ad', subgraph='brain and accessory')
