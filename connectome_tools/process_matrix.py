@@ -630,19 +630,25 @@ class Promat():
     @staticmethod
     def get_paired_skids(skid, pairList):
 
-        if(skid in pairList["leftid"].values):
-            pair_right = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
-            pair_left = skid
+        if(type(skid)!=list):
+            if(skid in pairList["leftid"].values):
+                pair_right = pairList["rightid"][pairList["leftid"]==skid].iloc[0]
+                pair_left = skid
 
-        if(skid in pairList["rightid"].values):
-            pair_left = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
-            pair_right = skid
+            if(skid in pairList["rightid"].values):
+                pair_left = pairList["leftid"][pairList["rightid"]==skid].iloc[0]
+                pair_right = skid
 
-        if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
-            print(f"skid {skid} is not in paired list")
-            return([skid])
+            if((skid in pairList["leftid"].values) == False and (skid in pairList["rightid"].values) == False):
+                print(f"skid {skid} is not in paired list")
+                return([skid])
 
-        return([pair_left, pair_right])
+            return([pair_left, pair_right])
+
+        if(type(skid)==list):
+            data = [Promat.get_paired_skids(x, pairList) for x in skid]
+            df = pd.DataFrame(data, columns = ['leftid', 'rightid'])
+            return(df)
 
     # converts array of skids into left-right pairs in separate columns
     # puts unpaired and nonpaired neurons in different lists
@@ -931,3 +937,24 @@ class Promat():
             hops_iter += 1
             return([us] + Promat.upstream_multihop(edges=edges, sources=us, hops=hops, hops_iter=hops_iter, exclude_source=exclude_source, exclude=exclude))
 
+    @staticmethod
+    def find_all_partners(pairids, edgelist, all_paired_skids=True):
+        pairs = Promat.get_pairs()
+        data = []
+        for pairid in pairids:
+            downstream = list(np.unique(edgelist.set_index('upstream_pair_id').loc[pairid, 'downstream_pair_id']))
+            upstream = list(np.unique(edgelist.set_index('downstream_pair_id').loc[pairid, 'upstream_pair_id']))
+
+            if(all_paired_skids):
+                downstream = Promat.get_paired_skids(downstream, pairs)
+                downstream = list(downstream.leftid) + list(downstream.rightid)
+                upstream = Promat.get_paired_skids(upstream, pairs)
+                upstream = list(upstream.leftid) + list(upstream.rightid)
+                pair = Promat.get_paired_skids(pairid, pairs)
+                data.append([pairid, pair, upstream, downstream])
+
+        if(all_paired_skids):
+            df = pd.DataFrame(data, columns = ['source_pairid', 'source_pair', 'upstream', 'downstream'])
+            
+        return(df)
+        

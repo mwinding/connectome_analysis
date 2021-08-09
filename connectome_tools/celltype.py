@@ -379,7 +379,7 @@ class Celltype_Analyzer:
         colors = list(pymaid.get_annotated('mw brain simple colors').name)
 
         # official order; note that it will have to change if any new groups are added
-        official_order = ['sensories', 'PNs', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
+        official_order = ['sensories', 'PNs', 'ascendings', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
         colors_names = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
         if(len(official_order)!=len(colors_names)):
             print('warning: issue with annotations! Check "official_order" in Celltype_Analyzer.default_celltypes()')
@@ -494,8 +494,8 @@ def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color
     cluster_analyze.set_known_types(all_celltypes)
     celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
     all_memberships = cluster_analyze.memberships()
-    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,16,13,14,15], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
-    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,16,13,14,15]] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16]] # switching order so unknown is not above outputs and RGNs before pre-outputs
     
     # particular cell type data
     cluster_analyze.set_known_types([particular_cell_type])
