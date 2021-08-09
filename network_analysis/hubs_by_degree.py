@@ -126,7 +126,7 @@ for i, hubs in enumerate(G_hubs):
         pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_in_out', 'mw hubs')
 
 # %%
-# location in cluster structure
+# cell type identification
 # ad hubs
 celltypes_data, celltypes = ct.Celltype_Analyzer.default_celltypes()
 orange = sns.color_palette()[1]

@@ -231,7 +231,7 @@ bilateral_pdiff_us_cts_memberships = bilateral_pdiff_us_cts.memberships(raw_num=
 ylim = [0,1]
 path = 'interhemisphere/plots/bilateral-partially-asym_upstream-partners_memberships.pdf'
 bilateral_pdiff_us_cts.plot_memberships(path=path, figsize=(0.1*len(bilateral_pdiff_us_cts.Celltypes),1), ylim=ylim)
-
+'''
 # export partners to CATMAID for bilateral_diff and bilateral_pdiff
 for skid in bilateral_diff.index:
     pymaid.add_annotations(bilateral_diff.loc[skid].ipsi_partners, f'mw {skid} ds ipsilateral partners')
@@ -250,4 +250,12 @@ for skid in bilateral_pdiff.index:
     pymaid.add_meta_annotations(f'mw {skid} ds ipsilateral partners', 'mw bilateral axon partially asymmetrical')
     pymaid.add_meta_annotations(f'mw {skid} ds contralateral partners', 'mw bilateral axon partially asymmetrical')
     pymaid.add_meta_annotations(f'mw {skid} us partners', 'mw bilateral axon partially asymmetrical')
+'''
+
+bilateral_diff_pairs = pm.Promat.get_paired_skids(list(bilateral_diff.index), pairs)
+bilateral_pdiff_pairs = pm.Promat.get_paired_skids(list(bilateral_pdiff.index), pairs)
+
+pymaid.add_annotations(list(bilateral_diff_pairs.leftid) + list(bilateral_diff_pairs.rightid), 'mw bilateral axon asymmetrical neurons')
+pymaid.add_annotations(list(bilateral_pdiff_pairs.leftid) + list(bilateral_pdiff_pairs.rightid), 'mw bilateral axon partially asymmetrical neurons')
+
 # %%
