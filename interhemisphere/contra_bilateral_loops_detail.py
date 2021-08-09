@@ -128,10 +128,12 @@ for i in contra_loop_partners.index:
     contra_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-l', us))
     contra_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-r', us))
     contra_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    contra_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
     contra_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-l', ds))
     contra_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-r', ds))
     contra_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    contra_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
 contra_loop_upstream_ct = ct.Celltype_Analyzer(contra_loop_upstream_ct)
 contra_loop_downstream_ct = ct.Celltype_Analyzer(contra_loop_downstream_ct)
@@ -152,10 +154,12 @@ for i in bi_loop_partners.index:
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-l', us))
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-r', us))
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-l', ds))
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-r', ds))
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
 bi_loop_upstream_ct = ct.Celltype_Analyzer(bi_loop_upstream_ct)
 bi_loop_downstream_ct = ct.Celltype_Analyzer(bi_loop_downstream_ct)
