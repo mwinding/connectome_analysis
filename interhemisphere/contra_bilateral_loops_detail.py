@@ -154,12 +154,12 @@ for i in bi_loop_partners.index:
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-l', us))
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-r', us))
     bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
-    bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
+    #bi_loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-l', ds))
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-r', ds))
     bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
-    bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
+    #bi_loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
 
 bi_loop_upstream_ct = ct.Celltype_Analyzer(bi_loop_upstream_ct)
 bi_loop_downstream_ct = ct.Celltype_Analyzer(bi_loop_downstream_ct)
@@ -192,4 +192,83 @@ for i in bi_loop_partners.index:
     pymaid.add_meta_annotations(f'mw {skid} downstream partners', 'mw partner-loops-bilateral partners')
     pymaid.add_meta_annotations(f'mw {skid} upstream partners', 'mw partner-loops partners')
     pymaid.add_meta_annotations(f'mw {skid} downstream partners', 'mw partner-loops partners')
+# %%
+# do any partner loops interact directly?
+
+loops = pymaid.get_skids_by_annotation('mw partner loops')
+
+loops_edges = ad_edges.set_index('upstream_pair_id', drop=False).loc[np.intersect1d(ad_edges.upstream_pair_id, loops), :].copy()
+loops_edges = loops_edges.set_index('downstream_pair_id', drop=False).loc[np.intersect1d(loops_edges.downstream_pair_id, loops), :].copy()
+loops_edges[loops_edges.upstream_pair_id != loops_edges.downstream_pair_id]
+
+adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
+inputs = pd.read_csv('data/graphs/inputs.csv', index_col=0)
+adj_ad_mat = pm.Adjacency_matrix(adj=adj_ad, input_counts=inputs, mat_type='ad')
+
+loops_mat = adj_ad_mat.adj_pairwise.loc[(slice(None), loops), (slice(None), loops)]
+indices = [x[1] for x in loops_mat.index]
+loops_mat.index = indices
+loops_mat.columns = indices
+
+# sort by sort-walk
+meta_data = pd.read_csv('data/graphs/meta_data.csv', index_col=0)
+walk_sort_data = []
+for skid in indices:
+    pair = pm.Promat.get_paired_skids(skid, pairs)
+    sort = np.mean(meta_data.loc[pair, 'sum_walk_sort'].values)
+    walk_sort_data.append([skid, sort])
+
+walk_sort_data = pd.DataFrame(walk_sort_data, columns = ['pairid', 'walk_sort'])
+walk_sort_data = walk_sort_data.sort_values(by='walk_sort').reset_index(drop=True)
+walk_sort_data = walk_sort_data.iloc[[0,1,2,3,4,5,7,6,8,9,10,11,12,14,13,15,16,17,18,19,20,21,22,23], :] # swapped two rows with same walk_sort value and another set to make double-loop easier to see
+
+# modify 'Greens' cmap to have a white background
+import matplotlib as mpl
+
+cmap = plt.cm.get_cmap('Greens')
+green_cmap = cmap(np.linspace(0, 1, 20))
+green_cmap[0] = np.array([1, 1, 1, 1])
+green_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Greens', colors=green_cmap)
+
+fig, ax = plt.subplots(1,1, figsize=(3,3))
+sns.heatmap(loops_mat.loc[walk_sort_data.pairid, walk_sort_data.pairid], 
+                cmap=green_cmap, square=True, ax=ax, vmax=0.1)
+#sns.clustermap(adj_ad_mat.adj_pairwise.loc[(slice(None), loops), (slice(None), loops)], cmap='Greens')
+plt.savefig('interhemisphere/plots/pairloops-pairloops_adj.pdf', bbox_inches='tight')
+
+
+# %%
+# bilateral/contralateral upstream-downstream plots with same order as above chunk
+
+all_loop_partners = pd.concat([contra_loop_partners, bi_loop_partners])
+all_loop_partners.set_index('source_pairid', inplace=True, drop=False)
+all_loop_partners = all_loop_partners.loc[walk_sort_data.pairid]
+
+# individual contra loops
+loop_upstream_ct = []
+loop_downstream_ct = []
+for i in all_loop_partners.index:
+    pairid = all_loop_partners.source_pairid[i]
+    us = all_loop_partners.loc[i, 'upstream']
+    ds = all_loop_partners.loc[i, 'downstream']
+
+    loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-l', us))
+    loop_upstream_ct.append(ct.Celltype(f'{pairid}-upstream-r', us))
+    loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    loop_upstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
+
+    loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-l', ds))
+    loop_downstream_ct.append(ct.Celltype(f'{pairid}-downstream-r', ds))
+    loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer', [])) # add these blank columns for formatting purposes only
+    loop_downstream_ct.append(ct.Celltype(f'{pairid}-spacer2', [])) # add these blank columns for formatting purposes only
+
+loop_upstream_ct = ct.Celltype_Analyzer(loop_upstream_ct)
+loop_downstream_ct = ct.Celltype_Analyzer(loop_downstream_ct)
+
+loop_upstream_ct.set_known_types(celltypes)
+loop_downstream_ct.set_known_types(celltypes)
+loop_upstream_ct.plot_memberships(f'interhemisphere/plots/all-partner-loops-upstream_celltypes.pdf', (0.67*len(loop_upstream_ct.Celltypes),2), ylim=(0,1))
+loop_downstream_ct.plot_memberships(f'interhemisphere/plots/all-partner-loops-downstream_celltypes.pdf', (0.67*len(loop_downstream_ct.Celltypes),2), ylim=(0,1))
+
+
 # %%
