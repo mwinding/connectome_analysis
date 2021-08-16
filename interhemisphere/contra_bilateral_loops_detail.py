@@ -270,5 +270,50 @@ loop_downstream_ct.set_known_types(celltypes)
 loop_upstream_ct.plot_memberships(f'interhemisphere/plots/all-partner-loops-upstream_celltypes.pdf', (0.67*len(loop_upstream_ct.Celltypes),2), ylim=(0,1))
 loop_downstream_ct.plot_memberships(f'interhemisphere/plots/all-partner-loops-downstream_celltypes.pdf', (0.67*len(loop_downstream_ct.Celltypes),2), ylim=(0,1))
 
+# %%
+# annotate neurons
 
+#[pymaid.add_annotations(pair, f'PL-{i+1}') for i, pair in enumerate(all_loop_partners.source_pair)]
+#pymaid.add_meta_annotations([f'PL-{i+1}' for i in range(0, len(all_loop_partners))], 'mw pair loops')
+
+# %%
+# plot cell types
+
+# pull specific cell type identities
+PL_ct = [ct.Celltype(f'PL-{i+1}', pair) for i,pair in enumerate(all_loop_partners.source_pair)]
+PL_ct = ct.Celltype_Analyzer(PL_ct)
+PL_ct.set_known_types(celltypes)
+members = PL_ct.memberships()
+
+# link identities to official celltype colors 
+celltype_identities = [np.where(members.iloc[:, i]==1.0)[0][0] for i in range(0, len(members.columns))]
+PL_ct = [ct.Celltype(f'PL-{i+1}', pair, celltypes[celltype_identities[i]].color) if celltype_identities[i]<17 else ct.Celltype(f'PL-{i+1}', pair, '#7F7F7F') for i, pair in enumerate(all_loop_partners.source_pair)]
+
+# plot neuron morphologies
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .05)
+LN_color = '#5D8B90'
+
+n_rows = 3
+n_cols = 8
+alpha = 1
+
+fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
+axs = np.empty((n_rows, n_cols), dtype=object)
+
+for i, skids in enumerate([x.skids for x in PL_ct]):
+    neurons = pymaid.get_neurons(skids)
+
+    inds = np.unravel_index(i, shape=(n_rows, n_cols))
+    ax = fig.add_subplot(gs[inds], projection="3d")
+    axs[inds] = ax
+    navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=PL_ct[i].color, alpha=alpha, ax=ax)
+    ax.azim = -90
+    ax.elev = -90
+    ax.dist = 6
+    ax.set_xlim3d((-4500, 110000))
+    ax.set_ylim3d((-4500, 110000))
+
+fig.savefig(f'interhemisphere/plots/morpho_PLs.png', format='png', dpi=300, transparent=True)
 # %%
