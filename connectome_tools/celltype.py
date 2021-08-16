@@ -523,3 +523,96 @@ def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color
     ax.axis('off')
 
     plt.savefig(path, format='pdf', bbox_inches='tight')
+
+
+# use df from find_all_partners_hemispheres() if simple=FALSE
+# use df from find_all_partners() if simple=TRUE
+def chromosome_plot(df, path, celltypes, plot_type='raw_norm', simple=False, spacer_num=1, col_width = 0.2, col_height=1): 
+    df = df.set_index('source_pairid')
+
+    if(simple==False):
+        upstream_ct = []
+        downstream_ct = []
+        for pairid in df.index:
+            us_ipsi = df.loc[pairid, 'upstream-ipsi']
+            us_contra = df.loc[pairid, 'upstream-contra']
+            ds_ipsi = df.loc[pairid, 'downstream-ipsi']
+            ds_contra = df.loc[pairid, 'downstream-contra']
+
+            upstream_ct.append(Celltype(f'{pairid}_upstream-ipsi', us_ipsi))
+            upstream_ct.append(Celltype(f'{pairid}_upstream-contra', us_contra))
+            j = 0
+            while(j<spacer_num): # add appropriate number of spacers
+                upstream_ct.append(Celltype(f'{pairid}-spacer-{j}', [])) # add these blank columns for formatting purposes only
+                j+=1
+
+            downstream_ct.append(Celltype(f'{pairid}_downstream-ipsi', ds_ipsi))
+            downstream_ct.append(Celltype(f'{pairid}_downstream-contra', ds_contra))
+            j = 0
+            while(j<spacer_num): # add appropriate number of spacers
+                downstream_ct.append(Celltype(f'{pairid}-spacer-{j}', [])) # add these blank columns for formatting purposes only
+                j+=1
+
+        upstream_ct = Celltype_Analyzer(upstream_ct)
+        downstream_ct = Celltype_Analyzer(downstream_ct)
+
+        upstream_ct.set_known_types(celltypes)
+        downstream_ct.set_known_types(celltypes)
+
+        if(plot_type=='simple_fraction'):
+            upstream_ct.plot_memberships(path, figsize=(col_width*len(upstream_ct.Celltypes),col_height), ylim=(0,1))
+            downstream_ct.plot_memberships(path, figsize=(col_width*len(downstream_ct.Celltypes),col_height), ylim=(0,1))
+        
+        if(plot_type=='raw'):
+            upstream_memberships = upstream_ct.memberships(raw_num=True)
+            downstream_memberships = downstream_ct.memberships(raw_num=True)
+            upstream_ct.plot_memberships(path=path, figsize=(col_width*len(upstream_ct.Celltypes),col_height), memberships=upstream_memberships, ylim=(0,1))
+            downstream_ct.plot_memberships(path=path, figsize=(col_width*len(downstream_ct.Celltypes),col_height), memberships=downstream_memberships, ylim=(0,1))
+        
+        if(plot_type=='raw_norm'):
+            upstream_memberships = upstream_ct.memberships(raw_num=True)
+            downstream_memberships = downstream_ct.memberships(raw_num=True)
+
+            for i in range(0, len(upstream_memberships.columns), 2+spacer_num):
+                col_name_us = upstream_memberships.columns[i]
+                col_name2_us = upstream_memberships.columns[i+1]
+                col_name_ds = downstream_memberships.columns[i]
+                col_name2_ds = downstream_memberships.columns[i+1]
+
+                sum_us = sum(upstream_memberships.loc[:, col_name_us]) + sum(upstream_memberships.loc[:, col_name2_us])
+                sum_ds = sum(downstream_memberships.loc[:, col_name_ds]) + sum(downstream_memberships.loc[:, col_name2_ds])
+
+                upstream_memberships.loc[:, col_name_us] = upstream_memberships.loc[:, col_name_us]/sum_us
+                upstream_memberships.loc[:, col_name2_us] = upstream_memberships.loc[:, col_name2_us]/sum_us
+                downstream_memberships.loc[:, col_name_ds] = downstream_memberships.loc[:, col_name_ds]/sum_ds
+                downstream_memberships.loc[:, col_name2_ds] = downstream_memberships.loc[:, col_name2_ds]/sum_ds
+
+            upstream_ct.plot_memberships(path=path + '-upstream.pdf', figsize=(col_width*len(upstream_ct.Celltypes),col_height), memberships=upstream_memberships, ylim=(0,1))
+            downstream_ct.plot_memberships(path=path + '-downstream.pdf', figsize=(col_width*len(downstream_ct.Celltypes),col_height), memberships=downstream_memberships, ylim=(0,1))
+
+    if(simple==True):
+        upstream_ct = []
+        downstream_ct = []
+        for pairid in df.index:
+            us = df.loc[pairid, 'upstream']
+            ds = df.loc[pairid, 'downstream']
+
+            upstream_ct.append(Celltype(f'{pairid}-upstream', us))
+            j = 0
+            while(j<spacer_num): # add appropriate number of spacers
+                upstream_ct.append(Celltype(f'{pairid}-spacer-{j}', [])) # add these blank columns for formatting purposes only
+                j+=1
+
+            downstream_ct.append(Celltype(f'{pairid}-downstream', ds))
+            j = 0
+            while(j<spacer_num): # add appropriate number of spacers
+                downstream_ct.append(Celltype(f'{pairid}-spacer-{j}', [])) # add these blank columns for formatting purposes only
+                j+=1
+
+        upstream_ct = Celltype_Analyzer(upstream_ct)
+        downstream_ct = Celltype_Analyzer(downstream_ct)
+
+        upstream_ct.set_known_types(celltypes)
+        downstream_ct.set_known_types(celltypes)
+        upstream_ct.plot_memberships(path=path + '-upstream.pdf', figsize=(col_width*len(upstream_ct.Celltypes),col_height), ylim=(0,1))
+        downstream_ct.plot_memberships(path=path + '-downstream.pdf', figsize=(col_width*len(downstream_ct.Celltypes),col_height), ylim=(0,1))
