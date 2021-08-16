@@ -884,9 +884,6 @@ class Promat():
 
         return(edges)
 
-
-
-
     # recursive function that identifies all downstream partners X-hops away from source
     # uses pregenerated edge list from threshold_edge_list() or the split-pair version
     @staticmethod
@@ -942,8 +939,12 @@ class Promat():
         pairs = Promat.get_pairs()
         data = []
         for pairid in pairids:
-            downstream = list(np.unique(edgelist.set_index('upstream_pair_id').loc[pairid, 'downstream_pair_id']))
-            upstream = list(np.unique(edgelist.set_index('downstream_pair_id').loc[pairid, 'upstream_pair_id']))
+            if(pairid in list(edgelist.upstream_pair_id)): # make sure pairid has downstream partners (TRUE if it is in upstream_pair_id list); if not, manually set empty list
+                downstream = list(np.unique(edgelist.set_index('upstream_pair_id').loc[pairid, 'downstream_pair_id']))
+            else: downstream = []
+            if(pairid in list(edgelist.downstream_pair_id)): # make sure pairid has upstream partners (TRUE if it is in downstream_pair_id list); if not, manually set empty list
+                upstream = list(np.unique(edgelist.set_index('downstream_pair_id').loc[pairid, 'upstream_pair_id']))
+            else: upstream = []
 
             if(all_paired_skids):
                 downstream = Promat.get_paired_skids(downstream, pairs)
@@ -957,4 +958,66 @@ class Promat():
             df = pd.DataFrame(data, columns = ['source_pairid', 'source_pair', 'upstream', 'downstream'])
             
         return(df)
-        
+
+    @staticmethod
+    def find_all_partners_hemispheres(pairids, edgelist, all_paired_skids=True):
+        pairs = Promat.get_pairs()
+        data = []
+        for pairid in pairids:
+            # identify downstream partners
+            if(pairid in list(edgelist.upstream_pair_id)): # make sure pairid has downstream partners (TRUE if it is in upstream_pair_id list); if not, manually set empty list
+                downstream = edgelist.set_index('upstream_pair_id').loc[pairid, :]
+                if(type(downstream)==pd.Series): downstream = pd.DataFrame([downstream]) # convert to pd.DataFrame if it is a Series (meaning only one partner); causes issues otherwise
+                downstream_ipsi = list(np.unique(downstream[downstream.type=='ipsilateral']['downstream_pair_id']))
+                downstream_contra = list(np.unique(downstream[downstream.type=='contralateral']['downstream_pair_id']))
+            else: 
+                downstream_ipsi = []
+                downstream_contra = []
+            
+            # identify upstream partners
+            if(pairid in list(edgelist.downstream_pair_id)): # make sure pairid has upstream partners (TRUE if it is in downstream_pair_id list); if not, manually set empty list
+                upstream = edgelist.set_index('downstream_pair_id').loc[pairid, :]
+                if(type(upstream)==pd.Series): upstream = pd.DataFrame([upstream]) # convert to pd.DataFrame if it is a Series (meaning only one partner); causes issues otherwise
+                upstream_ipsi = list(np.unique(upstream[upstream.type=='ipsilateral']['upstream_pair_id']))
+                upstream_contra = list(np.unique(upstream[upstream.type=='contralateral']['upstream_pair_id']))
+            else: 
+                upstream_ipsi = []
+                upstream_contra = []
+
+            # convert to left and right skid; before it was just the pairid for each pair (i.e. the left skid of the pair)
+            if(all_paired_skids):
+                downstream_ipsi = Promat.get_paired_skids(downstream_ipsi, pairs)
+                downstream_ipsi = list(downstream_ipsi.leftid) + list(downstream_ipsi.rightid)
+                downstream_contra = Promat.get_paired_skids(downstream_contra, pairs)
+                downstream_contra = list(downstream_contra.leftid) + list(downstream_contra.rightid)
+
+                upstream_ipsi = Promat.get_paired_skids(upstream_ipsi, pairs)
+                upstream_ipsi = list(upstream_ipsi.leftid) + list(upstream_ipsi.rightid)
+                upstream_contra = Promat.get_paired_skids(upstream_contra, pairs)
+                upstream_contra = list(upstream_contra.leftid) + list(upstream_contra.rightid)
+
+                pair = Promat.get_paired_skids(pairid, pairs)
+                data.append([pairid, pair, upstream_ipsi, upstream_contra, downstream_ipsi, downstream_contra])
+
+        if(all_paired_skids):
+            df = pd.DataFrame(data, columns = ['source_pairid', 'source_pair', 'upstream-ipsi', 'upstream-contra', 'downstream-ipsi', 'downstream-contra'])
+            
+        return(df)  
+    
+    @staticmethod
+    def walk_sort_skids(skids, pairs, show_data=False):
+        meta_data = pd.read_csv('data/graphs/meta_data.csv', index_col=0)
+        walk_sort_data = []
+        for skid in skids:
+            pair = Promat.get_paired_skids(skid, pairs)
+            sort = np.mean(meta_data.loc[pair, 'sum_walk_sort'].values)
+            walk_sort_data.append([skid, sort])
+
+        walk_sort_data = pd.DataFrame(walk_sort_data, columns = ['pairid', 'walk_sort'])
+        walk_sort_data = walk_sort_data.sort_values(by='walk_sort').reset_index(drop=True)
+
+        if(show_data):
+            return(walk_sort_data)
+        if(show_data==False):
+            return(list(walk_sort_data.pairid))
+
