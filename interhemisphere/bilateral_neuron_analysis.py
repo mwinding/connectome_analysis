@@ -72,7 +72,7 @@ bilateral = list(np.intersect1d(bilateral, br))
 #exclude = list(bilateral_no_brain_input[(bilateral_no_brain_input.loc[:, 'Brain Hemisphere left']==0) & (bilateral_no_brain_input.loc[:, 'Brain Hemisphere right']==0)].index)
 bilateral = list(np.setdiff1d(bilateral, outputs))
 
-bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral)[0]
+bilateral_pairs = pm.Promat.extract_pairs_from_list(bilateral, pairs)[0]
 
 def ad_edges(connector, projectome):
     connector_details = projectome[projectome.loc[:, 'connector']==connector]
