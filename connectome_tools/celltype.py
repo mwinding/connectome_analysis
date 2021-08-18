@@ -14,6 +14,7 @@ from upsetplot import plot
 from upsetplot import from_contents
 from upsetplot import from_memberships
 import connectome_tools.cluster_analysis as clust
+import navis
 
 class Celltype:
     def __init__(self, name, skids, color=None):
@@ -616,3 +617,53 @@ def chromosome_plot(df, path, celltypes, plot_type='raw_norm', simple=False, spa
         downstream_ct.set_known_types(celltypes)
         upstream_ct.plot_memberships(path=path + '-upstream.pdf', figsize=(col_width*len(upstream_ct.Celltypes),col_height), ylim=(0,1))
         downstream_ct.plot_memberships(path=path + '-downstream.pdf', figsize=(col_width*len(downstream_ct.Celltypes),col_height), ylim=(0,1))
+
+def plot_celltype(path, pairids, n_rows, n_cols, celltypes, plot_pairs=True, connectors=False, cn_size=0.25, color=None, names=False, plot_padding=[0,0]):
+
+    pairs = pm.Promat.get_pairs()
+    # pull specific cell type identities
+    celltype_ct = [Celltype(f'{pairid}-ipsi-bi', pm.Promat.get_paired_skids(pairid, pairs)) for pairid in pairids]
+    celltype_ct = Celltype_Analyzer(celltype_ct)
+    celltype_ct.set_known_types(celltypes)
+    members = celltype_ct.memberships()
+
+    # link identities to official celltype colors 
+    celltype_identities = [np.where(members.iloc[:, i]==1.0)[0][0] for i in range(0, len(members.columns))]
+    if(plot_pairs):
+        celltype_ct = [Celltype(celltypes[celltype_identities[i]].name.replace('s', ''), pm.Promat.get_paired_skids(pairid, pairs), celltypes[celltype_identities[i]].color) if celltype_identities[i]<17 else Celltype(f'{pairid}', pm.Promat.get_paired_skids(pairid, pairs), '#7F7F7F') for i, pairid in enumerate(pairids)]
+    if(plot_pairs==False):
+        celltype_ct = [Celltype(celltypes[celltype_identities[i]].name.replace('s', ''), pairid, celltypes[celltype_identities[i]].color) if celltype_identities[i]<17 else Celltype('Other', pairid, '#7F7F7F') for i, pairid in enumerate(pairids)]
+
+    # plot neuron morphologies
+    neuropil = pymaid.get_volume('PS_Neuropil_manual')
+    neuropil.color = (250, 250, 250, .05)
+
+    n_rows = n_rows
+    n_cols = n_cols
+    alpha = 1
+
+    fig = plt.figure(figsize=(n_cols*2, n_rows*2))
+    gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=plot_padding[0], hspace=plot_padding[1])
+    axs = np.empty((n_rows, n_cols), dtype=object)
+
+    for i, skids in enumerate([x.skids for x in celltype_ct]):
+        if(color!=None):
+            col = color
+        else: col = celltype_ct[i].color
+        neurons = pymaid.get_neurons(skids)
+
+        inds = np.unravel_index(i, shape=(n_rows, n_cols))
+        ax = fig.add_subplot(gs[inds], projection="3d")
+        axs[inds] = ax
+        navis.plot2d(x=[neurons, neuropil], connectors=connectors, cn_size=cn_size, color=col, alpha=alpha, ax=ax, method='3d_complex')
+
+        ax.azim = -90
+        ax.elev = -90
+        ax.dist = 6
+        ax.set_xlim3d((-4500, 110000))
+        ax.set_ylim3d((-4500, 110000))
+        if(names):
+            ax.text(x=(ax.get_xlim()[0] + ax.get_xlim()[1])/2 - ax.get_xlim()[1]*0.05, y=ax.get_ylim()[1]*4/5, z=0, 
+                    s=celltype_ct[i].name, transform=ax.transData, color=col, alpha=1)
+
+    fig.savefig(f'{path}.png', format='png', dpi=300, transparent=True)
