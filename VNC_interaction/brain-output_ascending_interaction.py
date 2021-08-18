@@ -32,7 +32,6 @@ graph = pg.Analyze_Nx_G(ad_edges, split_pairs=False)
 
 pairs = pm.Promat.get_pairs()
 dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
-dVNCs = [x if x!=21790197 else 15672263 for x in dVNCs] # a single descending neuron was incorrectly merged and split, so skid is different...
 
 # %%
 # connection probability between ipsi/bilateral/contra

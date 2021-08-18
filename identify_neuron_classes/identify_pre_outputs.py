@@ -22,7 +22,6 @@ pairs = pm.Promat.get_pairs()
 #
 
 dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
-dVNCs = [x if x!=21790197 else 15672263 for x in dVNCs] # a single descending neuron was incorrectly merged and split, so skid is different...
 dSEZs = pymaid.get_skids_by_annotation('mw dSEZ')
 RGNs = pymaid.get_skids_by_annotation('mw RGN')
 
@@ -43,7 +42,6 @@ dVNCs_to_A1 = edge_ad.loc[np.intersect1d(A1s, edge_ad.index), 'upstream_skid']
 dVNCs_to_A1 = list(np.intersect1d(np.unique(dVNCs_to_A1), dVNCs))
 dVNCs_not_to_A1 = list(np.setdiff1d(dVNCs, dVNCs_to_A1))
 
-dVNCs_to_A1 = [x if x!=15672263 else 21790197 for x in dVNCs_to_A1]
 pymaid.add_annotations(dVNCs_to_A1, 'mw dVNC to A1')
 pymaid.add_annotations(dVNCs_not_to_A1, 'mw dVNC not to A1')
 

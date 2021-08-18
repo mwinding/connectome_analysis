@@ -26,16 +26,6 @@ annot_names = [list(map(lambda x: (f'{x[0]}_clusterID-{x[1]:.0f}_walksort-{x[2]:
 for i in range(len(clusters)):
     clusters[i]['annot'] = annot_names[i]
 
-# switch 15672263 to 21790197
-for i in range(len(clusters)):
-    skids_to_add = []
-    for j in range(len(clusters[i].index)):
-        skids_to_check = list(clusters[i].loc[j, 'skids'])
-        skids_checked = [x if x!=15672263 else 21790197 for x in skids_to_check] # swapping for other skid
-        skids_to_add.append(skids_checked) # adding to list of lists
-
-    clusters[i]['skids'] = skids_to_add # replace old sets of skids with one with swapped skid
-
 # %%
 # writing annotations for clusters
 
