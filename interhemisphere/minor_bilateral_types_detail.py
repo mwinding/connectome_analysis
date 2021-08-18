@@ -32,7 +32,8 @@ _, celltypes = ct.Celltype_Analyzer.default_celltypes()
 # %%
 # asymmetrical bilateral types
 
-p_asymmetrical_bi_pairids = pm.Promat.load_pairs_from_annotation('mw bilateral axon partially asymmetrical neurons', pairs, return_type='all_pair_ids')
+KCs = pymaid.get_skids_by_annotation('mw KC')
+p_asymmetrical_bi_pairids = list(np.setdiff1d(pm.Promat.load_pairs_from_annotation('mw bilateral axon partially asymmetrical neurons', pairs, return_type='all_pair_ids'), KCs))
 asymmetrical_bi_pairids = pm.Promat.load_pairs_from_annotation('mw bilateral axon asymmetrical neurons', pairs, return_type='all_pair_ids')
 
 # sort by sort-walk
@@ -114,4 +115,26 @@ ct.chromosome_plot(
                     celltypes = celltypes,
                     simple=True
                 )
+# %%
+# plot minor cell types
+
+ct.plot_celltype(path='interhemisphere/plots/ipsi-bi_morpho-plot', pairids=ipsi_bi_pairids, n_rows=1, n_cols=1, celltypes=celltypes, plot_pairs=False, connectors=True, color='tab:gray')
+ct.plot_celltype(path='interhemisphere/plots/bi-bi_morpho-plot', pairids=bi_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5, color='tab:gray')
+ct.plot_celltype(path='interhemisphere/plots/contra_bi_morpho-plot', pairids=contra_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5, color='tab:gray')
+ct.plot_celltype(path='interhemisphere/plots/contra_contra_morpho-plot', pairids=contra_contra_pairids, n_rows=3, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5, color='tab:gray')
+
+ct.plot_celltype(path='interhemisphere/plots/ipsi-bi_morpho-plot_colored', pairids=ipsi_bi_pairids, n_rows=1, n_cols=1, celltypes=celltypes, plot_pairs=False, connectors=True)
+ct.plot_celltype(path='interhemisphere/plots/bi-bi_morpho-plot_colored', pairids=bi_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5)
+ct.plot_celltype(path='interhemisphere/plots/contra_bi_morpho-plot_colored', pairids=contra_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5)
+ct.plot_celltype(path='interhemisphere/plots/contra_contra_morpho-plot_colored', pairids=contra_contra_pairids, n_rows=3, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5)
+
+# %%
+# plot asymmetrical and partially asymmetrical bilateral axon neurons
+
+ct.plot_celltype(path='interhemisphere/plots/asymmetrical-bi-ipsi_morpho-plot', pairids=asymmetrical_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, color='tab:gray')
+ct.plot_celltype(path='interhemisphere/plots/p-asymmetrical-bi-ipsi_morpho-plot', pairids=p_asymmetrical_bi_pairids, n_rows=4, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5, color='tab:gray')
+
+ct.plot_celltype(path='interhemisphere/plots/asymmetrical-bi-ipsi_morpho-plot_colored', pairids=asymmetrical_bi_pairids, n_rows=2, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True)
+ct.plot_celltype(path='interhemisphere/plots/p-asymmetrical-bi-ipsi_morpho-plot_colored', pairids=p_asymmetrical_bi_pairids, n_rows=4, n_cols=5, celltypes=celltypes, plot_pairs=False, connectors=True, cn_size=0.5)
+
 # %%
