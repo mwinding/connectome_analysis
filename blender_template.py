@@ -4,35 +4,33 @@ import navis.interfaces.blender as b3d
 import numpy as np
 
 pymaid.CatmaidInstance(url, token, name, password)
+h = b3d.Handler()
 
 cns = pymaid.get_volume('cns')
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
-
-h = b3d.Handler()
 h.add(cns)
 h.add(neuropil)
 
+skids = pymaid.get_skids_by_annotation('mw CN')
+neurons = pymaid.get_neurons(skids)
+h.add(neurons)
 h.neurons.bevel(.02) # change neuron thickness
 
-'''
-import pandas as pd 
-import navis
-import navis.interfaces.blender as b3d
-from os import listdir
-from os.path import isfile, join
+# must manually remove pre- and postsynaptic sites in blender
 
-mypath = '/Users/mwinding/Downloads/catmaid-swc-export(1)'
-paths = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-paths = [mypath + '/'+ x for x in paths]
 
-neurons = []
-for i in range(len(paths)):
-    neuron = pd.read_csv(paths[i], sep=' ', header=None)
-    neuron.columns = ['node_id', 'id', 'y', 'z', 'x', 'radius', 'parent_id']
-    neuron = navis.TreeNeuron(neuron)
-    neurons.append(neuron)
 
-h = b3d.Handler()
-for neuron in neurons:
-    h.add(neuron)
-'''
+# use the below code if issues loading all neurons as a group
+
+#neurons_loaded = pymaid.get_neurons(skids[0])
+#for j in range(1, len(skids)):
+#    loaded = pymaid.get_neurons(skids[j])
+#    neurons_loaded = neurons_loaded + loaded
+
+#name = 'CNs'
+#skids = pymaid.get_skids_by_annotation(f'mw exclusive-celltype {name}')
+skids = pymaid.get_skids_by_annotation('mw dVNC')
+neurons = pymaid.get_neurons(skids)
+h.add(neurons)
+h.neurons.bevel(0.02)
+ 
