@@ -44,7 +44,8 @@ brain = list(np.setdiff1d(brain, outputs_all))
 
 celltypes_df, celltypes = ct.Celltype_Analyzer.default_celltypes()
 
-all_celltypes = [celltypes[1]] + celltypes[3:len(celltypes)-3]
+all_celltypes = [celltypes[1]] + celltypes[3:len(celltypes)]
+all_interneurons = [celltypes[1]] + celltypes[3:len(celltypes)-3]
 
 all_neurons = [x for sublist in [x.skids for x in celltypes] for x in sublist]
 unknown_brain = list(np.setdiff1d(brain, all_neurons))
@@ -59,14 +60,14 @@ plot_height = 1
 ylim = (0, 500)
 
 # interneurons (note that these counts are for mutually exclusive types)
-colors = [x.color for x in all_celltypes]
-fig, ax = plt.subplots(1,1,figsize=(col_width*len(all_celltypes), plot_height))
-graph = sns.barplot(x=celltype_names, y=[len(x.skids) for x in all_celltypes], ax=ax, palette = colors)
+colors = [x.color for x in all_interneurons]
+fig, ax = plt.subplots(1,1,figsize=(col_width*len(all_interneurons), plot_height))
+graph = sns.barplot(x=[x.get_name() for x in all_interneurons], y=[len(x.skids) for x in all_interneurons], ax=ax, palette = colors)
 plt.xticks(rotation=45, ha='right')
 i=0
 for p in graph.patches:
     height = p.get_height()
-    graph.text(p.get_x()+p.get_width()/2., height + 5, [len(x.skids) for x in all_celltypes][i], ha="center", color=colors[i], fontdict = {'fontsize': 4})
+    graph.text(p.get_x()+p.get_width()/2., height + 5, [len(x.skids) for x in all_interneurons][i], ha="center", color=colors[i], fontdict = {'fontsize': 4})
     i += 1
 ax.set(ylim=ylim)
 plt.savefig('small_plots/plots/general-celltype-counts.pdf', format='pdf', bbox_inches='tight')
@@ -220,7 +221,9 @@ fig.savefig(f'small_plots/plots/morpho_brain-cell-types_other.png', format='png'
 
 
 # plot pre-output neurons with different alpha
-alpha = 0.2
+alpha = 0.13
+neuropil = pymaid.get_volume('PS_Neuropil_manual')
+neuropil.color = (250, 250, 250, .075)
 
 neurons_preoutput = [celltype_data_df.all_skids[10], celltype_data_df.exclusive_skids[10], celltype_data_df.promiscuous_skids[10],
                         celltype_data_df.all_skids[11], celltype_data_df.exclusive_skids[11], celltype_data_df.promiscuous_skids[11]]
@@ -231,6 +234,8 @@ n_cols = 3
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
 gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
 axs = np.empty((n_rows, n_cols), dtype=object)
+colors = ['#e2b39f', '#ba8583']
+colors = list(np.repeat(colors, 3))
 
 for i, neuron_types in enumerate(neurons_preoutput):
 
@@ -243,7 +248,7 @@ for i, neuron_types in enumerate(neurons_preoutput):
     inds = np.unravel_index(i, shape=(n_rows, n_cols))
     ax = fig.add_subplot(gs[inds], projection="3d")
     axs[inds] = ax
-    navis.plot2d(x=[neurons_loaded, neuropil], connectors_only=False, color='tab:grey', alpha=alpha, ax=ax)
+    navis.plot2d(x=[neurons_loaded, neuropil], connectors_only=False, color=colors[i], alpha=alpha, ax=ax)
     ax.azim = -90
     ax.elev = -90
     ax.dist = 6
