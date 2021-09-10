@@ -43,7 +43,7 @@ order2 = [list(np.setdiff1d(skids, LNs + outputs)) for skids in order2]
 order2_names = [f'mw {celltype} 2nd_order PN' for celltype in order]
 #[pymaid.add_annotations(skids, order2_names[i]) for i, skids in enumerate(order2)]
 #[pymaid.add_meta_annotations(name, 'mw brain inputs 2nd_order PN') for name in order2_names]
-'''
+
 # %%
 # distance between centroid of axon/dendrite in LNs and PNs
 uPNs = pymaid.get_skids_by_annotation('mw uPN')
@@ -75,7 +75,7 @@ for name_index, group in enumerate(order2_split_axon_dendrites):
         axon_dendrite_centroids.append([order2_names[name_index], order2[name_index][i], (axon_x, axon_y, axon_z), (dendrite_x, dendrite_y, dendrite_z), distance])
 
     axon_dendrite_centroid_order2.append(pd.DataFrame(axon_dendrite_centroids, columns = ['modality', 'skid', 'axon_centroids', 'dendrite_centroids', 'distance']))
-'''
+
 # %%
 # plot distance between axon and dendrite
 
