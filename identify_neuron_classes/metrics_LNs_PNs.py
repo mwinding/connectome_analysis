@@ -203,3 +203,25 @@ LNs_3rd_metrics = pickle.load(open('identify_neuron_classes/plots/LNs_3rd_metric
 LNs_4th_metrics = pickle.load(open('identify_neuron_classes/plots/LNs_4th_metrics.p', 'rb'))
 
 # %%
+# violinplot of axon-dendrite distances
+
+LNs = ct.Celltype('LN', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs'))
+PNs = ct.Celltype('PN', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs'))
+PNs_somato = ct.Celltype('PN-somato', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs-somato'))
+brain = pymaid.get_skids_by_annotation('mw brain neurons')
+other_interneurons = list(np.setdiff1d(brain, np.unique(LNs.skids+PNs.skids+PNs_somato.skids)))
+other_interneurons = ct.Celltype('other_interneuron', other_interneurons)
+
+LNs_morpho = skel.axon_dendrite_centroids_pairwise(LNs)
+PNs_morpho = skel.axon_dendrite_centroids_pairwise(PNs)
+PNs_somato_morpho = skel.axon_dendrite_centroids_pairwise(PNs_somato)
+other_morpho = skel.axon_dendrite_centroids_pairwise(other_interneurons)
+
+df = pd.concat([LNs_morpho, PNs_morpho, PNs_somato_morpho, other_morpho])
+
+fig, ax = plt.subplots(1,1,figsize=(4,3))
+sns.violinplot(data=df, x='celltype', y='distance', orient='vertical', ax=ax, scale='width')
+ax.set(ylim=(0,80))
+plt.savefig(f'identify_neuron_classes/plots/PN-LN_axon-dendrite-distance.pdf', format='pdf', bbox_inches='tight')
+
+# %%
