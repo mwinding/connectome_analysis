@@ -31,3 +31,23 @@ plt.bar(x = range(len(df.index)), height = df.feedforward)
 plt.bar(x = range(len(df.index)), height = -df.feedback)
 ax.set(ylim=(-1,1))
 plt.savefig('small_plots/plots/ff-fb_signal-flow-plots-type2.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1,figsize=(0.75,2))
+
+# %%
+# seaborn barplots
+
+data = [[.8, 'feedforward', 'a-d'], [.2, 'feedback', 'a-d'], 
+        [.53, 'feedforward', 'a-a'], [.47, 'feedback', 'a-a'], 
+        [.58, 'feedforward', 'd-d'], [.42, 'feedback', 'd-d'], 
+        [.38, 'feedforward', 'd-a'], [.62, 'feedback', 'd-a']]
+
+df = pd.DataFrame(data, columns = ['fraction', 'direction', 'edge_type'])
+
+fig, ax = plt.subplots(1,1,figsize=(1.5,1))
+sns.barplot(data=df, x='edge_type', y='fraction', hue='direction')
+ax.set(ylim=(0,1))
+plt.savefig('small_plots/plots/ff-fb_signal-flow-plots-type3.pdf', format='pdf', bbox_inches='tight')
+
+
+# %%
