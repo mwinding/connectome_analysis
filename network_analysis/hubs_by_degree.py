@@ -106,7 +106,7 @@ def pairwise_hubs(hubs_df):
     return(hubs_df)
 
 G_hubs = [pairwise_hubs(G_hub) for G_hub in G_hubs]
-
+'''
 # export hubs
 for i, hubs in enumerate(G_hubs):
 
@@ -124,7 +124,7 @@ for i, hubs in enumerate(G_hubs):
         in_out_hubs = hubs.reset_index().groupby(['type', 'skid']).count().loc[('in_out_hub', slice(None))].index
         pymaid.add_annotations(in_out_hubs.values, f'mw {adj_names[i]} hubs_in_out')
         pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_in_out', 'mw hubs')
-
+'''
 # %%
 # cell type identification
 # ad hubs
@@ -151,7 +151,7 @@ for adj_name in adj_names:
 # %%
 # location in cluster structure
 
-cluster_level = 7
+cluster_level = 6
 size = (2,0.5)
 
 for adj_name in adj_names:
@@ -164,6 +164,13 @@ for adj_name in adj_names:
     try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'network_analysis/plots/{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
+cluster_level = 3
+size = (0.5,0.5)
+
+for adj_name in adj_names:
+    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} All Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} all_hubs')), orange, cluster_level, f'network_analysis/plots/{adj_name}-all-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    except: print('no annotation')
+    
 # %%
 # plot some examples of hubs
 import math 
@@ -216,5 +223,3 @@ for i, skid in enumerate(neurons_to_plot):
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'network_analysis/plots/morpho_hubs.png', format='png', dpi=300, transparent=True)
-
-# %%
