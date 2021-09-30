@@ -129,6 +129,7 @@ for i, hubs in enumerate(G_hubs):
 # cell type identification
 # ad hubs
 celltypes_data, celltypes = ct.Celltype_Analyzer.default_celltypes()
+blue = sns.color_palette()[0]
 orange = sns.color_palette()[1]
 green = sns.color_palette()[2]
 red = sns.color_palette()[3]
@@ -147,6 +148,18 @@ for adj_name in adj_names:
     hubs = ct.Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
     hubs.set_known_types(celltypes)
     hubs.plot_memberships(f'network_analysis/plots/{adj_name}_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
+
+
+ad_hubs_ct = ct.Celltype('a-d', pymaid.get_skids_by_annotation(f'mw ad all_hubs'), blue)
+aa_hubs_ct = ct.Celltype('a-a', pymaid.get_skids_by_annotation(f'mw aa all_hubs'), orange)
+dd_hubs_ct = ct.Celltype('d-d', pymaid.get_skids_by_annotation(f'mw dd all_hubs'), green)
+da_hubs_ct = ct.Celltype('d-a', pymaid.get_skids_by_annotation(f'mw da all_hubs'), red)
+
+hubs = ct.Celltype_Analyzer([ad_hubs_ct, aa_hubs_ct, dd_hubs_ct, da_hubs_ct])
+hubs.set_known_types(celltypes)
+hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
+hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes_raw.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,525), raw_num=True)
+
 
 # %%
 # location in cluster structure
