@@ -62,8 +62,17 @@ class Analyze_Nx_G():
                 for i in range(len(edges)):
                     graph.add_edge(edges.iloc[i].upstream_skid, edges.iloc[i].downstream_skid, 
                                 weight = edges.iloc[i].edge_weight, 
-                                edge_type = edges.iloc[i].type)    
+                                edge_type = edges.iloc[i].type)
 
+            if(graph_type=='undirected'):
+                graph = nx.Graph()
+                for i in range(len(edges)):
+                    if(edges.iloc[i].upstream_skid == edges.iloc[i].downstream_skid): # remove self-edges
+                        continue
+                    if(edges.iloc[i].upstream_skid != edges.iloc[i].downstream_skid):
+                        if((edges.iloc[i].upstream_skid, edges.iloc[i].downstream_skid) not in graph.edges):
+                            graph.add_edge(edges.iloc[i].upstream_skid, edges.iloc[i].downstream_skid)
+                            
         return(graph)
 
     # comprehensive list of in/out degrees and identification of hubs if desired
