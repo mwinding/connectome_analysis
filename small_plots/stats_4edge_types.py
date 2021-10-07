@@ -1,12 +1,6 @@
 #%%
 import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -30,19 +24,20 @@ plt.rcParams['font.family'] = 'arial'
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 brain = pymaid.get_skids_by_annotation('mw brain neurons')
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+pairs = pm.Promat.get_pairs() # import pairs
 
-Gad = nx.readwrite.graphml.read_graphml('data/edges/Gad.graphml', node_type=int)
-Gaa = nx.readwrite.graphml.read_graphml('data/edges/Gaa.graphml', node_type=int)
-Gdd = nx.readwrite.graphml.read_graphml('data/edges/Gdd.graphml', node_type=int)
-Gda = nx.readwrite.graphml.read_graphml('data/edges/Gda.graphml', node_type=int)
+Gad = nx.readwrite.graphml.read_graphml('data/graphs/Gad.graphml', node_type=int)
+Gaa = nx.readwrite.graphml.read_graphml('data/graphs/Gaa.graphml', node_type=int)
+Gdd = nx.readwrite.graphml.read_graphml('data/graphs/Gdd.graphml', node_type=int)
+Gda = nx.readwrite.graphml.read_graphml('data/graphs/Gda.graphml', node_type=int)
 
 G_types = [Gad, Gaa, Gdd, Gda]
 G_names = ['Axon-Dendrite', 'Axon-Axon', 'Dendrite-Dendrite', 'Dendrite-Axon']
 brain = pymaid.get_skids_by_annotation('mw brain paper clustered neurons')
 
 # include only brain inputs, interneurons, and outputs
-G_types = [G.subgraph(np.intersect1d(list(G.nodes), brain)) for G in G_types] 
+G_types = [G.subgraph(np.intersect1d(list(G.nodes), brain)) for G in G_types]
+
 # %%
 # general stats
 
