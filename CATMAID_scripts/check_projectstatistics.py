@@ -1,14 +1,12 @@
 #%%
-import sys
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
+import os
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 import pymaid
-import pyoctree
 from pymaid_creds import url, name, password, token
 import numpy as np
 import pandas as pd
 import re
-import natsort as ns
 import datetime
 
 #pymaid.clear_cache()
@@ -66,14 +64,14 @@ print(andy)
 michael = timeTracing('michael', 3, datetime.date(2020, 12, 15), datetime.date(2021, 1, 20))
 print(michael)
 # %%
-nadine = timeTracing('nadine', 3, datetime.date(2020, 12, 15), datetime.date(2021, 1, 20))
+nadine = timeTracing('nadine', 3, datetime.date(2021, 1, 20), datetime.date(2021, 10, 7))
 print(nadine)
 # %%
-ana = timeTracing('ana', 3, datetime.date(2020, 12, 15), datetime.date(2021, 1, 20))
+ana = timeTracing('ana', 3, datetime.date(2021, 1, 20), datetime.date(2021, 10, 7))
 print(ana)
 
 # %%
-elizabeth = timeTracing('ebarsotti', 3, datetime.date(2020, 12, 15), datetime.date(2021, 1, 20))
+elizabeth = timeTracing('ebarsotti', 3, datetime.date(2021, 1, 20), datetime.date(2021, 10, 7))
 print(elizabeth)
 # %%
 #correspondences = pd.DataFrame(data = correspondences, columns = ['old_name', 'new_name'])
