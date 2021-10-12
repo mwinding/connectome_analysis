@@ -16,7 +16,8 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-data = [[.2, .8], [.47, .53], [.42, .58], [.62, .38]]
+#data = [[.2, .8], [.47, .53], [.42, .58], [.62, .38]] #old data
+data = [[.23, .77], [.46, .54], [.36, .64], [.67, .33]]
 df = pd.DataFrame(data, index=['a-d', 'a-a', 'd-d', 'd-a'], columns = ['feedback', 'feedforward'])
 df['bias'] = df.feedforward-df.feedback
 
@@ -37,10 +38,17 @@ fig, ax = plt.subplots(1,1,figsize=(0.75,2))
 # %%
 # seaborn barplots
 
+'''
+# old data
 data = [[.8, 'feedforward', 'a-d'], [.2, 'feedback', 'a-d'], 
         [.53, 'feedforward', 'a-a'], [.47, 'feedback', 'a-a'], 
         [.58, 'feedforward', 'd-d'], [.42, 'feedback', 'd-d'], 
         [.38, 'feedforward', 'd-a'], [.62, 'feedback', 'd-a']]
+'''
+data = [[.77, 'feedforward', 'a-d'], [.23, 'feedback', 'a-d'], 
+        [.54, 'feedforward', 'a-a'], [.46, 'feedback', 'a-a'], 
+        [.64, 'feedforward', 'd-d'], [.36, 'feedback', 'd-d'], 
+        [.33, 'feedforward', 'd-a'], [.67, 'feedback', 'd-a']]
 
 df = pd.DataFrame(data, columns = ['fraction', 'direction', 'edge_type'])
 
