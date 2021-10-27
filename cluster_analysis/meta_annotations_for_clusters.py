@@ -19,7 +19,7 @@ import connectome_tools.cluster_analysis as clust
 # %%
 # set up annotation names and organize clusters
 
-cluster_lvls = [0,1,2,3,4,5,6,7]
+cluster_lvls = [0,1,2,3,4,5,6]
 clusters = [clust.Analyze_Cluster(x).cluster_df for x in cluster_lvls]
 annot_names = [list(map(lambda x: (f'{x[0]}_clusterID-{x[1]:.0f}_walksort-{x[2]:.3f}'), zip(clust.index, clust.cluster, clust.sum_walk_sort))) for clust in clusters]
 
@@ -36,9 +36,9 @@ for i in range(len(clusters)):
         pymaid.add_annotations(annot_skids, [annot])
 
     annots = list(clusters[i].annot)
-    pymaid.add_meta_annotations(annots, f'mw brain clusters level {i}')
+    pymaid.add_meta_annotations(annots, f'mw brain clusters level {i+1}')
 
-pymaid.add_meta_annotations([f'mw brain clusters level {lvl}' for lvl in cluster_lvls], 'mw brain clusters')
+pymaid.add_meta_annotations([f'mw brain clusters level {lvl+1}' for lvl in cluster_lvls], 'mw brain clusters')
 
 # %%
 #
