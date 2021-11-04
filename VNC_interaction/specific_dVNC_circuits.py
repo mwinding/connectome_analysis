@@ -28,6 +28,11 @@ plt.rcParams['font.family'] = 'arial'
 adj = pm.Promat.pull_adj('ad', subgraph='brain and accessory')
 edges = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
 
+# ignore all outputs to A1 neurons; this will make sure dVNC feedback only goes to brain
+# while also allowing ascending -> dVNC connections
+VNC_neurons = pymaid.get_skids_by_annotation('mw A1 neurons paired') + pymaid.get_skids_by_annotation('mw A00c')
+edges = edges[[x not in VNC_neurons for x in edges.downstream_skid]]
+
 pairs = pm.Promat.get_pairs()
 dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
 
@@ -111,79 +116,6 @@ cmap = blue_cmap
 fig, ax = plt.subplots(1,1,figsize=(2,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output.loc[sort, :], ax=ax, cmap=cmap, vmax=vmax)
 plt.savefig(f'VNC_interaction/plots/projectome/A8-T1_sort_projectome_sortThres{sort_threshold}.pdf', bbox_inches='tight')
-
-# %%
-# old prototype code; lots of conflicting ordering sections added for testing purposes
-'''
-# order based on clustering raw data
-cluster = sns.clustermap(dVNC_projectome_pairs_summed_output, col_cluster = False, figsize=(6,4))
-row_order = cluster.dendrogram_row.reordered_ind
-#fig, ax = plt.subplots(figsize=(6,4))
-#sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], rasterized=True, ax=ax)
-plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_raw.pdf', bbox_inches='tight')
-
-# order based on clustering normalized data
-cluster = sns.clustermap(dVNC_projectome_pairs_summed_output_norm, col_cluster = False, figsize=(6,4), rasterized=True)
-row_order = cluster.dendrogram_row.reordered_ind
-#fig, ax = plt.subplots(figsize=(6,4))
-#sns.heatmap(dVNC_projectome_pairs_summed_output_norm.iloc[row_order, :], rasterized=True, ax=ax)
-plt.savefig(f'VNC_interaction/plots/projectome/clustered_projectome_normalized.pdf', bbox_inches='tight')
-
-# order based on counts per column
-for i in range(1, 51):
-    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output_norm.copy()
-    dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<(i/100)]=0
-    dVNC_projectome_pairs_summed_output_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
-    row_order = dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)>0].index
-
-    second_sort = dVNC_projectome_pairs_summed_output_norm[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)==0]
-    second_sort[second_sort<.1]=0
-    second_sort.sort_values(by=[i for i in reversed(['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])], ascending=False, inplace=True)
-    row_order = list(row_order) + list(second_sort.index)
-    fig, ax = plt.subplots(figsize=(6,4))
-    sns.heatmap(dVNC_projectome_pairs_summed_output_norm.loc[row_order, :], ax=ax, rasterized=True)
-    plt.savefig(f'VNC_interaction/plots/projectome/projectome_0.{i}-sort-threshold.pdf', bbox_inches='tight')
-
-for i in range(1, 51):
-    dVNC_projectome_pairs_summed_output_sort = dVNC_projectome_pairs_summed_output.copy()
-    dVNC_projectome_pairs_summed_output_sort[dVNC_projectome_pairs_summed_output_sort<(i)]=0
-    dVNC_projectome_pairs_summed_output_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
-    row_order = dVNC_projectome_pairs_summed_output_sort.index
-
-    second_sort = dVNC_projectome_pairs_summed_output[dVNC_projectome_pairs_summed_output_sort.sum(axis=1)==0]
-    second_sort[second_sort<10]=0
-    second_sort.sort_values(by=['T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'], ascending=False, inplace=True)
-    row_order = list(row_order) + list(second_sort.index)
-
-    fig, ax = plt.subplots(figsize=(6,4))
-    sns.heatmap(dVNC_projectome_pairs_summed_output.loc[row_order, :], ax=ax, rasterized=True)
-    plt.savefig(f'VNC_interaction/plots/projectome/projectome_{i}-sort-threshold.pdf', bbox_inches='tight')
-
-fig, ax = plt.subplots(figsize=(3,2))
-sns.heatmap(dVNC_projectome_pairs_summed_output.iloc[row_order, :], ax=ax)
-plt.savefig('VNC_interaction/plots/projectome/output_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
-
-# order input projectome in the same way
-dVNC_projectome_pairs_summed_input = []
-indices = []
-for i in np.arange(0, len(input_projectome.columns), 2):
-    combined_pairs = (input_projectome.iloc[:, i] + input_projectome.iloc[:, i+1])
-
-    combined_hemisegs = []
-    for j in np.arange(0, len(combined_pairs), 2):
-        combined_hemisegs.append((combined_pairs[j] + combined_pairs[j+1]))
-    
-    dVNC_projectome_pairs_summed_input.append(combined_hemisegs)
-    indices.append(input_projectome.columns[i])
-
-dVNC_projectome_pairs_summed_input = pd.DataFrame(dVNC_projectome_pairs_summed_input, index = indices, columns = ['SEZ', 'T1', 'T2', 'T3', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])
-dVNC_projectome_pairs_summed_input = dVNC_projectome_pairs_summed_input.iloc[:, 1:len(dVNC_projectome_pairs_summed_input)]
-#cluster = sns.clustermap(dVNC_projectome_pairs_summed_input, col_cluster = False, cmap = cmr.freeze, figsize=(10,10))
-
-fig, ax = plt.subplots(figsize=(3,2))
-sns.heatmap(dVNC_projectome_pairs_summed_input.iloc[row_order, :], cmap=cmr.freeze, ax=ax)
-plt.savefig('VNC_interaction/plots/projectome/input_projectome_cluster.pdf', bbox_inches='tight', transparent = True)
-'''
 
 # %%
 # paths 2-hop upstream of each dVNC
