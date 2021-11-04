@@ -110,6 +110,7 @@ plt.savefig(f'VNC_interaction/plots/connection-probability_ascendings_all-brain-
 motorneuron_pairs = pm.Promat.load_pairs_from_annotation('mw A1 MN', pairs)
 pre_motorneuron_pairids = ad_edges.set_index('downstream_pair_id').loc[np.intersect1d(motorneuron_pairs.leftid, ad_edges.downstream_pair_id), 'upstream_pair_id']
 pre_motorneuron_pairids = list(np.unique(pre_motorneuron_pairids))
+pre_motorneuron_pairids = list(np.intersect1d(pre_motorneuron_pairids, pymaid.get_skids_by_annotation('mw A1 neurons paired')))
 pre_motorneurons = pre_motorneuron_pairids + list(pairs.set_index('leftid').loc[pre_motorneuron_pairids, 'rightid'])
 
 A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + pre_motorneurons + ascendings_all)
