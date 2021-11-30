@@ -106,6 +106,7 @@ def pairwise_hubs(hubs_df):
     return(hubs_df)
 
 G_hubs = [pairwise_hubs(G_hub) for G_hub in G_hubs]
+
 '''
 # export hubs
 for i, hubs in enumerate(G_hubs):
@@ -125,6 +126,7 @@ for i, hubs in enumerate(G_hubs):
         pymaid.add_annotations(in_out_hubs.values, f'mw {adj_names[i]} hubs_in_out')
         pymaid.add_meta_annotations(f'mw {adj_names[i]} hubs_in_out', 'mw hubs')
 '''
+
 # %%
 # cell type identification
 # ad hubs
@@ -236,3 +238,99 @@ for i, skid in enumerate(neurons_to_plot):
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'network_analysis/plots/morpho_hubs.png', format='png', dpi=300, transparent=True)
+
+# %%
+# targeted questions about MB neurons
+
+# how many a-d in-out hubs are downstream of MB or upstream of DANs (FBNs, FFNs, MBONs)
+ad_inout_hub = pymaid.get_skids_by_annotation('mw ad hubs_in_out')
+MBONs = pymaid.get_skids_by_annotation('mw MBON')
+FBNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain MB-FBNs')
+FFNs = pymaid.get_skids_by_annotation('mw FFN')
+MB_types = list(np.unique(MBONs + FBNs + FFNs))
+
+fraction_hubs = len(np.intersect1d(MB_types, ad_inout_hub))/len(ad_inout_hub)
+print(f'{fraction_hubs:.2f} of a-d in-out hubs were MBONs, MB-FBNs, or MB-FFNs')
+
+# how many MB-FBNs, MB-FFNs, MBONs are in-out hubs?
+ad_inout_hub = pymaid.get_skids_by_annotation('mw ad hubs_in_out')
+fraction_MBON_hubs = len(np.intersect1d(MBONs, ad_inout_hub))/len(MBONs)
+fraction_FBN_hubs = len(np.unique(np.intersect1d(FBNs, ad_inout_hub)))/len(FBNs)
+fraction_FFN_hubs = len(np.intersect1d(FFNs, ad_inout_hub))/len(FFNs)
+print(f'{fraction_MBON_hubs:.2f} of MBONs are a-d in-out hubs')
+print(f'{fraction_FBN_hubs:.2f} of MB-FBNs are a-d in-out hubs')
+print(f'{fraction_FFN_hubs:.2f} of MB-FFNs are a-d in-out hubs')
+
+######
+# how does in-degree/out-degree of MB-FBNs compare to other in-out hubs?
+FBN_pairids = pm.Promat.load_pairs_from_annotation('MB-FBN', pm.Promat.get_pairs(), return_type='all_pair_ids', skids=FBNs, use_skids=True)
+ad_hubs = G_hubs[0]
+
+# identify FBN and non-FBN ad hubs
+FBN_hubs = ad_hubs.loc[('pairs', FBN_pairids, FBN_pairids)]
+non_FBNs = np.setdiff1d([x[1] for x in ad_hubs.index], FBN_pairids)
+other_hubs = ad_hubs.loc[('pairs', non_FBNs, non_FBNs)]
+
+# identify FBN and non-FBN ad in-out hubs
+FBN_hubs_inout = FBN_hubs[FBN_hubs.type=='in_out_hub'].drop(['in_hub', 'out_hub', 'in_out_hub'], axis=1)
+other_hubs_inout = other_hubs[other_hubs.type=='in_out_hub'].drop(['in_hub', 'out_hub', 'in_out_hub'], axis=1)
+FBN_hubs_inout['type'] = ['FBN_in-out-hub']*len(FBN_hubs_inout.index)
+other_hubs_inout['type'] = ['nonFBN_in-out-hub']*len(other_hubs_inout.index)
+
+df = pd.concat([FBN_hubs_inout, other_hubs_inout])
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.scatterplot(x=df.in_degree, y=df.out_degree, hue=df.type, ax=ax)
+plt.savefig('network_analysis/plots/in-out-degree_FBNs.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.barplot(y=df.in_degree, x=df.type, ax=ax)
+ax.set(ylim = (0,50))
+plt.savefig('network_analysis/plots/in-degree_FBNs.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.barplot(y=df.out_degree, x=df.type, ax=ax)
+ax.set(ylim = (0,50))
+plt.savefig('network_analysis/plots/out-degree_FBNs.pdf', bbox_inches='tight')
+
+print(f'FBN in-degree: {np.mean(FBN_hubs_inout.in_degree):.2f} +/- {np.std(FBN_hubs_inout.in_degree):.2f}')
+print(f'Non-FBN in-degree: {np.mean(other_hubs_inout.in_degree):.2f} +/- {np.std(other_hubs_inout.in_degree):.2f}')
+print(f'FBN out-degree: {np.mean(FBN_hubs_inout.out_degree):.2f} +/- {np.std(FBN_hubs_inout.out_degree):.2f}')
+print(f'Non-FBN out-degree: {np.mean(other_hubs_inout.out_degree):.2f} +/- {np.std(other_hubs_inout.out_degree):.2f}')
+
+#####
+# how does in-degree/out-degree of MB neurons compare to other in-out hubs?
+MB_pairids = pm.Promat.load_pairs_from_annotation('MB-types', pm.Promat.get_pairs(), return_type='all_pair_ids', skids=MB_types, use_skids=True)
+ad_hubs = G_hubs[0]
+
+# identify FBN and non-FBN ad hubs
+MB_hubs = ad_hubs.loc[('pairs', MB_pairids, MB_pairids)]
+non_MB = np.setdiff1d([x[1] for x in ad_hubs.index], MB_pairids)
+other_hubs = ad_hubs.loc[('pairs', non_MB, non_MB)]
+
+# identify FBN and non-FBN ad in-out hubs
+MB_hubs_inout = MB_hubs[MB_hubs.type=='in_out_hub'].drop(['in_hub', 'out_hub', 'in_out_hub'], axis=1)
+other_hubs_inout = other_hubs[other_hubs.type=='in_out_hub'].drop(['in_hub', 'out_hub', 'in_out_hub'], axis=1)
+MB_hubs_inout['type'] = ['MB_in-out-hub']*len(MB_hubs_inout.index)
+other_hubs_inout['type'] = ['nonMB_in-out-hub']*len(other_hubs_inout.index)
+
+df = pd.concat([MB_hubs_inout, other_hubs_inout])
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.scatterplot(x=df.in_degree, y=df.out_degree, hue=df.type, ax=ax)
+plt.savefig('network_analysis/plots/in-out-degree_MB-types.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.barplot(y=df.in_degree, x=df.type, ax=ax)
+ax.set(ylim = (0,50))
+plt.savefig('network_analysis/plots/in-degree_MB-types.pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.barplot(y=df.out_degree, x=df.type, ax=ax)
+ax.set(ylim = (0,50))
+plt.savefig('network_analysis/plots/out-degree_MB-types.pdf', bbox_inches='tight')
+
+print(f'MB in-degree: {np.mean(MB_hubs_inout.in_degree):.2f} +/- {np.std(MB_hubs_inout.in_degree):.2f}')
+print(f'Non-MB in-degree: {np.mean(other_hubs_inout.in_degree):.2f} +/- {np.std(other_hubs_inout.in_degree):.2f}')
+print(f'MB out-degree: {np.mean(MB_hubs_inout.out_degree):.2f} +/- {np.std(MB_hubs_inout.out_degree):.2f}')
+print(f'Non-MB out-degree: {np.mean(other_hubs_inout.out_degree):.2f} +/- {np.std(other_hubs_inout.out_degree):.2f}')
