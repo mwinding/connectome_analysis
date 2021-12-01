@@ -16,15 +16,38 @@ import connectome_tools.celltype as ct
 import navis
 
 celltypes_df, celltypes = ct.Celltype_Analyzer.default_celltypes()
+celltypes_df.iloc[6, 0] = 'MB-FFNs'
+celltypes[6].name = 'MB-FFNs'
 
 # %%
-#
+# write the binary celltypes
 
-[pymaid.add_annotations(x.skids, f'mw exclusive-celltype {x.name}') for x in celltypes]
-pymaid.add_meta_annotations([f'mw exclusive-celltype {x.name}' for x in celltypes], 'mw exclusive celltypes')
+[pymaid.add_annotations(x.skids, f'cct {x.name}') for x in celltypes]
+pymaid.add_meta_annotations([f'cct {x.name}' for x in celltypes], 'mw categorical brain celltypes')
 
+pymaid.clear_cache()
 other = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw brain neurons'),
-                        ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw exclusive celltypes')))
+                        ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw categorical brain celltypes')))
 
-pymaid.add_annotations(other, 'mw exclusive-celltype other')
-pymaid.add_meta_annotations('mw exclusive-celltype other', 'mw exclusive celltypes')
+pymaid.add_annotations(other, 'cct other')
+pymaid.add_meta_annotations('cct other', 'mw categorical brain celltypes')
+
+# %%
+# write overlapping celltypes
+
+celltype_names = ['sensories', 'PNs', 'ascendings', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
+annots = ['mw brain ' + x for x in celltype_names]
+celltype_names = ['sensories', 'PNs', 'ascendings', 'PNs-somato', 'LNs', 'LHNs', 'MB-FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs']
+
+all_celltypes = [ct.Celltype(celltype_names[i], ct.Celltype_Analyzer.get_skids_from_meta_annotation(annot)) for i, annot in enumerate(annots)]
+
+[pymaid.add_annotations(x.skids, f'ct {x.name}') for x in all_celltypes]
+pymaid.add_meta_annotations([f'ct {x.name}' for x in celltypes], 'mw brain celltypes')
+
+pymaid.clear_cache()
+other = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw brain neurons'),
+                        ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain celltypes')))
+
+pymaid.add_annotations(other, 'ct other')
+pymaid.add_meta_annotations('ct other', 'mw brain celltypes')
+# %%
