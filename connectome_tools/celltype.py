@@ -395,6 +395,7 @@ class Celltype_Analyzer:
 
         data = pd.DataFrame(zip(names, skid_groups, colors), columns = ['name', 'skids', 'color'])
         celltype_objs = list(map(lambda x: Celltype(*x), zip(names, skid_groups, colors)))
+
         return(data, celltype_objs)
 
 
