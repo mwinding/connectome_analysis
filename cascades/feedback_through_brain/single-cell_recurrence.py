@@ -3,6 +3,7 @@ import sys
 import os
 
 os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
+os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -75,15 +76,39 @@ for skid in ds_partners_df.index:
 ds_partners_df['recurrent_partners'] = recurrent_partners_col
 frac_recurrent = [len(ds_partners_df.loc[i, 'recurrent_partners'])/len(ds_partners_df.loc[i, 'ds_partners']) if len(ds_partners_df.loc[i, 'ds_partners'])>0 else 0 for i in ds_partners_df.index]
 ds_partners_df['fraction_recurrent_partners'] = frac_recurrent
+ds_partners_df['fraction_nonrecurrent_partners'] = 1-ds_partners_df.fraction_recurrent_partners
+
+#ds_partners_df = ds_partners_df[[False if x==[] else True for x in ds_partners_df.ds_partners]]
+
+# plot total number of recurrent neurons
+fig, ax = plt.subplots(1,1,figsize=(.5,1))
+data = [sum(ds_partners_df.fraction_recurrent_partners==0)/len(ds_partners_df.index), sum(ds_partners_df.fraction_recurrent_partners!=0)/len(ds_partners_df.index)]
+sns.barplot(x=['Non-recurrent Neurons', 'Recurrent Neurons'] , y=data, ax=ax)
+ax.set(ylim=(0,1))
+plt.savefig('cascades/feedback_through_brain/plots/recurrent-vs-nonrecurrent_fractions.pdf', format='pdf', bbox_inches='tight')
+
+# boxplot of data with points
+fig, ax = plt.subplots(1,1,figsize=(2,4))
+data = ds_partners_df[~(ds_partners_df.fraction_recurrent_partners==0)].fraction_recurrent_partners
+sns.boxplot(y=data, ax=ax, color=sns.color_palette()[1])
+sns.stripplot(y=data, ax=ax, s=2, alpha=0.5, color='black', jitter=0.15)
+plt.savefig('cascades/feedback_through_brain/plots/recurrent-boxplot-points.pdf', format='pdf', bbox_inches='tight')
+
+# catplot of data
+data = ds_partners_df.copy()
+data['celltype'] = ['nonrecurrent' if x==0 else 'recurrent' for x in ds_partners_df.fraction_recurrent_partners]
+fig, ax = plt.subplots(1,1,figsize=(2,4))
+sns.catplot(data = data, x='celltype', y='fraction_recurrent_partners', order=['nonrecurrent', 'recurrent'], kind='boxen')
+plt.savefig('cascades/feedback_through_brain/plots/recurrent-boxplot.pdf', format='pdf', bbox_inches='tight')
 
 # stripplot of data
 fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.stripplot(y=ds_partners_df.fraction_recurrent_partners, ax=ax, s=3, alpha=0.5)
+sns.stripplot(y=ds_partners_df.fraction_recurrent_partners, ax=ax, s=3, alpha=0.5, color=sns.color_palette()[1])
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions.pdf', format='pdf', bbox_inches='tight')
 
 # distribution plot
 fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.histplot(y=ds_partners_df.fraction_recurrent_partners, binwidth=0.05, ax=ax)
+sns.histplot(x=ds_partners_df.fraction_recurrent_partners, binwidth=0.05, ax=ax, color='tab:gray', stat='probability')
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_hist.pdf', format='pdf', bbox_inches='tight')
 
 # %%
@@ -102,26 +127,36 @@ for skid in ds_partners_df.index:
             celltype_annotation.append(celltype.name)
 
 ds_partners_df['celltype'] = celltype_annotation
+#ds_partners_ct_df = ds_partners_df.copy()
+#ds_partners_ct_df = ds_partners_ct_df[[False if x==[] else True for x in ds_partners_ct_df.ds_partners]] # remove neurons with no partners
+
 
 # plot results as barplot with points, barplot, or violinplot
 fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' ,'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
 sns.stripplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, s=1, alpha=0.5, color='black', order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
 plt.xticks(rotation=45, ha='right')
 ax.set(ylim=(-0.05, 1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_barplot-with-points.pdf', format='pdf', bbox_inches='tight')
 
-fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+fig, ax = plt.subplots(1,1,figsize=(2,1))
+sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
 plt.xticks(rotation=45, ha='right')
 ax.set(ylim=(0, 1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_barplot.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1,figsize=(8,4))
-sns.violinplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, scale='width', order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+sns.violinplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, scale='width', order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
 plt.xticks(rotation=45, ha='right')
 ax.set(ylim=(0, 1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_violinplot.pdf', format='pdf', bbox_inches='tight')
+
+
+fig, ax = plt.subplots(1,1,figsize=(8,4))
+sns.boxplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, whis=[0, 100], order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+plt.xticks(rotation=45, ha='right')
+ax.set(ylim=(0, 1))
+plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_boxplot.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # recurrent in clusters
