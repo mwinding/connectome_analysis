@@ -112,7 +112,7 @@ sns.histplot(x=ds_partners_df.fraction_recurrent_partners, binwidth=0.05, ax=ax,
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_hist.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# by cell type and cluster
+# recurrence by cell type
 
 _, celltypes = ct.Celltype_Analyzer.default_celltypes()
 all_celltypes = [x.skids for x in celltypes]
@@ -151,7 +151,6 @@ plt.xticks(rotation=45, ha='right')
 ax.set(ylim=(0, 1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_violinplot.pdf', format='pdf', bbox_inches='tight')
 
-
 fig, ax = plt.subplots(1,1,figsize=(8,4))
 sns.boxplot(x=ds_partners_df.celltype, y=ds_partners_df.fraction_recurrent_partners, whis=[0, 100], order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
 plt.xticks(rotation=45, ha='right')
@@ -159,7 +158,7 @@ ax.set(ylim=(0, 1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_by-celltype_boxplot.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# recurrent in clusters
+# recurrence by cluster
 
 clusters = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain clusters level 7', split=True)
 clusters_ct = list(map(lambda x: ct.Celltype(*x), zip(clusters[1], clusters[0])))
