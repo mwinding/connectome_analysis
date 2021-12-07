@@ -891,7 +891,7 @@ class Promat():
         if(pairs_combined):
             id1 = 'upstream_pair_id'
             id2 = 'downstream_pair_id'
-        if(pairs_combined==False): 
+        if(pairs_combined==False):
             id1 = 'upstream_skid'
             id2 = 'downstream_skid'
 
