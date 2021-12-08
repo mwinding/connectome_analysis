@@ -43,14 +43,14 @@ hops = 8
 pairs = pm.Promat.get_pairs()
 
 '''
-def find_ds_partner_ids(pair_hist, pair_hist_list, pairs):
+def find_ds_partner_ids(pair_hist, pair_hist_list, pairs, hops):
     ds_partners = list(pair_hist.pairwise_threshold(threshold=threshold, hops=hops))
     pair_ids = pm.Promat.load_pairs_from_annotation('ds', pairs, skids=ds_partners, use_skids=True)
     pair_ids = list(pair_ids.leftid)
     pair_ids = list(np.intersect1d(pair_ids, [x.name for x in pair_hist_list]))
     return(pair_ids)
 
-ds_partners = Parallel(n_jobs=-1)(delayed(find_ds_partner_ids)(pair_hist_list[i], pair_hist_list, pairs) for i in tqdm(range(len(pair_hist_list))))
+ds_partners = Parallel(n_jobs=-1)(delayed(find_ds_partner_ids)(pair_hist_list[i], pair_hist_list, pairs, hops) for i in tqdm(range(len(pair_hist_list))))
 pickle.dump(ds_partners, open(f'data/cascades/all-brain-pairs_ds_partners_{n_init}-n_init.p', 'wb'))
 '''
 
