@@ -50,7 +50,7 @@ all_outputs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outp
 
 p = 0.05
 max_hops = 3
-n_init = 100
+n_init = 100 # maybe rerun with 1000?
 
 cluster_cascades = clusters.ff_fb_cascades(adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init)
 ff_fb_df = clusters.all_ff_fb_df(cluster_cascades, normalize='visits').T
@@ -582,8 +582,112 @@ fig.savefig('cascades/feedback_through_brain/plots/ff_fb_character_clusters_aa_r
 '''
 
 # %%
-# how much "signal flow" distance does each signal travel? in feedforward and feedback directions?
+# how many clusters are hit by feedforward and feedback signal?
+
+ff_fb_binary_df = ff_fb_df>=0.05 # at least 0.05 signal received in range [0, 1]
+
+ff_fb_counts = []
+ff_fb_distances = []
+for i in range(len(ff_fb_binary_df.index)):
+    if(i!=len(ff_fb_binary_df.index)):
+        ff_count = ff_fb_binary_df.iloc[i, (i+1):].sum() # sum downstream clusters
+        if(ff_count>0):
+            ff_distance = np.where(ff_fb_binary_df.iloc[i, (i+1):])[0]+1 # +1 to correct for 0 indexing convention
+            [ff_fb_distances.append([ff_fb_binary_df.index[i], x, 'forward']) for x in ff_distance]
+    else: ff_count = 0
+
+    if(i!=0):
+        fb_count = ff_fb_binary_df.iloc[i, :i].sum() # sum all upstream clusters
+        if(fb_count>0):
+            fb_distance = np.where(ff_fb_binary_df.iloc[i, :i])[0]-i # -i convert to negative distance
+            [ff_fb_distances.append([ff_fb_binary_df.index[i], x, 'backward']) for x in fb_distance]
+    else: fb_count = 0
+
+    ff_fb_counts.append([ff_fb_binary_df.index[i], ff_count, 'forward'])
+    ff_fb_counts.append([ff_fb_binary_df.index[i], fb_count, 'backward'])
 
 
+ff_fb_counts_df = pd.DataFrame(ff_fb_counts, columns = ['cluster', 'cluster_count', 'edge_type'])
+ff_fb_distances_df = pd.DataFrame(ff_fb_distances, columns = ['cluster', 'distance', 'edge_type'])
+
+# plot counts
+fig, ax = plt.subplots(1, 1, figsize = (.5, 1))
+sns.barplot(x=ff_fb_counts_df.edge_type, y=ff_fb_counts_df.cluster_count, ax=ax)
+ax.set(ylim=(0,40))
+fig.savefig('cascades/feedback_through_brain/plots/forward-backward_cluster-counts.pdf', bbox_inches='tight')
+
+# plot distances
+fig, ax = plt.subplots(1, 1, figsize = (.5, 1))
+sns.barplot(x=ff_fb_distances_df.edge_type, y=np.abs(ff_fb_distances_df.distance), ax=ax) # for boxenplot: k_depth='full', showfliers=False
+ax.set(ylim=(0,40))
+fig.savefig('cascades/feedback_through_brain/plots/forward-backward_cluster-distances.pdf', bbox_inches='tight')
+
+# %%
+# how many clusters are hit by feedforward and feedback signal from single cells?
+import pickle 
+from tqdm import tqdm
+from joblib import Parallel, delayed
+
+# import previously generated cascades from brain pairs
+n_init = 1000
+threshold = n_init/2
+hops = 2
+pairs = pm.Promat.get_pairs()
+pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'rb'))
+
+# identify downstream partners
+ds_partners_list = []
+for hit_list in pair_hist_list:
+    ds_partners = hit_list.skid_hit_hist.loc[:, 1:2].sum(axis=1)>threshold
+    ds_partners = list(hit_list.skid_hit_hist[ds_partners].index)
+    ds_partners_list.append([hit_list.name, ds_partners])
+
+ds_partners_df = pd.DataFrame(ds_partners_list, columns=['skid', 'ds_partners'])
+ds_partners_df.set_index('skid', drop=True, inplace=True)
+
+# add cluster annotations
+clusters = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain clusters level 7', split=True)
+clusters_ct = list(map(lambda x: ct.Celltype(*x), zip(clusters[1], clusters[0])))
+
+cluster_annotation = []
+for skid in ds_partners_df.index:
+    i=0
+    for celltype in clusters_ct:
+        if(skid in celltype.skids):
+            cluster_annotation.append(celltype.name)
+        if(skid not in celltype.skids):
+            i+=1
+        if(i==90):
+            cluster_annotation.append('None')
+
+ds_partners_df['cluster'] = cluster_annotation
+
+# identify number of clusters forward/backward of each skid
+cluster_counts = []
+for skid in ds_partners_df.index:
+    ds = ds_partners_df.loc[skid, 'ds_partners']
+    ds_ct = ct.Celltype(f'ds-{skid}', ds)
+    ds_ct = ct.Celltype_Analyzer([ds_ct])
+    ds_ct.set_known_types(clusters_ct)
+    memberships = ds_ct.memberships().drop('unknown')
+    memberships = memberships>0
+
+    cluster_skid = ds_partners_df.loc[skid, 'cluster']
+    if(cluster_skid!='None'):
+        index = np.where(cluster_skid==memberships.index)[0][0]
+
+        forward_cluster_count = memberships.iloc[(index+1):, :].sum().values[0]
+        backward_cluster_count = memberships.iloc[:index, :].sum().values[0]
+        cluster_counts.append([skid, forward_cluster_count, 'forward'])
+        cluster_counts.append([skid, backward_cluster_count, 'backward'])
+
+cluster_counts_df = pd.DataFrame(cluster_counts, columns=['skid', 'cluster_count', 'signal_type'])
+
+# plot counts
+data = cluster_counts_df[cluster_counts_df.cluster_count!=0]
+fig, ax = plt.subplots(1, 1, figsize = (.5, .75))
+ax.set(ylim=(0,8))
+sns.barplot(x=data.signal_type, y=data.cluster_count, ax=ax) # for boxenplot: k_depth='full', showfliers=False
+fig.savefig('cascades/feedback_through_brain/plots/forward-backward_cluster-counts_per-single-cell.pdf', bbox_inches='tight')
 
 # %%
