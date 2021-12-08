@@ -1,7 +1,6 @@
 .vscode
 connectome_tools_venv
 data
-data2
 plots
 interhemisphere_plots
 cluster_plots
