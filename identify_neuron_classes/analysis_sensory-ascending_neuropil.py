@@ -184,6 +184,56 @@ ax.axis('off')
 
 plt.savefig('identify_neuron_classes/plots/fraction-LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
 
+# %% 
+# modality layers LH vs MB
+
+order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
+inputs = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
+order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
+order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
+order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
+
+sens = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain sensories')
+asc = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain ascendings')
+LN = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+PN = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs')
+PNsomato = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs-somato')
+MBIN = pymaid.get_skids_by_annotation('mw MBIN')
+KC = pymaid.get_skids_by_annotation('mw KC')
+MBON = pymaid.get_skids_by_annotation('mw MBON')
+LHN = pymaid.get_skids_by_annotation('mw LHN')
+RGN = pymaid.get_skids_by_annotation('mw RGN')
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+
+selected_celltypes = [sens, asc, LN, PN, PNsomato, LHN, MBIN, KC, MBON, RGN, dSEZ, dVNC]
+
+# make mutually exclusive
+selected_celltypes_exclus = []
+for i in range(len(selected_celltypes)):
+    if(i==0):
+        selected_celltypes_exclus.append(selected_celltypes[i])
+    else:
+        all_previous = selected_celltypes[:i]
+        all_previous = [x for sublist in all_previous for x in sublist]
+        exclusive = list(np.setdiff1d(selected_celltypes[i], all_previous))
+        selected_celltypes_exclus.append(exclusive)
+
+
+selected_names = ['sensories', 'ascendings', 'LNs','PNs', 'PNs-somato', 'LHNs', 'MBINs', 'KCs', 'MBONs', 'RGNs', 'dSEZs', 'dVNCs']
+selected_colors = ['#00753f','#a0ddf2','#4f7577','#1d79b7','#21cef7','#d4e29e', '#ff8734','#e55560','#f9eb4d','#9467bd','#d88052','#a52a2a']
+
+selected_celltypes_ct = [ct.Celltype(name, selected_celltypes_exclus[i], color=selected_colors[i]) for i, name in enumerate(selected_names)]
+
+order_cts = [[inputs[i], order2[i], order3[i], order4[i], ct.Celltype(f'spacer{i}', [])] for i in range(len(order))]
+order_cts = [x for sublist in order_cts for x in sublist]
+order_cts = ct.Celltype_Analyzer(order_cts)
+order_cts.set_known_types(selected_celltypes_ct)
+memberships = order_cts.memberships(raw_num=True).loc[['sensories', 'ascendings', 'LNs','PNs', 'PNs-somato', 'LHNs', 'MBINs', 'KCs', 'MBONs', 'unknown', 'RGNs', 'dSEZs', 'dVNCs'], :]
+colors = selected_colors + ['#a6a8ab']
+colors = [colors[i] for i in [0,1,2,3,4,5,6,7,8,12,9,10,11]]
+order_cts.plot_memberships('identify_neuron_classes/plots/fraction-selected-celltypes_sensory-orders.pdf', (15,6), memberships = memberships, raw_num=True, celltype_colors=colors)
+
 # %%
 # known cell types per 2nd/3rd order
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
