@@ -213,10 +213,12 @@ class Celltype_Analyzer:
         
         return(fraction_type)
 
-    def plot_memberships(self, path, figsize, rotated_labels = True, raw_num = False, memberships=None, ylim=None):
+    def plot_memberships(self, path, figsize, rotated_labels = True, raw_num = False, memberships=None, ylim=None, celltype_colors=None):
         if(type(memberships)!=pd.DataFrame):
             memberships = self.memberships(raw_num=raw_num)
-        celltype_colors = [x.get_color() for x in self.get_known_types()]
+
+        if(celltype_colors==None):
+            celltype_colors = [x.get_color() for x in self.get_known_types()]
 
         # plot memberships
         ind = [cell_type.get_name() for cell_type in self.Celltypes]
@@ -327,11 +329,13 @@ class Celltype_Analyzer:
             return(skids, meta_annots)
 
     @staticmethod
-    def get_skids_from_meta_annotation(meta, split=False):
+    def get_skids_from_meta_annotation(meta, split=False, unique=True):
         annot_list = pymaid.get_annotated(meta).name
         skids = [list(pymaid.get_skids_by_annotation(annots)) for annots in annot_list]
         if(split==False):
             skids = [x for sublist in skids for x in sublist]
+            if(unique==True):
+                skids = list(np.unique(skids))
             return(skids)
         if(split==True):
             return(skids, annot_list)
