@@ -934,6 +934,7 @@ class Promat():
             hops_iter += 1
             return([us] + Promat.upstream_multihop(edges=edges, sources=us, hops=hops, hops_iter=hops_iter, exclude_source=exclude_source, exclude=exclude))
 
+    # use paired edgelist [e.g. ad_edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)]
     @staticmethod
     def find_all_partners(pairids, edgelist, all_paired_skids=True):
         pairs = Promat.get_pairs()

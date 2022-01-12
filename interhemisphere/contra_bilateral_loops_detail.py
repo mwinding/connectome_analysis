@@ -316,4 +316,43 @@ for i, skids in enumerate([x.skids for x in PL_ct]):
     ax.set_ylim3d((-4500, 110000))
 
 fig.savefig(f'interhemisphere/plots/morpho_PLs.png', format='png', dpi=300, transparent=True)
+
+# %%
+# partners of super loops
+# just looked at the IDs here manually, didn't perform any analysis
+
+pairs = pm.Promat.get_pairs()
+adj_ad = ad_edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
+
+superloop1 = ['PL-10', 'PL-11', 'PL-12', 'PL-13']
+superloop2 = ['PL-20', 'PL-21', 'PL-22', 'PL-23', 'PL-24']
+
+superloop1 = [pm.Promat.load_pairs_from_annotation(annot, pairs).loc[0,'leftid'] for annot in superloop1]
+superloop2 = [pm.Promat.load_pairs_from_annotation(annot, pairs).loc[0,'leftid'] for annot in superloop2]
+
+superloop1_partners = pm.Promat.find_all_partners(superloop1, adj_ad)
+superloop2_partners = pm.Promat.find_all_partners(superloop2, adj_ad)
+
+# compare upstream and downstream partners for superloop1
+superloop1_members = [x for sublist in list(superloop1_partners.source_pair) for x in sublist]
+
+superloop1_upstream = [list(np.setdiff1d(skids, superloop1_members)) for skids in list(superloop1_partners.upstream)]
+superloop1_downstream = [list(np.setdiff1d(skids, superloop1_members)) for skids in list(superloop1_partners.downstream)]
+
+superloop1_upstream_ct = ct.Celltype_Analyzer([ct.Celltype(superloop1[i], skids) for i, skids in enumerate(superloop1_upstream)])
+superloop1_downstream_ct = ct.Celltype_Analyzer([ct.Celltype(superloop1[i], skids) for i, skids in enumerate(superloop1_downstream)])
+
+# compare upstream and downstream partners for superloop1
+superloop2_members = [x for sublist in list(superloop2_partners.source_pair) for x in sublist]
+
+superloop2_upstream = [list(np.setdiff1d(skids, superloop2_members)) for skids in list(superloop2_partners.upstream)]
+superloop2_downstream = [list(np.setdiff1d(skids, superloop2_members)) for skids in list(superloop2_partners.downstream)]
+
+superloop2_upstream_ct = ct.Celltype_Analyzer([ct.Celltype(superloop2[i], skids) for i, skids in enumerate(superloop2_upstream)])
+superloop2_downstream_ct = ct.Celltype_Analyzer([ct.Celltype(superloop2[i], skids) for i, skids in enumerate(superloop2_downstream)])
+
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+superloop2_downstream_dVNC = [list(np.intersect1d(skids, dVNC)) for skids in list(superloop2_partners.downstream)]
+
+
 # %%
