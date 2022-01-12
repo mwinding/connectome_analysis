@@ -32,7 +32,7 @@ import connectome_tools.cascade_analysis as casc
 import connectome_tools.celltype as ct
 import connectome_tools.process_matrix as pm
 
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
+adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accessory')
 
 #%%
 # pull sensory annotations and then pull associated skids
@@ -55,7 +55,7 @@ n_init = 1000
 simultaneous = True
 adj=adj_ad
 
-'''
+'''identify_neuron_classes/
 input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = order, stop_skids=output_skids, 
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
@@ -87,13 +87,13 @@ dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 RGN = pymaid.get_skids_by_annotation('mw RGN')
 
 # generate Cascade_Analyzer objects containing name of pathway and the hit_hist to each output type
-dVNC_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dVNC', hit_hist.skid_hit_hist.loc[dVNC, :]) for hit_hist in input_hit_hist_list]
-dSEZ_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dSEZ', hit_hist.skid_hit_hist.loc[dSEZ, :]) for hit_hist in input_hit_hist_list]
-RGN_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-RGN', hit_hist.skid_hit_hist.loc[RGN, :]) for hit_hist in input_hit_hist_list]
+dVNC_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dVNC', hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dSEZ_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dSEZ', hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+RGN_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-RGN', hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
 
-dVNC_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dVNC'], hit_hist.skid_hit_hist.loc[dVNC, :]) for hit_hist in input_hit_hist_list]
-dSEZ_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dSEZ'], hit_hist.skid_hit_hist.loc[dSEZ, :]) for hit_hist in input_hit_hist_list]
-RGN_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'RGN'], hit_hist.skid_hit_hist.loc[RGN, :]) for hit_hist in input_hit_hist_list]
+dVNC_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dVNC'], hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dSEZ_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dSEZ'], hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+RGN_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'RGN'], hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
 
 # max possible hits that all output neuron types could receive 
 max_dVNC_hits = len(dVNC_hits[0].skid_hit_hist.index)*n_init
