@@ -22,15 +22,15 @@ celltypes[6].name = 'MB-FFNs'
 # %%
 # write the binary celltypes
 
-[pymaid.add_annotations(x.skids, f'cct {x.name}') for x in celltypes]
-pymaid.add_meta_annotations([f'cct {x.name}' for x in celltypes], 'mw categorical brain celltypes')
+[pymaid.add_annotations(x.skids, f'ctd {x.name}') for x in celltypes]
+pymaid.add_meta_annotations([f'ctd {x.name}' for x in celltypes], 'mw brain celltypes discrete')
 
 pymaid.clear_cache()
 other = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw brain neurons'),
-                        ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw categorical brain celltypes')))
+                        ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain celltypes discrete')))
 
-pymaid.add_annotations(other, 'cct other')
-pymaid.add_meta_annotations('cct other', 'mw categorical brain celltypes')
+pymaid.add_annotations(other, 'ctd other')
+pymaid.add_meta_annotations('ctd other', 'mw brain celltypes discrete')
 
 # %%
 # write overlapping celltypes
