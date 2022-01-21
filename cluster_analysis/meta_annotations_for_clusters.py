@@ -21,7 +21,7 @@ import connectome_tools.cluster_analysis as clust
 
 cluster_lvls = [0,1,2,3,4,5,6]
 clusters = [clust.Analyze_Cluster(x).cluster_df for x in cluster_lvls]
-annot_names = [list(map(lambda x: (f'{x[0]}_clusterID-{x[1]:.0f}_walksort-{x[2]:.3f}'), zip(clust.index, clust.cluster, clust.sum_walk_sort))) for clust in clusters]
+annot_names = [list(map(lambda x: (f'{x[0]}_level-{cluster_lvls[i]+1}_clusterID-{x[1]:.0f}_walksort-{x[2]:.3f}'), zip(clust.index, clust.cluster, clust.sum_walk_sort))) for i, clust in enumerate(clusters)]
 
 for i in range(len(clusters)):
     clusters[i]['annot'] = annot_names[i]
