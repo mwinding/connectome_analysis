@@ -22,7 +22,7 @@ morphops==0.1.12
 navis==0.5.3
 ncollpyde==0.14.0
 networkx==2.4
-numpy==1.20.2
+numpy==1.21.0
 packaging==20.9
 pandas==1.2.4
 parso==0.8.2
