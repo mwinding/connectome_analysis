@@ -1,6 +1,4 @@
 # %%
-import os
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 import pandas as pd
 import numpy as np
@@ -11,15 +9,6 @@ import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 import connectome_tools.process_matrix as pm
-import navis
-
-# allows text to be editable in Illustrator
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-# font settings
-plt.rcParams['font.size'] = 5
-plt.rcParams['font.family'] = 'arial'
 
 # %%
 neurons = pymaid.get_skids_by_annotation('nr Tel-like 10') # Tel-like 10
@@ -35,6 +24,5 @@ downstream = pm.Promat.downstream_multihop(edges=edges, sources=neurons, hops=3)
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 downstream_dVNCs = [list(np.intersect1d(dVNC, skids)) for skids in downstream]
 [pymaid.add_annotations(skids, f'nr Tel-like 10 downstream-dVNCs {i+1}-hop') for i, skids in enumerate(downstream_dVNCs)]
-
 
 # %%

@@ -1,10 +1,4 @@
 # %%
-# details of my specific repo
-import os
-import sys
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
-
-# %%
 # start demo here
 import pymaid
 from pymaid_creds import url, name, password, token # my private CATMAID credentials

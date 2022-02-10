@@ -1,7 +1,4 @@
 #%%
-import os
-import sys
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 
 import matplotlib.pyplot as plt
 import seaborn as sns

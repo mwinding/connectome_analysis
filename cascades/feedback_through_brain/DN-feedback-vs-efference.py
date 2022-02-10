@@ -1,9 +1,4 @@
 #%%
-import sys
-import os
-
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
-os.chdir(os.path.dirname(os.getcwd()))
 
 from pymaid_creds import url, name, password, token
 import pymaid

@@ -1,8 +1,5 @@
 #%%
 
-import os
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
-
 import pandas as pd
 import numpy as np
 import seaborn as sns

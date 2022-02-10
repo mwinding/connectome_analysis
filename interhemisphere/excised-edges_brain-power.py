@@ -1,7 +1,5 @@
 #%%
-import os
 import sys
-os.chdir(os.path.dirname(os.getcwd())) # make directory one step up the current directory
 sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from src.data import load_metagraph
