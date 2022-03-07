@@ -11,6 +11,8 @@ import connectome_tools.celltype as ct
 import connectome_tools.process_graph as pg
 import connectome_tools.process_matrix as pm
 
+import networkx as nx
+
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # allows text to be editable in Illustrator
@@ -29,10 +31,46 @@ adj_names = ['ad', 'aa', 'dd', 'da']
 edge_lists = [pd.read_csv(f'data/edges_threshold/pairwise-threshold_{name}_all-edges.csv', index_col = 0) for name in adj_names]
 Gad, Gaa, Gdd, Gda = [pg.Analyze_Nx_G(edge_list, graph_type='directed', split_pairs=True) for edge_list in edge_lists]
 Gs = [Gad, Gaa, Gdd, Gda]
+
+
 # %%
 # extract in-degree / out-degree data for each neuron and identify hubs
 threshold = 20
 G_hubs = [obj.get_node_degrees(hub_threshold=threshold) for obj in Gs]
+
+# %%
+# compare hubs to unfiltered hubs
+# this chunk is for a comment received during editing
+
+Gad_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gad.graphml', node_type=int)
+Gad_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gad_unfiltered)
+
+Gaa_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gaa.graphml', node_type=int)
+Gaa_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gaa_unfiltered)
+
+Gdd_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gdd.graphml', node_type=int)
+Gdd_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gdd_unfiltered)
+
+Gda_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gda.graphml', node_type=int)
+Gda_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gda_unfiltered)
+
+all_degrees = Gad_unfiltered.get_node_degrees()
+threshold = np.round(all_degrees.mean()+1.5*all_degrees.std().mean())[0]
+
+Gs_unfiltered = [Gad_unfiltered, Gaa_unfiltered, Gdd_unfiltered, Gda_unfiltered]
+G_hubs_unfiltered = [obj.get_node_degrees(hub_threshold=threshold) for obj in Gs_unfiltered]
+
+skids_unfiltered = [list(hub[hub.type!='non-hub'].index) for hub in G_hubs_unfiltered]
+skids_filtered = [list(hub[hub.type!='non-hub'].index) for hub in G_hubs]
+
+skids = skids_unfiltered + skids_filtered
+
+names = ['unfiltered_ad-hub', 'unfiltered_aa-hub', 'unfiltered_dd-hub', 'unfiltered_da-hub',
+            'filtered_ad-hub', 'filtered_aa-hub', 'filtered_dd-hub', 'filtered_da-hub']
+
+hub_ctas = [ct.Celltype(name=names[i], skids=skids[i]) for i in range(len(skids))]
+hub_ctas = ct.Celltype_Analyzer(hub_ctas)
+hub_ctas.compare_membership(sim_type='cosine')
 
 # %%
 # plot data
