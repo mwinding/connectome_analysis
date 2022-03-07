@@ -104,6 +104,8 @@ def pairwise_hubs(hubs_df):
 
 G_hubs = [pairwise_hubs(G_hub) for G_hub in G_hubs]
 
+print(np.mean(G_hubs[0].groupby('pair_id').mean().out_degree)+1.5*np.std(G_hubs[0].groupby('pair_id').mean().out_degree))
+print(np.mean(G_hubs[0].groupby('pair_id').mean().in_degree)+1.5*np.std(G_hubs[0].groupby('pair_id').mean().in_degree))
 '''
 # export hubs
 for i, hubs in enumerate(G_hubs):
