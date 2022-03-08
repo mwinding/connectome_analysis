@@ -60,17 +60,26 @@ LN_df['celltype'] = ['LN']*len(LN_df.index)
 df = pd.concat([PN_df, LN_df], axis=0)
 df.columns = ['edge_type', 'synapses', 'celltype']
 
-fig, ax = plt.subplots(1,1)
-sns.barplot(data = df, x='edge_type', y='synapses', hue='celltype', ax=ax)
+fig, axs = plt.subplots(2,1, figsize=(1.5,2.5))
+ax = axs[0]
+data = df.loc[['inputs' not in name for name in df.edge_type]]
+sns.barplot(data = data, x='edge_type', y='synapses', hue='celltype', ax=ax)
+ax.set_ylim(0,200)
+
+ax = axs[1]
+data = df.loc[['outputs' not in name for name in df.edge_type]]
+sns.barplot(data = data, x='edge_type', y='synapses', hue='celltype', ax=ax)
+ax.set_ylim(0,200)
 plt.savefig('identify_neuron_classes/plots/LN-PN_noncanonical-types.pdf')
+
 
 # %%
 # t-tests 
 
-from scipy.stats import ttest_ind
+from scipy.stats import mannwhitneyu
 adjs = [adj_ad, adj_aa, adj_dd, adj_da]
-output_ttests = [ttest_ind(adj.loc[PN_index, :].sum(axis=1).values, adj.loc[LN_index, :].sum(axis=1).values).pvalue for adj in adjs]
-input_ttests = [ttest_ind(adj.loc[:, PN_index].sum(axis=0).values, adj.loc[:, LN_index].sum(axis=0).values).pvalue for adj in adjs]
+output_ttests = [mannwhitneyu(adj.loc[PN_index, :].sum(axis=1).values, adj.loc[LN_index, :].sum(axis=1).values) for adj in adjs]
+input_ttests = [mannwhitneyu(adj.loc[:, PN_index].sum(axis=0).values, adj.loc[:, LN_index].sum(axis=0).values) for adj in adjs]
 
 print(output_ttests)
 print(input_ttests)
