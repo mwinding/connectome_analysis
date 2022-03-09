@@ -12,4 +12,5 @@ connectome_tools_venv
 ct_venv
 csv
 old_csvs
+data_settings
 .DS_Store
