@@ -122,6 +122,5 @@ pickle.dump(nonpairs_hist_list, open(f'data/cascades/all-brain-nonpaired_{n_init
 old_pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'rb'))
 nonpairs_hist_list = pickle.load(open(f'data/cascades/all-brain-nonpaired_{n_init}-n_init.p', 'rb'))
 
-combined_pair_hist_list = nonpairs_hist_list + old_pair_hist_list
-
-# %%
+combined_pair_hist_list = old_pair_hist_list + nonpairs_hist_list
+pickle.dump(combined_pair_hist_list, open(f'data/cascades/all-brain-pairs_outputs-added_nonpaired-added_{n_init}-n_init.p', 'rb'))
