@@ -47,7 +47,7 @@ def find_ds_partner_ids(pair_hist, pair_hist_list, pairs, hops):
 
 '''
 ds_partners = Parallel(n_jobs=-1)(delayed(find_ds_partner_ids)(pair_hist_list[i], pair_hist_list, pairs, hops) for i in tqdm(range(len(pair_hist_list))))
-pickle.dump(ds_partners, open(f'data/cascades/all-brain-pairs-nonpairs_ds_partners_{n_init}-n_init.p', 'wb'))
+pickle.dump(ds_partners, open(f'data/cascades/all-brain-pairs_ds_partners_{n_init}-n_init.p', 'wb'))
 '''
 
 ds_partners = pickle.load(open(f'data/cascades/all-brain-pairs_ds_partners_{n_init}-n_init.p', 'rb'))
@@ -60,10 +60,12 @@ ds_partners_df.set_index('skid', inplace=True)
 nonpaired_hist_list = pickle.load(open(f'data/cascades/all-brain-nonpaired_{n_init}-n_init.p', 'rb'))
 threshold = n_init/2
 
+# identify ds_partners of nonpaired neurons
+'''
 ds_partners_nonpaired = []
 for hit_hist in nonpaired_hist_list:
     skid_hit_hist = hit_hist.skid_hit_hist
-    ds = skid_hit_hist[skid_hit_hist.iloc[:, 1:].sum(axis=1)>threshold].index
+    ds = skid_hit_hist[skid_hit_hist.iloc[:, 1:hops+1].sum(axis=1)>threshold].index
 
     ds_pairs, ds_unpaired, ds_nonpaired = pm.Promat.extract_pairs_from_list(ds, pairs)
 
@@ -79,6 +81,11 @@ for hit_hist in nonpaired_hist_list:
     ds_pairids = list(ds_pairs.leftid) + unpaired_pairid + list(ds_nonpaired.nonpaired)
 
     ds_partners_nonpaired.append(ds_pairids)
+
+pickle.dump(ds_partners_nonpaired, open(f'data/cascades/all-brain-nonpaired_ds_partners_{n_init}-n_init.p', 'wb'))
+'''
+
+ds_partners_nonpaired = pickle.load(open(f'data/cascades/all-brain-nonpaired_ds_partners_{n_init}-n_init.p', 'rb'))
 
 ds_partners_nonpaired_df = pd.DataFrame(list(map(lambda x: [x[0], x[1]], zip([x.name for x in nonpaired_hist_list], ds_partners_nonpaired))), columns=['skid', 'ds_partners'])
 ds_partners_nonpaired_df.set_index('skid', inplace=True)
@@ -285,7 +292,7 @@ fig, ax = plt.subplots(1,1,figsize=(.5,1))
 # duplicate values for pairs, values for nonpaired neurons remain the same
 _, unpaired, nonpaired = pm.Promat.extract_pairs_from_list(us_partners_df.index, pm.Promat.get_pairs())
 data = list(us_partners_df.loc[unpaired.unpaired, :].fraction_recurrent_partners) + list(us_partners_df.loc[unpaired.unpaired, :].fraction_recurrent_partners) + list(us_partners_df.loc[nonpaired.nonpaired, :].fraction_recurrent_partners)
-data = [sum(np.array(data)==0)/len(d), sum(np.array(data)!=0)/len(d)]
+data = [sum(np.array(data)==0)/len(data), sum(np.array(data)!=0)/len(data)]
 sns.barplot(x=['Non-recurrent Neurons', 'Recurrent Neurons'] , y=data, ax=ax)
 ax.set(ylim=(0,1))
 plt.savefig('cascades/feedback_through_brain/plots/recurrent-vs-nonrecurrent_fractions_upstream-perspective.pdf', format='pdf', bbox_inches='tight')
@@ -299,18 +306,35 @@ multilayered_df = []
 for i, hit_hist in enumerate(pair_hist_list):
     skid_hit_hist = hit_hist.skid_hit_hist
     number_layers = (skid_hit_hist>hit_thres).sum(axis=1)
-    df = list(zip(skid_hit_hist.index, (skid_hit_hist>hit_thres).sum(axis=1)))
-    df = pd.DataFrame(df, columns=['ds_partner', 'layers'])
+
+    # identify length of each path
+    df_boolen = (skid_hit_hist>hit_thres)
+    ds = list(df_boolen.index[(df_boolen).sum(axis=1)>0])
+
+    lengths = []
+    for skid in ds:
+        lengths.append(list(df_boolen.columns[df_boolen.loc[skid]]))
+
+    df = list(zip(skid_hit_hist.index, number_layers, lengths))
+    df = pd.DataFrame(df, columns=['ds_partner', 'layers', 'lengths'])
     df.set_index('ds_partner', inplace=True)
     multilayered_df.append(df)
 
+# plotting layer counts and length stats
 layer_counts = []
+lengths = []
 for i, source in enumerate([x.name for x in pair_hist_list]):
     source_layers = []
     us_partners = list(us_partners_df.loc[source, 'us_partners'])
+
+    # expand to include pairs if relevant
     indices = list(np.intersect1d(us_partners, multilayered_df[i].index))
     counts = list(multilayered_df[i].loc[indices].layers)
-    layer_counts.append([source, counts, np.nanmean(counts), np.nanstd(counts)])
+    layer_counts.append([source, counts, np.mean(counts), np.std(counts)])
+
+    lengths_data = list(multilayered_df[i].loc[indices].lengths)
+    #lengths_data = [x for sublist in lengths_data for x in sublist]
+    lengths.append([source, lengths_data])#, np.mean(lengths_data), np.std(lengths_data)])
 
 all_counts = [x[1] for x in layer_counts]
 all_counts = [x for sublist in all_counts for x in sublist]
@@ -329,3 +353,37 @@ plt.savefig(f'cascades/feedback_through_brain/plots/brain-single-cell_recurrent-
 paths_mean = np.mean([x for x in all_counts if x!=0])
 paths_std = np.std([x for x in all_counts if x!=0])
 print(f'Recurrent pathways were multilength with {paths_mean:.2f} +/- {paths_std:.2f} different lengths (mean+/-std)')
+
+# plot distribution of lengths
+lengths = pd.DataFrame(lengths, columns=['source', 'lengths'])
+
+all_lengths = [x for sublist in lengths.lengths for x in sublist]
+
+binwidth = 1
+bins = np.arange(min(all_lengths), max(all_lengths) + binwidth*1.5) - binwidth*0.5
+
+figsize = (.75, 0.35)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+sns.histplot(x=all_lengths, bins=bins, stat='density')
+plt.xticks(rotation=45, ha='right')
+ax.set(xlim=(-0.75, 7.75), ylim=(0,0.55))
+plt.savefig(f'cascades/feedback_through_brain/plots/brain-single-cell_recurrent-layers_path-length-distribution.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# investigate lengths a bit more
+
+all_lengths = [x for sublist in lengths.lengths for x in sublist if len(x)>1]
+
+length_mean = np.mean([np.mean(x) for x in all_lengths])
+length_std = np.std([np.mean(x) for x in all_lengths])
+
+length_min = np.mean([np.min(x) for x in all_lengths])
+length_min_std = np.std([np.min(x) for x in all_lengths])
+
+length_max = np.mean([np.max(x) for x in all_lengths])
+length_max_std = np.std([np.max(x) for x in all_lengths])
+
+print(f'The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
+print(f'with on average the shortest path at {length_min:.1f}+/-{length_min_std:.1f}')
+print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
