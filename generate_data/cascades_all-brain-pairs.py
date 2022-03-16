@@ -65,3 +65,26 @@ for i in range(0, len(output_hist_list)):
 pickle.dump(pair_hist_list, open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'wb'))
 
 # %%
+# cascades from input neurons
+input_pairs, _, input_nonpaired = Promat.extract_pairs_from_list(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain sensory modalities'), Promat.get_pairs(pairs_path))
+input_pairs_list = [list(input_pairs.loc[i]) for i in input_pairs.index]
+input_pairs_list = input_pairs_list + [list(input_nonpaired.loc[i]) for i in input_nonpaired.index]
+
+input_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_pairs_list, source_names=[x[0] for x in input_pairs_list], stop_skids=output_skids,
+                                                                    adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
+
+pickle.dump(input_hist_list, open(f'data/cascades/all-input-pairs_{n_init}-n_init.p', 'wb'))
+
+# %%
+# generate mega DataFrame with all data and pickle it
+
+all_data = input_hist_list + pair_hist_list
+
+names = [x.name for x in all_data]
+skid_hit_hists = [x.skid_hit_hist for x in all_data]
+
+all_data_df = pd.DataFrame(skid_hit_hists, index=names, columns=['skid_hit_hist'])
+
+pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init.p', 'wb'))
+
+# %%
