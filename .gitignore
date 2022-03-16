@@ -14,3 +14,4 @@ csv
 old_csvs
 data_settings
 .DS_Store
+__pycache__
