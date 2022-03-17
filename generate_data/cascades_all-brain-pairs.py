@@ -43,6 +43,7 @@ pair_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=brain_
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
 pickle.dump(pair_hist_list, open(f'data/cascades/all-brain-pairs_{n_init}-n_init_{today_date}.p', 'wb'))
+#pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_{n_init}-n_init_{today_date}.p', 'rb'))
 
 # %%
 # cascades from descending neurons
@@ -55,6 +56,7 @@ output_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=outp
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
 pickle.dump(output_hist_list, open(f'data/cascades/all-DN-pairs_{n_init}-n_init.p', 'wb'))
+#output_hist_list = pickle.load(open(f'data/cascades/all-DN-pairs_{n_init}-n_init.p', 'rb'))
 
 # combine cascades together
 for i in range(0, len(output_hist_list)):
@@ -63,6 +65,7 @@ for i in range(0, len(output_hist_list)):
             pair_hist_list[j] = output_hist_list[i]
 
 pickle.dump(pair_hist_list, open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'wb'))
+#pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'rb'))
 
 # %%
 # cascades from input neurons
@@ -74,6 +77,7 @@ input_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=input
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
 pickle.dump(input_hist_list, open(f'data/cascades/all-input-pairs_{n_init}-n_init.p', 'wb'))
+# input_hist_list = pickle.load(open(f'data/cascades/all-input-pairs_{n_init}-n_init.p', 'rb'))
 
 # %%
 # generate mega DataFrame with all data and pickle it
@@ -83,8 +87,9 @@ all_data = input_hist_list + pair_hist_list
 names = [x.name for x in all_data]
 skid_hit_hists = [x.skid_hit_hist for x in all_data]
 
-all_data_df = pd.DataFrame(skid_hit_hists, index=names, columns=['skid_hit_hist'])
+all_data_df = pd.DataFrame([[x] for x in skid_hit_hists], index=names, columns=['skid_hit_hists'])
 
 pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init.p', 'wb'))
+# all_data_df = pickle.load(open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init.p', 'rb'))
 
 # %%
