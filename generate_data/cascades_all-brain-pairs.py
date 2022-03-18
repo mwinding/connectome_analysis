@@ -11,7 +11,6 @@ import pandas as pd
 import pickle
 
 from contools import Promat, Adjacency_matrix, Celltype_Analyzer, Celltype, Cascade_Analyzer
-
 today_date = '2022-03-15'
 # %%
 # load adjacency matrix for cascades
@@ -55,7 +54,7 @@ output_pairs_list = output_pairs_list + [list(output_nonpaired.loc[i]) for i in 
 output_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=output_pairs_list, source_names=[x[0] for x in output_pairs_list], stop_skids=[],
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
-pickle.dump(output_hist_list, open(f'data/cascades/all-DN-pairs_{n_init}-n_init.p', 'wb'))
+pickle.dump(output_hist_list, open(f'data/cascades/all-DN-pairs_{n_init}-n_init_{today_date}.p', 'wb'))
 #output_hist_list = pickle.load(open(f'data/cascades/all-DN-pairs_{n_init}-n_init.p', 'rb'))
 
 # combine cascades together
@@ -64,7 +63,7 @@ for i in range(0, len(output_hist_list)):
         if(output_hist_list[i].name == pair_hist_list[j].name):
             pair_hist_list[j] = output_hist_list[i]
 
-pickle.dump(pair_hist_list, open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'wb'))
+pickle.dump(pair_hist_list, open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init_{today_date}.p', 'wb'))
 #pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_outputs-added_{n_init}-n_init.p', 'rb'))
 
 # %%
@@ -76,11 +75,14 @@ input_pairs_list = input_pairs_list + [list(input_nonpaired.loc[i]) for i in inp
 input_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_pairs_list, source_names=[x[0] for x in input_pairs_list], stop_skids=output_skids,
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
 
-pickle.dump(input_hist_list, open(f'data/cascades/all-input-pairs_{n_init}-n_init.p', 'wb'))
+pickle.dump(input_hist_list, open(f'data/cascades/all-input-pairs_{n_init}-n_init_{today_date}.p', 'wb'))
 # input_hist_list = pickle.load(open(f'data/cascades/all-input-pairs_{n_init}-n_init.p', 'rb'))
 
 # %%
-# generate mega DataFrame with all data and pickle it
+# generate mega DataFrame with all data, add Cascade_Analyzer objects, and pickle it
+from joblib import Parallel, delayed
+from tqdm import tqdm
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 all_data = input_hist_list + pair_hist_list
 
@@ -89,7 +91,47 @@ skid_hit_hists = [x.skid_hit_hist for x in all_data]
 
 all_data_df = pd.DataFrame([[x] for x in skid_hit_hists], index=names, columns=['skid_hit_hists'])
 
-pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init.p', 'wb'))
-# all_data_df = pickle.load(open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init.p', 'rb'))
+cascade_objs = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer)(name=all_data_df.index[i], hit_hist=all_data_df.iloc[i, 0], n_init=n_init, pairs=pairs, pairwise=True) for i in tqdm(range(len(all_data_df.index))))
+all_data_df['cascade_objs'] = cascade_objs
+
+pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{today_date}.p', 'wb'))
+#all_data_df = pickle.load(open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{today_date}.p', 'rb'))
+
+# %%
+# identify ds_partners at 8-hops, 5-hops, etc
+all_data_df = pickle.load(open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{today_date}.p', 'rb'))
+
+threshold = n_init/2
+
+hops = 8
+ds_partners_8hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 7
+ds_partners_7hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 6
+ds_partners_6hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 5
+ds_partners_5hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 4
+ds_partners_4hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 3
+ds_partners_3hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+hops = 2
+ds_partners_2hop = Parallel(n_jobs=-1)(delayed(Cascade_Analyzer.pairwise_threshold)(hh_pairwise=all_data_df.iloc[i, 1].hh_pairwise, pairs=pairs, threshold=threshold, hops=hops) for i in tqdm(range(len(all_data_df.index))))
+
+all_data_df['ds_partners_8hop'] = ds_partners_8hop
+all_data_df['ds_partners_7hop'] = ds_partners_7hop
+all_data_df['ds_partners_6hop'] = ds_partners_6hop
+all_data_df['ds_partners_5hop'] = ds_partners_5hop
+all_data_df['ds_partners_4hop'] = ds_partners_4hop
+all_data_df['ds_partners_3hop'] = ds_partners_3hop
+all_data_df['ds_partners_2hop'] = ds_partners_2hop
+
+pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{today_date}.p', 'wb'))
 
 # %%
