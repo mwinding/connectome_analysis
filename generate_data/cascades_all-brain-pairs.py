@@ -132,6 +132,11 @@ all_data_df['ds_partners_4hop'] = ds_partners_4hop
 all_data_df['ds_partners_3hop'] = ds_partners_3hop
 all_data_df['ds_partners_2hop'] = ds_partners_2hop
 
+sort = ['skid_hit_hists', 'cascade_objs', 'ds_partners_8hop', 
+        'ds_partners_7hop', 'ds_partners_6hop', 'ds_partners_5hop',
+        'ds_partners_4hop', 'ds_partners_3hop', 'ds_partners_2hop']
+all_data_df = all_data_df.loc[:, sort]
+
 pickle.dump(all_data_df, open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{today_date}.p', 'wb'))
 
 # %%
