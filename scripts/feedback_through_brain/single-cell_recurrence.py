@@ -53,13 +53,18 @@ def recurrent_partners(skid, ds_partners_df, hops, pairs):
             print(f'{partner} not in skid list!')
 
         # expand to both left/right neurons
-        recurrent_partners = Promat.get_paired_skids(recurrent_partners, pairs)
-        recurrent_partners = [x for sublist in recurrent_partners for x in sublist]
-        recurrent_partners = list(np.unique(recurrent_partners))
+        #recurrent_partners = [Promat.get_paired_skids(skid, pairs) for skid in recurrent_partners]
+        #recurrent_partners = [x for sublist in recurrent_partners for x in sublist]
+        #recurrent_partners = list(np.unique(recurrent_partners))
     
     return(recurrent_partners)
 
 ds_partners_df = cascades_df.loc[:, ['ds_partners_8hop', 'ds_partners_5hop']]
+
+# convert to pair_ids; did this as a stop-gap because expanding the recurrent partners took too long on my current compute
+ds_partners_df['ds_partners_8hop'] = [list(np.intersect1d(x, ds_partners_df.index)) for x in ds_partners_df.ds_partners_8hop]
+ds_partners_df['ds_partners_5hop'] = [list(np.intersect1d(x, ds_partners_df.index)) for x in ds_partners_df.ds_partners_5hop]
+
 pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 hops = 8
