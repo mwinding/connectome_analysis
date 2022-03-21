@@ -1,3 +1,3 @@
-scripts to manipulate, process, and analyze the Drosophila larval brain connectome
+Scripts to manipulate, process, and analyze the Drosophila larval brain connectome
 
-the associated tools have been reimplemented in mwinding/connectome_tools repo
+The associated tools in connectome_tools_deprecated have been reimplemented in the connectome_tools repo with updated features, https://github.com/mwinding/connectome_tools
