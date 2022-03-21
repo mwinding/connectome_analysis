@@ -1,6 +1,7 @@
 #%%
 
 from pymaid_creds import url, name, password, token
+from data_settings import pairs_path, data_date
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -18,140 +19,152 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.process_matrix as pm
-import connectome_tools.cluster_analysis as clust
-
-import pickle 
-
-n_init = 1000
-pair_hist_list = pickle.load(open(f'data/cascades/all-brain-pairs_outputs-added_nonpaired-added_{n_init}-n_init.p', 'rb'))
-
-# %%
-# identify ds_partners
+from contools import Celltype, Celltype_Analyzer, Promat, Cascade_Analyzer
+import pickle
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-threshold = n_init/2
-hops = 8
-pairs = pm.Promat.get_pairs()
+n_init = 1000
+cascades_df = pickle.load(open(f'data/cascades/all-brain-pairs-nonpaired_inputs-interneurons-outputs_{n_init}-n_init_{data_date}.p', 'rb'))
 
-# strict threshold; both partners must be >n_init/2; might be nice to make it a less stringent mean threshold, but will add complexity with nonpaired neurons
-def find_ds_partner_ids(pair_hist, pair_hist_list, pairs, hops):
-    ds_partners = list(pair_hist.pairwise_threshold(threshold=threshold, hops=hops))
-    pair_ids = pm.Promat.load_pairs_from_annotation('ds', pairs, skids=ds_partners, use_skids=True)
-    pair_ids = list(pair_ids.leftid)
-    pair_ids = list(np.intersect1d(pair_ids, [x.name for x in pair_hist_list]))
-    return(pair_ids)
-
-'''
-ds_partners = Parallel(n_jobs=-1)(delayed(find_ds_partner_ids)(pair_hist_list[i], pair_hist_list, pairs, hops) for i in tqdm(range(len(pair_hist_list))))
-pickle.dump(ds_partners, open(f'data/cascades/all-brain-pairs_ds_partners_{n_init}-n_init.p', 'wb'))
-'''
-
-ds_partners = pickle.load(open(f'data/cascades/all-brain-pairs_ds_partners_{n_init}-n_init.p', 'rb'))
-ds_partners_df = pd.DataFrame(list(map(lambda x: [x[0], x[1]], zip([x.name for x in pair_hist_list], ds_partners))), columns=['skid', 'ds_partners'])
-ds_partners_df.set_index('skid', inplace=True)
-
-# %%
-# add non-paired neurons
-
-nonpaired_hist_list = pickle.load(open(f'data/cascades/all-brain-nonpaired_{n_init}-n_init.p', 'rb'))
-threshold = n_init/2
-
-# identify ds_partners of nonpaired neurons
-'''
-ds_partners_nonpaired = []
-for hit_hist in nonpaired_hist_list:
-    skid_hit_hist = hit_hist.skid_hit_hist
-    ds = skid_hit_hist[skid_hit_hist.iloc[:, 1:hops+1].sum(axis=1)>threshold].index
-
-    ds_pairs, ds_unpaired, ds_nonpaired = pm.Promat.extract_pairs_from_list(ds, pairs)
-
-    unpaired = list(ds_unpaired.unpaired)
-    unpaired_pairid = []
-    for skid in unpaired:
-        if(skid in pairs.leftid):
-            unpaired_pairid.append(skid)
-        if(skid in pairs.rightid):
-            skid = pairs.loc[pairs.rightid==skid].leftid.values[0]
-            unpaired_pairid.append(skid)
-
-    ds_pairids = list(ds_pairs.leftid) + unpaired_pairid + list(ds_nonpaired.nonpaired)
-
-    ds_partners_nonpaired.append(ds_pairids)
-
-pickle.dump(ds_partners_nonpaired, open(f'data/cascades/all-brain-nonpaired_ds_partners_{n_init}-n_init.p', 'wb'))
-'''
-
-ds_partners_nonpaired = pickle.load(open(f'data/cascades/all-brain-nonpaired_ds_partners_{n_init}-n_init.p', 'rb'))
-
-ds_partners_nonpaired_df = pd.DataFrame(list(map(lambda x: [x[0], x[1]], zip([x.name for x in nonpaired_hist_list], ds_partners_nonpaired))), columns=['skid', 'ds_partners'])
-ds_partners_nonpaired_df.set_index('skid', inplace=True)
-ds_partners_df = pd.concat([ds_partners_df, ds_partners_nonpaired_df], axis=0)
+# exclude input neurons, include only brain and accessory neurons
+brain = pymaid.get_skids_by_annotation(['mw brain neurons', 'mw brain accessory neurons'])
+brain = list(np.intersect1d(brain, cascades_df.index))
+cascades_df = cascades_df.loc[brain, :]
 
 # %%
 # how many partners are in recurrent loops?
 
 # collect all recurrent skids
-recurrent_partners_col = []
-for skid in ds_partners_df.index:
+
+def recurrent_partners(skid, ds_partners_df, hops, pairs):
     recurrent_partners = []
-    ds_partners = ds_partners_df.loc[skid, 'ds_partners']
+    ds_partners = ds_partners_df.loc[skid, f'ds_partners_{hops}hop']
+    #ds_partners = Promat.extract_pairs_from_list(ds_partners, pairs, return_pair_ids=True)[3] # convert to pair_ids, very slow
+    ds_partners = list(np.intersect1d(ds_partners, ds_partners_df.index))  # effectively converts to pair_ids
+
     for partner in ds_partners:
         if(partner in ds_partners_df.index):
-            ds_ds_partners = ds_partners_df.loc[partner, 'ds_partners']
+            ds_ds_partners = ds_partners_df.loc[partner, f'ds_partners_{hops}hop']
             if(skid in ds_ds_partners):
                 recurrent_partners.append(partner)
 
         if(partner not in ds_partners_df.index):
             print(f'{partner} not in skid list!')
 
-    recurrent_partners_col.append(recurrent_partners)
+        # expand to both left/right neurons
+        recurrent_partners = Promat.get_paired_skids(recurrent_partners, pairs)
+        recurrent_partners = [x for sublist in recurrent_partners for x in sublist]
+        recurrent_partners = list(np.unique(recurrent_partners))
+    
+    return(recurrent_partners)
 
-# fraction of recurrent vs. nonrecurrent parents
-ds_partners_df['recurrent_partners'] = recurrent_partners_col
-frac_recurrent = [len(ds_partners_df.loc[i, 'recurrent_partners'])/len(ds_partners_df.loc[i, 'ds_partners']) if len(ds_partners_df.loc[i, 'ds_partners'])>0 else 0 for i in ds_partners_df.index]
-ds_partners_df['fraction_recurrent_partners'] = frac_recurrent
-ds_partners_df['fraction_nonrecurrent_partners'] = 1-ds_partners_df.fraction_recurrent_partners
+ds_partners_df = cascades_df.loc[:, ['ds_partners_8hop', 'ds_partners_5hop']]
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
-#ds_partners_df = ds_partners_df[[False if x==[] else True for x in ds_partners_df.ds_partners]]
+hops = 8
+ds_partners_df[f'recurrent_partners_{hops}hop'] = Parallel(n_jobs=-1)(delayed(recurrent_partners)(ds_partners_df.index[i], ds_partners_df, hops, pairs) for i in tqdm(range(len(ds_partners_df.index))))
+hops = 5
+ds_partners_df[f'recurrent_partners_{hops}hop'] = Parallel(n_jobs=-1)(delayed(recurrent_partners)(ds_partners_df.index[i], ds_partners_df, hops, pairs) for i in tqdm(range(len(ds_partners_df.index))))
 
-# plot total number of recurrent neurons
-fig, ax = plt.subplots(1,1,figsize=(.5,1))
+import pickle
+pickle.dump(ds_partners_df, open(f'data/cascades/all-recurrent-partners_brain-interneurons-outputs_{n_init}-n_init_{data_date}.p', 'wb'))
 
-# duplicate values for pairs, values for nonpaired neurons remain the same
-_, unpaired, nonpaired = pm.Promat.extract_pairs_from_list(ds_partners_df.index, pm.Promat.get_pairs())
-data = list(ds_partners_df.loc[unpaired.unpaired, :].fraction_recurrent_partners) + list(ds_partners_df.loc[unpaired.unpaired, :].fraction_recurrent_partners) + list(ds_partners_df.loc[nonpaired.nonpaired, :].fraction_recurrent_partners)
-data = [sum(np.array(data)==0)/len(data), sum(np.array(data)!=0)/len(data)]
-sns.barplot(x=['Non-recurrent Neurons', 'Recurrent Neurons'] , y=data, ax=ax)
-ax.set(ylim=(0,1))
-plt.savefig('cascades/feedback_through_brain/plots/recurrent-vs-nonrecurrent_fractions.pdf', format='pdf', bbox_inches='tight')
+# %%
+# analysis of recurrent partners at 5- and 8-hops
 
-# boxplot of data with points
-fig, ax = plt.subplots(1,1,figsize=(2,4))
-data = ds_partners_df[~(ds_partners_df.fraction_recurrent_partners==0)].fraction_recurrent_partners
-sns.boxplot(y=data, ax=ax, color=sns.color_palette()[1])
-sns.stripplot(y=data, ax=ax, s=2, alpha=0.5, color='black', jitter=0.15)
-plt.savefig('cascades/feedback_through_brain/plots/recurrent-boxplot-points.pdf', format='pdf', bbox_inches='tight')
+def recurrent_plots(ds_partners_df, hops, celltypes):
+    # fraction of recurrent vs. nonrecurrent parents at 8-hop
+    frac_recurrent = [len(ds_partners_df.loc[i, f'recurrent_partners_{hops}hop'])/len(ds_partners_df.loc[i, f'ds_partners_{hops}hop']) if len(ds_partners_df.loc[i, f'ds_partners_{hops}hop'])>0 else 0 for i in ds_partners_df.index]
+    ds_partners_df[f'fraction_recurrent_{hops}hop'] = frac_recurrent
+    ds_partners_df[f'fraction_nonrecurrent_{hops}hop'] = 1-ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop']
 
-# catplot of data
-data = ds_partners_df.copy()
-data['celltype'] = ['nonrecurrent' if x==0 else 'recurrent' for x in ds_partners_df.fraction_recurrent_partners]
-fig, ax = plt.subplots(1,1,figsize=(2,4))
-sns.catplot(data = data, x='celltype', y='fraction_recurrent_partners', order=['nonrecurrent', 'recurrent'], kind='boxen')
-plt.savefig('cascades/feedback_through_brain/plots/recurrent-boxplot.pdf', format='pdf', bbox_inches='tight')
+    # plot total number of recurrent neurons
+    fig, ax = plt.subplots(1,1,figsize=(.5,1))
 
-# stripplot of data
-fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.stripplot(y=ds_partners_df.fraction_recurrent_partners, ax=ax, s=3, alpha=0.5, color=sns.color_palette()[1])
-plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions.pdf', format='pdf', bbox_inches='tight')
+    # duplicate values for pairs, values for nonpaired neurons remain the same
 
-# distribution plot
-fig, ax = plt.subplots(1,1,figsize=(4,4))
-sns.histplot(x=ds_partners_df.fraction_recurrent_partners, binwidth=0.05, ax=ax, color='tab:gray', stat='probability')
-plt.savefig('cascades/feedback_through_brain/plots/recurrent-partner-fractions_hist.pdf', format='pdf', bbox_inches='tight')
+    # below probably doesn't apply
+    #_, unpaired, nonpaired = pm.Promat.extract_pairs_from_list(ds_partners_df.index, pm.Promat.get_pairs())
+    #data = list(ds_partners_df.loc[unpaired.unpaired, f'fraction_recurrent_{hops}hop']) + list(ds_partners_df.loc[unpaired.unpaired, :].fraction_recurrent_partners) + list(ds_partners_df.loc[nonpaired.nonpaired, :].fraction_recurrent_partners)
+    data = ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop']
+    data = [sum(np.array(data)==0)/len(data), sum(np.array(data)!=0)/len(data)]
+    sns.barplot(x=[f'Non-recurrent Neurons ({hops}-Hops)', f'Recurrent Neurons ({hops}-Hops)'] , y=data, ax=ax)
+    ax.set(ylim=(0,1))
+    plt.savefig(f'plots/recurrent-vs-nonrecurrent_fractions_{hops}hops.pdf', format='pdf', bbox_inches='tight')
+
+    # boxplot of data with points
+    fig, ax = plt.subplots(1,1,figsize=(2,4))
+    data = ds_partners_df[~(ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop']==0)].loc[:, f'fraction_recurrent_{hops}hop']
+    sns.boxplot(y=data, ax=ax, color=sns.color_palette()[1])
+    sns.stripplot(y=data, ax=ax, s=2, alpha=0.5, color='black', jitter=0.15)
+    plt.savefig(f'plots/recurrent-boxplot-points_{hops}hops.pdf', format='pdf', bbox_inches='tight')
+
+    # catplot of data
+    data = ds_partners_df.copy()
+    data['celltype'] = ['nonrecurrent' if x==0 else 'recurrent' for x in ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop']]
+    fig, ax = plt.subplots(1,1,figsize=(2,4))
+    sns.catplot(data = data, x='celltype', y=f'fraction_recurrent_{hops}hop', order=['nonrecurrent', 'recurrent'], kind='boxen')
+    plt.savefig(f'plots/recurrent-boxplot_{hops}hops.pdf', format='pdf', bbox_inches='tight')
+
+    # stripplot of data
+    fig, ax = plt.subplots(1,1,figsize=(4,4))
+    sns.stripplot(y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], ax=ax, s=3, alpha=0.5, color=sns.color_palette()[1])
+    plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops.pdf', format='pdf', bbox_inches='tight')
+
+    # distribution plot
+    fig, ax = plt.subplots(1,1,figsize=(4,4))
+    sns.histplot(x=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], binwidth=0.05, ax=ax, color='tab:gray', stat='probability')
+    plt.savefig(f'plots/recurrent-partner-fractions_hist_{hops}hops.pdf', format='pdf', bbox_inches='tight')
+
+
+    ##########
+    # celltype plots
+
+    celltype_annotation = []
+    for skid in ds_partners_df.index:
+        for celltype in celltypes:
+            if(skid in celltype.skids):
+                celltype_annotation.append(celltype.name)
+
+    ds_partners_df['celltype'] = celltype_annotation
+
+    # plot results as barplot with points, barplot, or violinplot
+    fig, ax = plt.subplots(1,1,figsize=(4,4))
+    sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' ,'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+    sns.stripplot(x=ds_partners_df.celltype, y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], s=1, alpha=0.5, color='black', order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+    plt.xticks(rotation=45, ha='right')
+    ax.set(ylim=(-0.05, 1))
+    plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops_by-celltype_barplot-with-points.pdf', format='pdf', bbox_inches='tight')
+
+    fig, ax = plt.subplots(1,1,figsize=(2,1))
+    sns.barplot(x=ds_partners_df.celltype, y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+    plt.xticks(rotation=45, ha='right')
+    ax.set(ylim=(0, 1))
+    plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops_by-celltype_barplot.pdf', format='pdf', bbox_inches='tight')
+
+    fig, ax = plt.subplots(1,1,figsize=(8,4))
+    sns.violinplot(x=ds_partners_df.celltype, y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], scale='width', order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+    plt.xticks(rotation=45, ha='right')
+    ax.set(ylim=(0, 1))
+    plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops_by-celltype_violinplot.pdf', format='pdf', bbox_inches='tight')
+
+    fig, ax = plt.subplots(1,1,figsize=(8,4))
+    sns.boxplot(x=ds_partners_df.celltype, y=ds_partners_df.loc[:, f'fraction_recurrent_{hops}hop'], whis=[0, 100], order=['PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs' , 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'dSEZs', 'dVNCs', 'Other'])
+    plt.xticks(rotation=45, ha='right')
+    ax.set(ylim=(0, 1))
+    plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops_by-celltype_boxplot.pdf', format='pdf', bbox_inches='tight')
+
+    return(ds_partners_df)
+
+_, celltypes = Celltype_Analyzer.default_celltypes()
+all_celltypes = [x.skids for x in celltypes]
+all_celltypes = [x for sublist in all_celltypes for x in sublist]
+other_ct = Celltype('Other', np.setdiff1d(ds_partners_df.index, all_celltypes), 'tab:gray')
+celltypes = celltypes + [other_ct]
+
+ds_partners_df2 = recurrent_plots(ds_partners_df=ds_partners_df, hops=8, celltypes=celltypes)
+ds_partners_df3 = recurrent_plots(ds_partners_df=ds_partners_df, hops=5, celltypes=celltypes)
 
 # %%
 # recurrence by cell type
@@ -211,6 +224,7 @@ print(f'note that there are {len(ds_KC)} total neurons downstream of KCs by 8-ho
 
 # %%
 # recurrence by cluster
+# NOT USED IN PAPER
 
 clusters = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain clusters level 7', split=True)
 clusters_ct = list(map(lambda x: ct.Celltype(*x), zip(clusters[1], clusters[0])))
