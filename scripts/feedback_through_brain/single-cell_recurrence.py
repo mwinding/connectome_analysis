@@ -1,4 +1,4 @@
-#%%
+# %%
 
 from pymaid_creds import url, name, password, token
 from data_settings import pairs_path, data_date
@@ -36,29 +36,6 @@ pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
 # how many partners are in recurrent loops?
-
-# collect all recurrent skids
-def recurrent_partners(skid, ds_partners_df, hops, pairs):
-    recurrent_partners = []
-    ds_partners = ds_partners_df.loc[skid, f'ds_partners_{hops}hop']
-    #ds_partners = Promat.extract_pairs_from_list(ds_partners, pairs, return_pair_ids=True)[3] # convert to pair_ids, very slow
-    ds_partners = list(np.intersect1d(ds_partners, ds_partners_df.index))  # effectively converts to pair_ids
-
-    for partner in ds_partners:
-        if(partner in ds_partners_df.index):
-            ds_ds_partners = ds_partners_df.loc[partner, f'ds_partners_{hops}hop']
-            if(skid in ds_ds_partners):
-                recurrent_partners.append(partner)
-
-        if(partner not in ds_partners_df.index):
-            print(f'{partner} not in skid list!')
-
-        # expand to both left/right neurons
-        #recurrent_partners = [Promat.get_paired_skids(skid, pairs) for skid in recurrent_partners]
-        #recurrent_partners = [x for sublist in recurrent_partners for x in sublist]
-        #recurrent_partners = list(np.unique(recurrent_partners))
-    
-    return(recurrent_partners)
 
 def generate_us_df(partners_df, hops):
     skids = partners_df.index
@@ -220,21 +197,23 @@ partners_df.groupby('celltype').std()
 # %%
 # multilength recurrence onto upstream neurons?
 
-def multilength_plots(hit_hist_list, partners_df, hops):
+def multilength_plots(hit_hist_list, partners_df, hops, plot=True):
     multilayered_df = []
     for i, hit_hist in enumerate(hit_hist_list):
-        skid_hit_hist = hit_hist.skid_hit_hist.iloc[:, 1:(hops+1)]
+        skid_hit_hist = hit_hist.hh_pairwise.iloc[:, 1:(hops+1)]
         number_layers = (skid_hit_hist>hit_thres).sum(axis=1)
 
         # identify length of each path
-        df_boolen = (skid_hit_hist>hit_thres)
-        ds = list(df_boolen.index[(df_boolen).sum(axis=1)>0])
+        df_boolean = (skid_hit_hist>hit_thres)
+        ds = list(df_boolean.index[(df_boolean).sum(axis=1)>0]) # identify rows with overthresold signal and pull skids
 
+        # use identified indices to pull column names of overthreshold cells
+        # the column names are the number of hops from source neuron
         lengths = []
-        for skid in ds:
-            lengths.append(list(df_boolen.columns[df_boolen.loc[skid]]))
+        for skid in df_boolean.index:
+            lengths.append(list(df_boolean.columns[df_boolean.loc[skid]]))
 
-        df = list(zip(skid_hit_hist.index, number_layers, lengths))
+        df = list(zip([x[1] for x in skid_hit_hist.index], number_layers, lengths))
         df = pd.DataFrame(df, columns=['ds_partner', 'layers', 'lengths'])
         df.set_index('ds_partner', inplace=True)
         multilayered_df.append(df)
@@ -258,37 +237,39 @@ def multilength_plots(hit_hist_list, partners_df, hops):
     all_counts = [x[1] for x in layer_counts]
     all_counts = [x for sublist in all_counts for x in sublist]
 
-    binwidth = 1
-    bins = np.arange(min(all_counts), max(all_counts) + binwidth*1.5) - binwidth*0.5
+    if(plot):
+        binwidth = 1
+        bins = np.arange(min(all_counts), max(all_counts) + binwidth*1.5) - binwidth*0.5
 
-    figsize = (.75, 0.35)
+        figsize = (.75, 0.6)
 
-    fig, ax = plt.subplots(1,1,figsize=figsize)
-    sns.histplot(x=all_counts, bins=bins, stat='density')
-    plt.xticks(rotation=45, ha='right')
-    ax.set(xlim=(-0.75, 6.75), ylim=(0,0.55))
-    plt.savefig(f'plots/brain-single-cell_recurrent-layers_{hops}hop.pdf', format='pdf', bbox_inches='tight')
+        fig, ax = plt.subplots(1,1,figsize=figsize)
+        sns.histplot(x=all_counts, bins=bins, stat='density')
+        plt.xticks(rotation=45, ha='right')
+        ax.set(xlim=(-0.75, 6.75), ylim=(0,1))
+        plt.savefig(f'plots/brain-single-cell_recurrent-layers_{hops}hop.pdf', format='pdf', bbox_inches='tight')
 
-    paths_mean = np.mean([x for x in all_counts if x!=0])
-    paths_std = np.std([x for x in all_counts if x!=0])
-    print(f'{hops}hop Cascades: Recurrent pathways were multilength with {paths_mean:.2f} +/- {paths_std:.2f} different lengths (mean+/-std)')
+        paths_mean = np.mean([x for x in all_counts if x!=0])
+        paths_std = np.std([x for x in all_counts if x!=0])
+        print(f'{hops}hop Cascades: Recurrent pathways were multilength with {paths_mean:.2f} +/- {paths_std:.2f} different lengths (mean+/-std)')
 
     # plot distribution of lengths
     lengths = pd.DataFrame(lengths, columns=['source', 'lengths'])
 
     all_lengths = [x for sublist in lengths.lengths for x in sublist]
     all_lengths = [x for sublist in all_lengths for x in sublist]
+    
+    if(plot):
+        binwidth = 1
+        bins = np.arange(min(all_lengths), max(all_lengths) + binwidth*1.5) - binwidth*0.5
 
-    binwidth = 1
-    bins = np.arange(min(all_lengths), max(all_lengths) + binwidth*1.5) - binwidth*0.5
+        figsize = (.75, 0.6)
 
-    figsize = (.75, 0.35)
-
-    fig, ax = plt.subplots(1,1,figsize=figsize)
-    sns.histplot(x=all_lengths, bins=bins, stat='density')
-    plt.xticks(rotation=45, ha='right')
-    ax.set(xlim=(-0.75, 7.75), ylim=(0,0.55))
-    plt.savefig(f'plots/brain-single-cell_recurrent-layers_path-length-distribution_{hops}hop.pdf', format='pdf', bbox_inches='tight')
+        fig, ax = plt.subplots(1,1,figsize=figsize)
+        sns.histplot(x=all_lengths, bins=bins, stat='density')
+        plt.xticks(rotation=45, ha='right')
+        ax.set(xlim=(-0.75, 8.75), ylim=(0,1))
+        plt.savefig(f'plots/brain-single-cell_recurrent-layers_path-length-distribution_{hops}hop.pdf', format='pdf', bbox_inches='tight')
 
     return(all_counts, lengths, multilayered_df)
 
@@ -331,6 +312,32 @@ length_max_std = np.std([np.max(x) for x in all_lengths])
 print(f'5-hops: The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
 print(f'with on average the shortest path at {length_min:.1f}+/-{length_min_std:.1f}')
 print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
+
+# %%
+# check MBIN recurrence in more detail
+
+MBIN_hit_hist_list = hit_hist_list.loc[np.intersect1d(MBIN_DAN_ct.skids, partners_df.index)]
+MBIN_counts_8hop, MBIN_lengths_8hop, MBIN_multilayered_8hop = multilength_plots(MBIN_hit_hist_list, partners_df, hops=8, plot=False)
+
+paths_mean = np.mean([x for x in MBIN_counts_8hop if x!=0])
+paths_std = np.std([x for x in MBIN_counts_8hop if x!=0])
+print(f'{hops}hop Cascades to MBINs: Recurrent pathways were multilength with {paths_mean:.2f} +/- {paths_std:.2f} different lengths (mean+/-std)')
+
+all_lengths = [x for sublist in MBIN_lengths_8hop.lengths for x in sublist if len(x)>1]
+
+length_mean = np.mean([np.mean(x) for x in all_lengths])
+length_std = np.std([np.mean(x) for x in all_lengths])
+
+length_min = np.mean([np.min(x) for x in all_lengths])
+length_min_std = np.std([np.min(x) for x in all_lengths])
+
+length_max = np.mean([np.max(x) for x in all_lengths])
+length_max_std = np.std([np.max(x) for x in all_lengths])
+
+print(f'8-hops to MBINs: The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
+print(f'with on average the shortest path at {length_min:.1f}+/-{length_min_std:.1f}')
+print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
+
 # %%
 # checking neurons upstream of KCs, do they receive cascade signal?
 # the concern is whether the result that KC have low recurrence real or a result of cascade thresholding
