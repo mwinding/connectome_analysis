@@ -41,7 +41,7 @@ A1_external = pymaid.get_skids_by_annotation('mw A1 external sensories')
 A1_unk = pymaid.get_skids_by_annotation('mw A1 unknown sensories')
 
 A1_interneurons = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories')))
-
+A1_interneurons = list(np.setdiff1d(A1_interneurons, A1_MN))
 # %%
 
 # VNC layering with respect to sensories or motorneurons
@@ -271,6 +271,63 @@ VNC_layers12_types_cts.memberships()
 members = VNC_layers12_types_cts.memberships(raw_num=True)
 members.loc[:, members.loc['ds-VNC', :]>0]
 # manually inspect; how many in 'pre-MN' group vs. combined with sensory modalities
+
+# %%
+# In sensory layering, how many neurons were premotor/pre-premotor?
+
+VNC_layers_2nd = []
+for layer in VNC_layers:
+    VNC_layers_2nd.append([x for sublist in [layer[1]] for x in sublist])
+
+VNC_layers_3rd = []
+for layer in VNC_layers:
+    VNC_layers_3rd.append([x for sublist in [layer[2]] for x in sublist])
+
+VNC_layers_4th = []
+for layer in VNC_layers:
+    VNC_layers_4th.append([x for sublist in [layer[3]] for x in sublist])
+
+VNC_layers_3rd_cts = list(map(lambda x: Celltype(x[0], x[1]), zip(cat_order, VNC_layers_3rd)))
+VNC_layers_3rd_cts = Celltype_Analyzer(VNC_layers_3rd_cts)
+VNC_layers_3rd_cts.set_known_types([Celltype('premotor', VNC_layers[0][1])])
+members = VNC_layers_3rd_cts.memberships(raw_num=True)
+members.loc['premotor']/(members.loc['premotor']+members.loc['unknown'])
+
+# all 2nd, 3rd, 4th-order sensory neurons together
+all_2nd = list(np.unique([x for sublist in VNC_layers_2nd[1:] for x in sublist])) # exclude pre-premotor
+all_2nd_ds_VNC = list(np.intersect1d(all_2nd, A1_ds_dVNC))
+all_2nd_ds_VNC_premotor = np.intersect1d(all_2nd_ds_VNC, VNC_layers[0][1])
+print(f'There are {len(all_2nd_ds_VNC_premotor)} 2nd-order sensory neurons + ds-VNC ({(len(all_2nd_ds_VNC_premotor)/len(all_2nd_ds_VNC))*100:.1f}%) are also premotor neurons')
+
+all_3rd = list(np.unique([x for sublist in VNC_layers_3rd[1:] for x in sublist])) # exclude pre-premotor
+all_3rd_ds_VNC = list(np.intersect1d(all_3rd, A1_ds_dVNC))
+all_3rd_ds_VNC_premotor = np.intersect1d(all_3rd_ds_VNC, VNC_layers[0][1])
+print(f'There are {len(all_3rd_ds_VNC_premotor)} 3rd-order sensory neurons + ds-VNC ({(len(all_3rd_ds_VNC_premotor)/len(all_3rd_ds_VNC))*100:.1f}%) are also premotor neurons')
+
+all_4th = list(np.unique([x for sublist in VNC_layers_4th[1:] for x in sublist])) # exclude pre-premotor
+all_4th_ds_VNC = list(np.intersect1d(all_4th, A1_ds_dVNC))
+all_4th_ds_VNC_premotor = np.intersect1d(all_4th_ds_VNC, VNC_layers[0][1])
+print(f'There are {len(all_4th_ds_VNC_premotor)} 3rd-order sensory neurons + ds-VNC ({(len(all_4th_ds_VNC_premotor)/len(all_4th_ds_VNC))*100:.1f}%) are also premotor neurons')
+
+# how many 2nd-order proprioceptive neurons were also premotor?
+proprio_2nd = ds_proprio[0]
+all_proprio_ds_VNC = np.intersect1d(proprio_2nd, A1_ds_dVNC)
+all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_2nd, us_MN[0])
+print(f'There are {len(all_proprio_ds_VNC_premotor)} 2rd-order proprio neurons + ds-VNC ({(len(all_proprio_ds_VNC_premotor)/len(all_proprio_ds_VNC))*100:.1f}%) are also premotor neurons')
+
+proprio_2nd = ds_proprio[0]
+all_proprio_ds_VNC = np.intersect1d(proprio_2nd, A1_ds_dVNC)
+all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_2nd, us_MN[1])
+print(f'There are {len(all_proprio_ds_VNC_premotor)} 2rd-order proprio neurons + ds-VNC ({(len(all_proprio_ds_VNC_premotor)/len(all_proprio_ds_VNC))*100:.1f}%) are also pre-premotor neurons')
+
+# how many A1-ds-dVNC neurons are motor, premotor, or pre-motor
+A1_ds_dVNC_motor = np.intersect1d(A1_ds_dVNC, A1_MN)
+A1_ds_dVNC_premotor = np.intersect1d(A1_ds_dVNC, us_MN[0])
+A1_ds_dVNC_prepremotor = np.intersect1d(A1_ds_dVNC, us_MN[1])
+print(f'There are {len(A1_ds_dVNC_motor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_motor)/len(A1_ds_dVNC))*100:.1f}%) were motor neurons')
+print(f'There are {len(A1_ds_dVNC_premotor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_premotor)/len(A1_ds_dVNC))*100:.1f}%) were premotor neurons')
+print(f'There are {len(A1_ds_dVNC_prepremotor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_prepremotor)/len(A1_ds_dVNC))*100:.1f}%) were pre-premotor neurons')
+
 
 # %%
 #########
