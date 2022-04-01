@@ -1,6 +1,7 @@
-#%%
+# %%
 
 from pymaid_creds import url, name, password, token
+from data_settings import pairs_path, data_date_A1_brain, data_date
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -11,11 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import networkx as nx
 
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_graph as pg
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.cluster_analysis as clust
+from contools import Promat, Analyze_Nx_G, Celltype, Celltype_Analyzer
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -23,25 +20,27 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-adj = pm.Promat.pull_adj('ad', subgraph='brain and accessory')
-ad_edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
-graph = pg.Analyze_Nx_G(ad_edges, split_pairs=False)
+#adj = Promat.pull_adj('ad', subgraph='brain and accessory')
+ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date_A1_brain, pairs_combined=True)
+ad_edges_A1 = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date_A1_brain, pairs_combined=False)
+graph = Analyze_Nx_G(ad_edges, split_pairs=False)
 
-pairs = pm.Promat.get_pairs()
+pairs = Promat.get_pairs(pairs_path)
 dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
+A1_MN = pymaid.get_skids_by_annotation('mw A1 MN')
 
 # %%
-# connection probability between ipsi/bilateral/contra
-dVNC_pairs = pm.Promat.load_pairs_from_annotation('dVNCs', pairs, return_type='all_pair_ids_bothsides', skids=dVNCs, use_skids=True)
-dSEZ_pairs = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='all_pair_ids_bothsides')
-RGN_pairs = pm.Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='all_pair_ids_bothsides')
+# connection probability between neuron types
+dVNC_pairs = Promat.load_pairs_from_annotation('dVNCs', pairs, return_type='all_pair_ids_bothsides', skids=dVNCs, use_skids=True)
+dSEZ_pairs = Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='all_pair_ids_bothsides')
+RGN_pairs = Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='all_pair_ids_bothsides')
 
-ascendings_all = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
-asc_pairs = pm.Promat.load_pairs_from_annotation('ascendings', pairs, return_type='all_pair_ids_bothsides', skids=ascendings_all, use_skids=True)
+ascendings_all = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+asc_pairs = Promat.load_pairs_from_annotation('ascendings', pairs, return_type='all_pair_ids_bothsides', skids=ascendings_all, use_skids=True)
 
 non_outputs_brain = np.intersect1d(pymaid.get_skids_by_annotation('mw brain paper clustered neurons'), pymaid.get_skids_by_annotation('mw brain neurons'))
-non_outputs_brain = np.setdiff1d(non_outputs_brain, ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs'))
-non_outputs_brain_pairs = pm.Promat.load_pairs_from_annotation('non-outputs', pairs, return_type='all_pair_ids_bothsides', skids=non_outputs_brain, use_skids=True)
+non_outputs_brain = np.setdiff1d(non_outputs_brain, Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs'))
+non_outputs_brain_pairs = Promat.load_pairs_from_annotation('non-outputs', pairs, return_type='all_pair_ids_bothsides', skids=non_outputs_brain, use_skids=True)
 
 # ascendings/dVNCs to outputs and ascendings
 data_adj = ad_edges.set_index(['upstream_pair_id', 'downstream_pair_id'])
@@ -57,21 +56,21 @@ for i, pair_type1 in enumerate(celltypes_pre):
                 if((skid1, skid2) in graph.G.edges): connection.append(1)
                 if((skid1, skid2) not in graph.G.edges): connection.append(0)
 
-            mat[i, j] = sum(connection)/len(connection)
+                mat[i, j] = sum(connection)/len(connection)
 
 df = pd.DataFrame(mat, columns = ['dVNC', 'dSEZ', 'RGN', 'brain-non-outputs', 'A1-ascending'],
                         index = ['A1-ascending', 'dVNC'])
 
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.heatmap(df, square=True, cmap='Blues', vmax=0.007)
-plt.savefig(f'VNC_interaction/plots/connection-probability_brain-outputs_ascendings.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability_brain-outputs_ascendings.pdf', format='pdf', bbox_inches='tight')
 
 # ascendings to brain
 
-_, celltypes = ct.Celltype_Analyzer.default_celltypes(exclude=pymaid.get_skids_by_annotation('mw dVNC to A1'))
-celltypes = celltypes + [ct.Celltype(name='dVNCs-A1', skids=pymaid.get_skids_by_annotation('mw dVNC to A1'))]
+_, celltypes = Celltype_Analyzer.default_celltypes(exclude=pymaid.get_skids_by_annotation('mw dVNC to A1'))
+celltypes = celltypes + [Celltype(name='dVNCs-A1', skids=pymaid.get_skids_by_annotation('mw dVNC to A1'))]
 
-celltypes_pairs = [pm.Promat.load_pairs_from_annotation('', pairs, return_type='all_pair_ids_bothsides', skids=celltype.get_skids(), use_skids=True) for celltype in celltypes]
+celltypes_pairs = [Promat.load_pairs_from_annotation('', pairs, return_type='all_pair_ids_bothsides', skids=celltype.get_skids(), use_skids=True) for celltype in celltypes]
 
 celltypes_pre = [list(asc_pairs.leftid)]
 celltypes_post = [list(pairs_from_list.leftid) for pairs_from_list in celltypes_pairs]
@@ -101,21 +100,22 @@ vmax = 0.02
 
 fig, ax = plt.subplots(1,1, figsize=(5,2))
 sns.heatmap(df, square=True, cmap=cmap, vmax=vmax, annot=True, fmt='.3f')
-plt.savefig(f'VNC_interaction/plots/connection-probability_ascendings_all-brain-celltypes.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability_ascendings_all-brain-celltypes.pdf', format='pdf', bbox_inches='tight')
 
 # dVNCs to A1
-motorneuron_pairs = pm.Promat.load_pairs_from_annotation('mw A1 MN', pairs)
-pre_motorneuron_pairids = ad_edges.set_index('downstream_pair_id').loc[np.intersect1d(motorneuron_pairs.leftid, ad_edges.downstream_pair_id), 'upstream_pair_id']
-pre_motorneuron_pairids = list(np.unique(pre_motorneuron_pairids))
+motorneuron_pairs = Promat.load_pairs_from_annotation('mw A1 MN', pairs)
+exclude = A1_MN + dVNCs
+pre_motorneurons = Promat.upstream_multihop(edges=ad_edges_A1, sources=A1_MN, hops=1, exclude=exclude, pairs=pairs)[0]
+pre_motorneuron_pairids = Promat.extract_pairs_from_list(pre_motorneurons, pairs, return_pair_ids = True)
 pre_motorneuron_pairids = list(np.intersect1d(pre_motorneuron_pairids, pymaid.get_skids_by_annotation('mw A1 neurons paired')))
 pre_motorneurons = pre_motorneuron_pairids + list(pairs.set_index('leftid').loc[pre_motorneuron_pairids, 'rightid'])
 
 A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + pre_motorneurons + ascendings_all)
-A1_pairs = pm.Promat.load_pairs_from_annotation('A1', pairs, return_type='all_pair_ids_bothsides', skids=A1_cells, use_skids=True)
-dVNC_A1_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC to A1', pairs, return_type='all_pair_ids_bothsides')
+A1_pairs = Promat.load_pairs_from_annotation('A1', pairs, return_type='all_pair_ids_bothsides', skids=A1_cells, use_skids=True)
+dVNC_A1_pairs = Promat.load_pairs_from_annotation('mw dVNC to A1', pairs, return_type='all_pair_ids_bothsides')
 
 dVNC_nonA1 = np.setdiff1d(pymaid.get_skids_by_annotation('mw dVNC'), pymaid.get_skids_by_annotation('mw dVNC to A1'))
-dVNC_nonA1_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC not to A1', pairs, return_type='all_pair_ids_bothsides', skids=dVNC_nonA1, use_skids=True)
+dVNC_nonA1_pairs = Promat.load_pairs_from_annotation('mw dVNC not to A1', pairs, return_type='all_pair_ids_bothsides', skids=dVNC_nonA1, use_skids=True)
 celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid)]
 celltypes_post = [list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
 
@@ -138,7 +138,7 @@ vmax = 0.02
 
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.heatmap(df, square=True, cmap=cmap, vmax=vmax)
-plt.savefig(f'VNC_interaction/plots/connection-probability_dVNCs_A1cells.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability_dVNCs_A1cells.pdf', format='pdf', bbox_inches='tight')
 
 # summary connectivity probability plot
 celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
@@ -163,7 +163,7 @@ vmax = 0.04
 
 fig, ax = plt.subplots(1,1, figsize=(3,3))
 sns.heatmap(df, square=True, cmap=cmap, vmax=vmax, annot=True, fmt='.3f')
-plt.savefig(f'VNC_interaction/plots/connection-probability_brain-A1_summary.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability_brain-A1_summary.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # connection probability of self loop (dVNC<->ascending-A1) vs zigzag motif (dVNC1->ascending-A1->dVNC2)
@@ -173,7 +173,7 @@ plt.savefig(f'VNC_interaction/plots/connection-probability_brain-A1_summary.pdf'
 def dVNC_asc_loop_probability(graph, pairs, length, pre=[], use_pre=False):
     # requires Analyze_Nx_G(..., split_pairs=True)
 
-    ascs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+    ascs = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
     
     if(length<2):
         print('length must be 2 or greater!')
@@ -220,7 +220,7 @@ def dVNC_asc_loop_probability(graph, pairs, length, pre=[], use_pre=False):
 
 def dVNC_asc_zigzag_probability(graph, pairs, targets, length, exclude_from_path=[], pre=[], use_pre=False):
     # requires Analyze_Nx_G(..., split_pairs=True)
-    ascending = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+    ascending = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
     brain_neurons = pymaid.get_skids_by_annotation('mw brain neurons')
 
     if(length<2):
@@ -277,7 +277,7 @@ def dVNC_asc_zigzag_probability(graph, pairs, targets, length, exclude_from_path
 
 A1 = pymaid.get_skids_by_annotation('mw A1 neurons paired')
 pre_dVNC = pymaid.get_skids_by_annotation('mw pre-dVNC')
-graph_dVNC_A1 = pg.Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = list(dVNCs) + A1 + pre_dVNC) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
+graph_dVNC_A1 = Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = list(dVNCs) + A1 + pre_dVNC) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
 
 from joblib import Parallel, delayed
 from tqdm import tqdm
@@ -300,7 +300,7 @@ zigzag_dVNC_paths = [x[2] for x in zigzag_dVNC[0:3]]
 dSEZs = pymaid.get_skids_by_annotation('mw dSEZ')
 RGNs = pymaid.get_skids_by_annotation('mw RGN')
 pre_dSEZ = pymaid.get_skids_by_annotation('mw pre-dSEZ')
-graph_outputs_A1 = pg.Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = np.unique(list(dVNCs) + dSEZs + pre_dSEZ + A1)) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
+graph_outputs_A1 = Analyze_Nx_G(ad_edges, split_pairs=False, select_neurons = np.unique(list(dVNCs) + dSEZs + pre_dSEZ + A1)) # dVNCs includes the one skid that needs to be manually added (in chunk #1)
 targets = dSEZ_pairs.leftid.to_list()
 zigzag_dSEZ = Parallel(n_jobs=-1)(delayed(dVNC_asc_zigzag_probability)(graph_outputs_A1, sources, targets, length=lengths[i], pre=pre_dSEZ, use_pre=True) for i in tqdm(range(len(lengths))))
 zigzag_dSEZ_probs = [x[0] for x in zigzag_dSEZ]
@@ -358,6 +358,10 @@ fig,ax = plt.subplots(1,1,figsize=(1,0.5))
 sns.heatmap(df, ax=ax, cmap='Greens', annot=True, vmax=35, square=True)
 plt.savefig(f'VNC_interaction/plots/num_zigzag_different-outputs_brain-A1.pdf', format='pdf', bbox_inches='tight')
 
+pickle.dump(zigzag_dVNC_paths, open(f'data/motifs/zigzag_dVNC_paths_{data_date_A1_brain}.p', 'wb'))
+pickle.dump(zigzag_dSEZ_paths, open(f'data/motifs/zigzag_dSEZ_paths_{data_date_A1_brain}.p', 'wb'))
+pickle.dump(zigzag_RGN_paths, open(f'data/motifs/zigzag_RGN_paths_{data_date_A1_brain}.p', 'wb'))
+pickle.dump(zigzag_outputs_paths, open(f'data/motifs/zigzag_outputs_paths_{data_date_A1_brain}.p', 'wb'))
 
 # %%
 # plot of paths
@@ -455,4 +459,19 @@ plt.axhline(y=0, color='r', linestyle='-')
 plt.savefig(f'VNC_interaction/plots/parallel-coordinates_all_zigzags.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# plot number of zigzag paths
+# identify zigzag paths
+ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date_A1_brain, pairs_combined=True)
+
+# dVNCs to A1
+A1_pair_ids = Promat.load_pairs_from_annotation('mw A1 neurons paired', pairs, return_type = 'all_pair_ids')
+dVNC_pair_ids = Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type = 'all_pair_ids')
+brain_pair_ids = Promat.load_pairs_from_annotation(['mw brain neurons', 'mw brain accessory neurons'], pairs, return_type = 'all_pair_ids')
+asc_pair_ids = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+asc_pair_ids = Promat.load_pairs_from_annotation('', pairs, skids = asc_pair_ids, use_skids=True, return_type = 'all_pair_ids')
+
+exclude = dVNC_pair_ids + brain_pair_ids
+ds_dVNC = [Promat.downstream_multihop(edges=ad_edges, sources=dVNC_pair, hops=1, exclude_unpaired=False, exclude=exclude, pairs=pairs, pairs_combined=True)[0] for dVNC_pair in dVNC_pair_ids]
+asc_ds_dVNC = [list(np.intersect1d(asc_pair_ids, x)) for x in ds_dVNC]
+ds_asc_ds_dVNC = [Promat.downstream_multihop(edges=ad_edges, sources=pair, hops=1, exclude_unpaired=False, exclude=A1_pair_ids, pairs=pairs, pairs_combined=True)[0] for pair in asc_ds_dVNC]
+dVNC_ds_asc_ds_dVNC = [list(np.intersect1d(dVNC_pair_ids, x)) for x in ds_asc_ds_dVNC]
+# %%
