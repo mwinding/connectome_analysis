@@ -1,8 +1,7 @@
 #%%
-import sys
-sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from pymaid_creds import url, name, password, token
+from data_settings import pairs_path, data_date
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -12,6 +11,8 @@ import numpy as np
 import pandas as pd
 import cmasher as cmr
 
+from contools import Cascade_Analyzer, Promat, Celltype, Celltype_Analyzer
+
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -20,22 +21,13 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-from src.data import load_metagraph
-from src.visualization import CLASS_COLOR_DICT, adjplot
-from src.traverse import Cascade, to_transmission_matrix
-from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
-
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.process_matrix as pm
-
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accesssory')
+adj_ad = Promat.pull_adj(type_adj='ad', date=data_date) 
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
 # pull sensory annotations and then pull associated skids
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
+sens = [Celltype(name, Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 input_skids_list = [x.get_skids() for x in sens]
 input_skids = [val for sublist in input_skids_list for val in sublist]
 
@@ -43,25 +35,13 @@ output_names = pymaid.get_annotated('mw brain outputs').name
 output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
 output_skids = [val for sublist in output_skids_list for val in sublist]
 
-# load left / right annotations
-left = pymaid.get_skids_by_annotation('mw left')
-right = pymaid.get_skids_by_annotation('mw right')
+# identify contralateral sens neurons and contra-contra neurons to flip their left/right identities
+neurons_to_flip = list(np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite')))
+inputs_to_flip = [skid for skid in pymaid.get_skids_by_annotation('mw contralateral axon') if skid in input_skids]
+neurons_to_flip = neurons_to_flip + inputs_to_flip
 
-# need to switch several ascending neurons because they ascending contralateral and some contra-contra neurons
-
-# contralateral input neurons
-neurons_to_flip = pymaid.get_skids_by_annotation('mw contralateral axon')
-neurons_to_flip_left = [skid for skid in neurons_to_flip if ((skid in left) & (skid in input_skids))]
-neurons_to_flip_right = [skid for skid in neurons_to_flip if ((skid in right) & (skid in input_skids))]
-
-# add neurons with contralateral axons and dendrites so they are displayed on the correct side
-contra_contra = list(np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), pymaid.get_skids_by_annotation('mw contralateral dendrite')))
-neurons_to_flip_left = neurons_to_flip_left + list(np.intersect1d(contra_contra, left))
-neurons_to_flip_right = neurons_to_flip_right + list(np.intersect1d(contra_contra, right))
-
-# removing neurons_to_flip and adding to the other side
-left = list(np.setdiff1d(left, neurons_to_flip_left)) + neurons_to_flip_right
-right = list(np.setdiff1d(right, neurons_to_flip_right)) + neurons_to_flip_left
+# define left and right neurons from a hemispheric propagation perspective, flip left/right identity as appropriate
+left, right = Promat.get_hemis('mw left', 'mw right', neurons_to_flip=neurons_to_flip)
 
 input_skids_left = list(np.intersect1d(input_skids, left))
 input_skids_right = list(np.intersect1d(input_skids, right))
@@ -76,22 +56,22 @@ input_skids_right = list(np.setdiff1d(input_skids_right, bilat_axon))
 input_skids_list = [input_skids_left, input_skids_right]
 
 #%%
-# cascades from each sensory modality
+# cascades from left or right hemisphere input neurons
 # save as pickle to use later because cascades are stochastic; prevents the need to remake plots everytime
 import pickle
 
 p = 0.05
-max_hops = 10
+max_hops = 8
 n_init = 1000
 simultaneous = True
 adj=adj_ad
 '''
-input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = ['left_inputs', 'right_inputs'], stop_skids=output_skids, 
-                                                                    adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous)
+input_hit_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = ['left_inputs', 'right_inputs'], stop_skids=output_skids, 
+                                                                    adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous, pairs=pairs, pairwise=True, disable_tqdm=False)
 
-pickle.dump(input_hit_hist_list, open(f'data/cascades/hemisphere-cascades_{n_init}-n_init.p', 'wb'))
+pickle.dump(input_hit_hist_list, open(f'data/cascades/left-right-hemisphere-cascades_{n_init}-n_init_{data_date}.p', 'wb'))
 '''
-input_hit_hist_list = pickle.load(open(f'data/cascades/hemisphere-cascades_{n_init}-n_init.p', 'rb'))
+input_hit_hist_list = pickle.load(open(f'data/cascades/left-right-hemisphere-cascades_{n_init}-n_init_{data_date}.p', 'rb'))
 
 # %%
 # plot heatmaps of number of neurons over-threshold per hop
@@ -100,17 +80,17 @@ def intersect_stats(hit_hist1, hit_hist2, threshold, hops):
     intersect_hops = []
     total_hops = []
 
-    for i in np.arange(0, hops):
-        intersect = list(np.logical_and(hit_hist1.loc[:,i]>threshold, hit_hist2.loc[:,i]>threshold))
-        total = list(np.logical_or(hit_hist1.loc[:,i]>threshold, hit_hist2.loc[:,i]>threshold))
+    for i in np.arange(0, hops+1):
+        intersect = list(np.logical_and(hit_hist1.loc[:,i]>=threshold, hit_hist2.loc[:,i]>=threshold))
+        total = list(np.logical_or(hit_hist1.loc[:,i]>=threshold, hit_hist2.loc[:,i]>=threshold))
         intersect_hops.append(intersect)
         total_hops.append(total)
 
-    intersect_hops = pd.DataFrame(intersect_hops, index=range(0, hops), columns = hit_hist1.index).T
-    total_hops = pd.DataFrame(total_hops, index=range(0, hops), columns = hit_hist1.index).T
+    intersect_hops = pd.DataFrame(intersect_hops, index=range(0, hops+1), columns = hit_hist1.index).T
+    total_hops = pd.DataFrame(total_hops, index=range(0, hops+1), columns = hit_hist1.index).T
 
     percent = []
-    for i in np.arange(0, hops):
+    for i in np.arange(0, hops+1):
         if(sum(total_hops[i])>0):
             percent.append(sum(intersect_hops[i])/sum(total_hops[i]))
         if(sum(total_hops[i])==0):
@@ -122,7 +102,7 @@ all_inputs_hit_hist_left = input_hit_hist_list[0].skid_hit_hist
 all_inputs_hit_hist_right = input_hit_hist_list[1].skid_hit_hist
 
 threshold = n_init/2
-hops = 10
+hops = 8
 all_inputs_intersect, all_inputs_total, all_inputs_percent = intersect_stats(all_inputs_hit_hist_left, all_inputs_hit_hist_right, threshold, hops)
 
 # identify left/right ipsi, bilateral, contralaterals
@@ -191,7 +171,7 @@ data = pd.DataFrame([i_left, b_left, c_left, c_right, b_right, i_right], index =
 data = data.fillna(0)
 sns.heatmap(data.iloc[:, 0:5], ax = ax, annot=True, fmt=".0%", cbar = False, cmap = cmr.lavender)
 ax.tick_params(left=False, bottom=False)
-fig.savefig('interhemisphere/plots/summary_intersect-plot.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/interhemisphere-summary_intersect-plot.pdf', format='pdf', bbox_inches='tight')
 
 # plot results
 fig, axs = plt.subplots(
@@ -235,7 +215,7 @@ data = pd.DataFrame([i_left, b_left, c_left, c_right, b_right, i_right], index =
 data = data.fillna(0)
 sns.heatmap(data.iloc[:, 0:5], ax = ax, annot=True, cbar = False, cmap = cmr.lavender)
 ax.tick_params(left=False, bottom=False)
-fig.savefig('interhemisphere/plots/summary_intersect-plot_raw-counts.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/interhemisphere-summary_intersect-plot_raw-counts.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # identify integration center neurons
@@ -249,17 +229,17 @@ data_contra = data_mat.loc[np.intersect1d(contralateral, data_mat.index), :]
 all_cats = []
 for i in range(len(data_mat.columns)):
     cats_hop = []
-    cats_hop.append(ct.Celltype(f'hop{i}_ipsi_integrators', list(data_ipsi[data_ipsi.iloc[:, i]].index)))
-    cats_hop.append(ct.Celltype(f'hop{i}_bilateral_integrators', list(data_bilat[data_bilat.iloc[:, i]].index)))
-    cats_hop.append(ct.Celltype(f'hop{i}_contra_integrators', list(data_contra[data_contra.iloc[:, i]].index)))
+    cats_hop.append(Celltype(f'hop{i}_ipsi_integrators', list(data_ipsi[data_ipsi.iloc[:, i]].index)))
+    cats_hop.append(Celltype(f'hop{i}_bilateral_integrators', list(data_bilat[data_bilat.iloc[:, i]].index)))
+    cats_hop.append(Celltype(f'hop{i}_contra_integrators', list(data_contra[data_contra.iloc[:, i]].index)))
 
     all_cats.append(cats_hop)
 
-_, celltypes = ct.Celltype_Analyzer.default_celltypes()
+_, celltypes = Celltype_Analyzer.default_celltypes()
 
 all_cat_memberships=[]
 for i in range(len(all_cats)):
-    all_cats_analyzer = ct.Celltype_Analyzer(all_cats[i])
+    all_cats_analyzer = Celltype_Analyzer(all_cats[i])
     all_cats_analyzer.set_known_types(celltypes)
     cats_memberships = all_cats_analyzer.memberships(raw_num=True) #switch to False for percent neurons
     all_cat_memberships.append(cats_memberships)
@@ -292,15 +272,15 @@ for i in range(1, 5):
         ax.set(ylim=(0,100))
         plt.xticks(rotation=45, ha='right')
 
-    plt.savefig(f'interhemisphere/plots/ipsi_bi_contra_identities/integrators_hop{i}.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig(f'plots/interhemisphere_integrators_hop{i}.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # cascades to descendings; L/R bias of descending input
 
-pairs = pm.Promat.get_pairs()
-dVNC = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs)
-dSEZ = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs)
-RGN = pm.Promat.load_pairs_from_annotation('mw RGN', pairs)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+dVNC = Promat.load_pairs_from_annotation('mw dVNC', pairs)
+dSEZ = Promat.load_pairs_from_annotation('mw dSEZ', pairs)
+RGN = Promat.load_pairs_from_annotation('mw RGN', pairs)
 
 dVNC_left = list(dVNC.leftid)
 dVNC_right = list(dVNC.rightid)
@@ -342,28 +322,18 @@ ax=axs[1]
 sns.heatmap(df_right, cmap=cmr.iceburn, ax=ax, cbar=False)
 ax.tick_params(left=False, bottom=False)
 ax.set(yticks=([]))
-fig.savefig('interhemisphere/plots/left-right-visits_brain_outputs.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/interhemisphere_left-right-visits_brain_outputs.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(1.5,1.5), sharey=True)
 sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax)
-fig.savefig('interhemisphere/plots/left-right-visits_brain_outputs_cbar.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/interhemisphere_left-right-visits_brain_outputs_cbar.pdf', format='pdf', bbox_inches='tight')
 # %%
 # lateralization metric to determine how much left/right mixing happens per neuron
 
-left_signal = all_inputs_hit_hist_left/n_init
-left_signal = left_signal.sum(axis=1)
-
-right_signal = all_inputs_hit_hist_right/n_init
-right_signal = -(right_signal.sum(axis=1))
-
-integration = (left_signal + right_signal)
-integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index)
-
-
-pairs = pm.Promat.get_pairs()
-dVNC = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_sorted')
-dSEZ = pm.Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='all_pair_sorted')
-RGN = pm.Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='all_pair_sorted')
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+dVNC = Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='pairs')
+dSEZ = Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='pairs')
+RGN = Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='pairs')
 
 left_signal = all_inputs_hit_hist_left/n_init
 left_signal = left_signal.sum(axis=1)
@@ -431,7 +401,7 @@ sns.scatterplot(x=[x for x in range(0, len(dVNC))], y=dVNC.lateralization.sort_v
 sns.scatterplot(x=[x+len(dVNC) for x in range(0, len(dSEZ))], y=dSEZ.lateralization.sort_values(), color='#C47451', ax=ax, s=s)
 sns.scatterplot(x=[x+len(dVNC)+len(dSEZ) for x in range(0, len(RGN))], y=RGN.lateralization.sort_values(), color='#9467BD', ax=ax, s=s)
 ax.set(ylim=(-1,1))
-plt.savefig('interhemisphere/plots/signal-lateralization.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/interhemisphere_signal-lateralization.pdf', format='pdf', bbox_inches='tight')
 
 s = 2
 fig, ax = plt.subplots(1,1,figsize=(1,2))
@@ -439,27 +409,7 @@ sns.scatterplot(x=[x for x in range(0, len(dVNC))], y=dVNC.lateralization.sort_v
 sns.scatterplot(x=[x for x in range(0, len(dSEZ))], y=dSEZ.lateralization.sort_values(), color='#C47451', ax=ax, s=s)
 sns.scatterplot(x=[x for x in range(0, len(RGN))], y=RGN.lateralization.sort_values(), color='#9467BD', ax=ax, s=s)
 ax.set(ylim=(-1,1))
-plt.savefig('interhemisphere/plots/signal-lateralization_overlapping.pdf', format='pdf', bbox_inches='tight')
-
-'''
-# rasterplot
-fig, ax = plt.subplots(1,1,figsize=(2,2))
-ax.set(ylim = (-0.05, 1))
-ax.eventplot([[x] for x in dVNC.lateralization.sort_values()] + [[x] for x in dSEZ.lateralization.sort_values()] + [[x] for x in RGN.lateralization.sort_values()], \
-            lineoffsets = np.arange(1, len(dVNC)+len(dSEZ)+len(RGN)+1), linewidths = 0.75, orientation='vertical', color=['#A52A2A']*len(dVNC) + ['#C47451']*len(dSEZ) + ['#9467BD']*len(RGN))
-plt.savefig('interhemisphere/plots/signal-lateralization_raster.pdf', format='pdf', bbox_inches='tight')
-
-dVNC['type'] =['dVNC']*len(dVNC)
-dSEZ['type'] =['dSEZ']*len(dSEZ)
-RGN['type'] =['RGN']*len(RGN)
-
-outputs_df = pd.concat([dVNC, dSEZ, RGN], axis=0)
-
-# catplot
-fig, ax = plt.subplots(1,1,figsize=(2,6))
-sns.boxenplot(data=outputs_df, y='lateralization', x='type')
-plt.savefig('interhemisphere/plots/signal-lateralization_catplot.pdf', format='pdf', bbox_inches='tight')
-'''
+plt.savefig('plots/interhemisphere_signal-lateralization_overlapping.pdf', format='pdf', bbox_inches='tight')
 
 # percent >0.25
 dVNC_lateralized = dVNC[abs(dVNC.lateralization)>0.25].leftid
@@ -478,13 +428,13 @@ lateralized = pd.DataFrame([[len(dVNC_lateralized)/len(dVNC), len(dSEZ_lateraliz
 fig, ax = plt.subplots(1,1, figsize=(2,2))
 ax.bar(x = lateralized.columns, height = lateralized.loc['lateralized', :])
 ax.bar(x = lateralized.columns, height = lateralized.loc['mixed', :], bottom = lateralized.loc['lateralized', :])
-plt.savefig('interhemisphere/plots/signal-lateralization_summary.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/interhemisphere_signal-lateralization_summary.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # lateralization of all brain neurons
-brain_skids = np.setdiff1d(pymaid.get_skids_by_annotation('mw brain paper clustered neurons') + pymaid.get_skids_by_annotation('mw brain accessory neurons'), input_skids + ascending_unknown)
-brain_skids = np.intersect1d(integration_df.index, brain_skids)
-brain = pm.Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_sorted', skids=brain_skids, use_skids=True)
+
+skids = np.setdiff1d(integration_df.index, input_skids + pymaid.get_skids_by_annotation('mw A1 ascending unknown') + pymaid.get_skids_by_annotation('mw motor'))
+brain = Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_ids_bothsides', skids=skids, use_skids=True)
 
 left_int = []
 right_int = []
@@ -495,51 +445,188 @@ for i in brain.index:
     
     int_left = integration_df.loc[leftid, 'left_right_signal']
     int_right = integration_df.loc[rightid, 'left_right_signal']
-    left_int.append(int_left)
-    right_int.append(int_right)
-    left_right_int.append(((int_left)+-(int_right))/2)
+
+    # for paired neurons
+    if(leftid!=rightid):
+        left_int.append(int_left)
+        right_int.append(int_right)
+        left_right_int.append(((int_left)+-(int_right))/2)
+
+    # for nonpaired neurons
+    if(leftid==rightid):
+
+        # determine if neuron is left or right neuron to set appropriate signal polarity
+        if(leftid in left):
+            left_int.append(int_left)
+            right_int.append(-int_right)
+            left_right_int.append(((int_left)+-(-int_right))/2)
+
+        if(leftid in right):
+            left_int.append(-int_left)
+            right_int.append(int_right)
+            left_right_int.append(((-int_left)+-(int_right))/2)
+
+        # center neuron case
+        if((leftid not in left) & (leftid not in right)):
+            left_int.append(int_left)
+            right_int.append(-int_right)
+            left_right_int.append(((int_left)+-(-int_right))/2)            
 
 brain['left_integration'] = left_int
 brain['right_integration'] = right_int
 brain['lateralization'] = left_right_int
 
-# flip value of FFN-18 (unannotated contra axon, contra/bilateral dendrite)
-brain.loc[brain[brain.leftid==3622234].index, 'lateralization'] = -brain[brain.leftid==3622234].lateralization
+threshold = 0.25
 
 # plot all brain lateralization 
-brain_sort_subthres = brain.lateralization.sort_values()[brain.lateralization.sort_values()<=threshold]
+brain_sort_subthres = brain.lateralization.sort_values()[(brain.lateralization.sort_values()<=threshold) & (brain.lateralization.sort_values()>=-threshold)]
 brain_sort_thres = brain.lateralization.sort_values()[brain.lateralization.sort_values()>threshold]
+brain_sort_contra_thres = brain.lateralization.sort_values()[brain.lateralization.sort_values()<-threshold]
 
 s=6
 alpha = 0.25
 fig, ax = plt.subplots(1,1,figsize=(1,2))
-plt.scatter(x=[x for x in range(0, len(brain_sort_subthres))], y=brain_sort_subthres, color='none', edgecolor=sns.color_palette()[0], linewidths=0.2, alpha=alpha, s=s)
-plt.scatter(x=[x for x in range(len(brain_sort_subthres), len(brain_sort_subthres)+len(brain_sort_thres))], y=brain_sort_thres, color='none', edgecolor=sns.color_palette()[1], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(0, len(brain_sort_contra_thres))], y=brain_sort_contra_thres, color='none', edgecolor=sns.color_palette()[3], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(len(brain_sort_contra_thres), len(brain_sort_contra_thres) + len(brain_sort_subthres))], y=brain_sort_subthres, color='none', edgecolor=sns.color_palette()[0], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(len(brain_sort_contra_thres) + len(brain_sort_subthres), len(brain_sort_subthres) + len(brain_sort_thres) + len(brain_sort_contra_thres))], y=brain_sort_thres, color='none', edgecolor=sns.color_palette()[1], linewidths=0.2, alpha=alpha, s=s)
 ax.set(ylim=(-1.05,1.05))
-plt.savefig('interhemisphere/plots/signal-lateralization_whole-brain.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/interhemisphere_signal-lateralization_whole-brain.pdf', format='pdf', bbox_inches='tight')
 
 # identify neurons with >0.25 lateralization
 threshold = 0.25
 brain_lateralized_ipsi_left = list(brain[(brain.lateralization>threshold)].leftid) 
 brain_lateralized_ipsi_right = list(brain[(brain.lateralization>threshold)].rightid)
 brain_lateralized_ipsi = brain_lateralized_ipsi_left + brain_lateralized_ipsi_right
-brain_lateralized_ipsi_ct = ct.Celltype('lateralized', brain_lateralized_ipsi, color=sns.color_palette()[1])
+brain_lateralized_ipsi_ct = Celltype('ipsi_lateralized', brain_lateralized_ipsi, color=sns.color_palette()[1])
 
-brain_lateralized_contra_left = list(brain[(brain.lateralization<-threshold)].leftid) 
+brain_lateralized_contra_left = list(brain[(brain.lateralization<-threshold)].leftid)
 brain_lateralized_contra_right = list(brain[(brain.lateralization<-threshold)].rightid)
 brain_lateralized_contra = brain_lateralized_contra_left + brain_lateralized_contra_right
-brain_lateralized_contra_ct = ct.Celltype('lateralized', brain_lateralized_contra, color=sns.color_palette()[3])
+brain_lateralized_contra_ct = Celltype('contra_lateralized', brain_lateralized_contra, color=sns.color_palette()[3])
 
 brain_nonlat_left = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].leftid) 
 brain_nonlat_right = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].rightid) 
 brain_nonlateralized = brain_nonlat_left + brain_nonlat_right
-brain_nonlateralized_ct = ct.Celltype('non_lateralized', brain_nonlateralized, color=sns.color_palette()[0])
+brain_nonlateralized_ct = Celltype('non_lateralized', brain_nonlateralized, color=sns.color_palette()[0])
 
 pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
-_, celltypes = ct.Celltype_Analyzer.default_celltypes(exclude=pdiff)
-celltype_analyzer = ct.Celltype_Analyzer(celltypes)
+_, celltypes = Celltype_Analyzer.default_celltypes(exclude=pdiff)
+celltype_analyzer = Celltype_Analyzer([celltype for celltype in celltypes if celltype.name not in ['ascendings', 'sensories']])
 celltype_analyzer.set_known_types([brain_lateralized_ipsi_ct, brain_lateralized_contra_ct, brain_nonlateralized_ct])
 memberships = celltype_analyzer.memberships()
-celltype_analyzer.plot_memberships('interhemisphere/plots/signal-lateralization_by-celltype.pdf', figsize=(4,2))
+celltype_analyzer.plot_memberships('plots/interhemisphere_signal-lateralization_by-celltype.pdf', figsize=(4,2))
+
+print(f'{len(brain_sort_thres)/(len(brain_sort_thres)+len(brain_sort_subthres))*100:.1f}% of neurons are ipsi-lateralized with 8 hops')
+print(f'{len(brain_sort_subthres)/(len(brain_sort_thres)+len(brain_sort_subthres))*100:.1f}% of neurons are non-lateralized with 8 hops')
+
+
+# %%
+#########
+# repeat lateralization analysis with 5-hop cascades
+#########
+
+# lateralization metric to determine how much left/right mixing happens per neuron
+
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+dVNC = Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='pairs')
+dSEZ = Promat.load_pairs_from_annotation('mw dSEZ', pairs, return_type='pairs')
+RGN = Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='pairs')
+
+left_signal = all_inputs_hit_hist_left.loc[:, [0,1,2,3,4,5]]/n_init
+left_signal = left_signal.sum(axis=1)
+
+right_signal = all_inputs_hit_hist_right.loc[:, [0,1,2,3,4,5]]/n_init
+right_signal = -(right_signal.sum(axis=1))
+
+integration = (left_signal + right_signal)
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index, columns = ['left_signal', 'right_signal', 'left_right_signal'])
+
+# lateralization of all brain neurons
+skids = np.setdiff1d(integration_df.index, input_skids + pymaid.get_skids_by_annotation('mw A1 ascending unknown') + pymaid.get_skids_by_annotation('mw motor'))
+brain = Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_ids_bothsides', skids=skids, use_skids=True)
+
+left_int = []
+right_int = []
+left_right_int = []
+for i in brain.index:
+    leftid = brain.loc[i, 'leftid']
+    rightid = brain.loc[i, 'rightid']
+    
+    int_left = integration_df.loc[leftid, 'left_right_signal']
+    int_right = integration_df.loc[rightid, 'left_right_signal']
+
+    # for paired neurons
+    if(leftid!=rightid):
+        left_int.append(int_left)
+        right_int.append(int_right)
+        left_right_int.append(((int_left)+-(int_right))/2)
+
+    # for nonpaired neurons
+    if(leftid==rightid):
+
+        # determine if neuron is left or right neuron to set appropriate signal polarity
+        if(leftid in left):
+            left_int.append(int_left)
+            right_int.append(-int_right)
+            left_right_int.append(((int_left)+-(-int_right))/2)
+
+        if(leftid in right):
+            left_int.append(-int_left)
+            right_int.append(int_right)
+            left_right_int.append(((-int_left)+-(int_right))/2)
+
+        # center neuron case
+        if((leftid not in left) & (leftid not in right)):
+            left_int.append(int_left)
+            right_int.append(-int_right)
+            left_right_int.append(((int_left)+-(-int_right))/2)            
+
+brain['left_integration'] = left_int
+brain['right_integration'] = right_int
+brain['lateralization'] = left_right_int
+
+threshold = 0.25
+
+# plot all brain lateralization 
+brain_sort_subthres = brain.lateralization.sort_values()[(brain.lateralization.sort_values()<=threshold) & (brain.lateralization.sort_values()>=-threshold)]
+brain_sort_thres = brain.lateralization.sort_values()[brain.lateralization.sort_values()>threshold]
+brain_sort_contra_thres = brain.lateralization.sort_values()[brain.lateralization.sort_values()<-threshold]
+
+s=6
+alpha = 0.25
+fig, ax = plt.subplots(1,1,figsize=(1,2))
+plt.scatter(x=[x for x in range(0, len(brain_sort_contra_thres))], y=brain_sort_contra_thres, color='none', edgecolor=sns.color_palette()[3], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(len(brain_sort_contra_thres), len(brain_sort_contra_thres) + len(brain_sort_subthres))], y=brain_sort_subthres, color='none', edgecolor=sns.color_palette()[0], linewidths=0.2, alpha=alpha, s=s)
+plt.scatter(x=[x for x in range(len(brain_sort_contra_thres) + len(brain_sort_subthres), len(brain_sort_subthres) + len(brain_sort_thres) + len(brain_sort_contra_thres))], y=brain_sort_thres, color='none', edgecolor=sns.color_palette()[1], linewidths=0.2, alpha=alpha, s=s)
+ax.set(ylim=(-1.05,1.05))
+plt.savefig('plots/interhemisphere_signal-lateralization_whole-brain_5hops.pdf', format='pdf', bbox_inches='tight')
+
+# identify neurons with >0.25 lateralization
+threshold = 0.25
+brain_lateralized_ipsi_left = list(brain[(brain.lateralization>threshold)].leftid) 
+brain_lateralized_ipsi_right = list(brain[(brain.lateralization>threshold)].rightid)
+brain_lateralized_ipsi = brain_lateralized_ipsi_left + brain_lateralized_ipsi_right
+brain_lateralized_ipsi_ct = Celltype('ipsi_lateralized', brain_lateralized_ipsi, color=sns.color_palette()[1])
+
+brain_lateralized_contra_left = list(brain[(brain.lateralization<-threshold)].leftid)
+brain_lateralized_contra_right = list(brain[(brain.lateralization<-threshold)].rightid)
+brain_lateralized_contra = brain_lateralized_contra_left + brain_lateralized_contra_right
+brain_lateralized_contra_ct = Celltype('contra_lateralized', brain_lateralized_contra, color=sns.color_palette()[3])
+
+brain_nonlat_left = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].leftid) 
+brain_nonlat_right = list(brain[(brain.lateralization<=threshold) & (brain.lateralization>=-threshold)].rightid) 
+brain_nonlateralized = brain_nonlat_left + brain_nonlat_right
+brain_nonlateralized_ct = Celltype('non_lateralized', brain_nonlateralized, color=sns.color_palette()[0])
+
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+_, celltypes = Celltype_Analyzer.default_celltypes(exclude=pdiff)
+celltype_analyzer = Celltype_Analyzer([celltype for celltype in celltypes if celltype.name not in ['ascendings', 'sensories']])
+celltype_analyzer.set_known_types([brain_lateralized_ipsi_ct, brain_lateralized_contra_ct, brain_nonlateralized_ct])
+memberships_5hops = celltype_analyzer.memberships()
+celltype_analyzer.plot_memberships('plots/interhemisphere_signal-lateralization_by-celltype_5hops.pdf', figsize=(4,2))
+
+
+print(f'{len(brain_sort_thres)/(len(brain_sort_thres)+len(brain_sort_subthres))*100:.1f}% of neurons are ipsi-lateralized with 5 hops')
+print(f'{len(brain_sort_subthres)/(len(brain_sort_thres)+len(brain_sort_subthres))*100:.1f}% of neurons are non-lateralized with 5 hops')
 
 # %%
