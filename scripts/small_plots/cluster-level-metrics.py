@@ -7,10 +7,9 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from pymaid_creds import url, name, password, token
 import pymaid
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+
+from contools import Celltype, Celltype_Analyzer, Promat
+from data_settings import data_date
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -25,16 +24,15 @@ plt.rcParams['font.family'] = 'arial'
 # %%
 # load clusters and plot counts
 
-cluster_lvl = 6 #this is cluster level 7
-clusters, cluster_names = ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_lvl}', split=True)
+cluster_lvl = 7 
+clusters, cluster_names = Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_lvl}', split=True)
 
 counts = [len(cluster) for cluster in clusters]
-
 
 fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.stripplot(y=counts, orient='v', ax=ax, s=1.25, color='k', alpha=0.5)
 sns.boxplot(y=counts, whis=np.inf, ax=ax, linewidth=0.5)
-plt.savefig(f'small_plots/plots/counts-per-cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/counts-per-cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # distribution of intracluster similarity
@@ -52,8 +50,21 @@ morpho_sim = [1, 1, 1, 0.95, 0.89, 0.97, 1, .92, .96, .94, .97, .99,
 fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.histplot(morpho_sim, binwidth=.05, ax=ax)
 ax.set(xlim=(0,1.05), ylim=(0, 20))
-plt.savefig(f'small_plots/plots/morpho-similarity_cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/morpho-similarity_cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
 
+print(f'Mean within-cluster NBLAST score is: {np.mean(morpho_sim):.2f} +/- {np.std(morpho_sim):.2f}')
+
+# %%
+# within cluster connectivity
+# ***didn't finish this section
+
+clusters_cta = [Celltype(cluster_names[i], cluster) for i, cluster in enumerate(clusters)]
+clusters_cta = Celltype_Analyzer(clusters_cta)
+
+adj = Promat.pull_adj(type_adj='ad', date=data_date)
+cluster_connect = clusters_cta.connectivity(adj, normalize_pre_num = True)
+
+# shared outputs per neuron?
 # %%
 # left/right neurons per cluster
 
