@@ -6,10 +6,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+from contools import Celltype, Celltype_Analyzer, Promat, Analyze_Nx_G
+from data_settings import data_date
 
 import networkx as nx
 
@@ -28,8 +26,8 @@ plt.rcParams['font.family'] = 'arial'
 # see 'network_analysis/generate_all_edges.py'
 
 adj_names = ['ad', 'aa', 'dd', 'da']
-edge_lists = [pd.read_csv(f'data/edges_threshold/pairwise-threshold_{name}_all-edges.csv', index_col = 0) for name in adj_names]
-Gad, Gaa, Gdd, Gda = [pg.Analyze_Nx_G(edge_list, graph_type='directed', split_pairs=True) for edge_list in edge_lists]
+edge_lists = [Promat.pull_edges(type_edges=name, data_date=data_date, pairs_combined=False, threshold=0.01) for name in adj_names]
+Gad, Gaa, Gdd, Gda = [Analyze_Nx_G(edge_list, graph_type='directed', split_pairs=True) for edge_list in edge_lists]
 Gs = [Gad, Gaa, Gdd, Gda]
 
 
@@ -37,6 +35,11 @@ Gs = [Gad, Gaa, Gdd, Gda]
 # extract in-degree / out-degree data for each neuron and identify hubs
 threshold = 20
 G_hubs = [obj.get_node_degrees(hub_threshold=threshold) for obj in Gs]
+
+# in/out-degree of MB-FBNs
+FBN = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain MB-FBNs')
+print(np.mean(G_hubs[0]))
+print(np.mean(G_hubs[0].loc[FBN]))
 
 # %%
 # compare hubs to unfiltered hubs

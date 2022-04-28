@@ -1,6 +1,4 @@
 #%%
-import sys
-sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -14,10 +12,7 @@ import numpy.random as random
 
 import cmasher as cmr
 
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+from contools import Celltype, Celltype_Analyzer, Promat
 import navis
 
 # allows text to be editable in Illustrator
@@ -27,6 +22,17 @@ plt.rcParams['ps.fonttype'] = 42
 # font settings
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
+
+# %% 
+# load axon/dendrite types
+brain = pymaid.get_skids_by_annotation('mw brain neurons')
+ipsi_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw ipsilateral dendrite'), brain)
+contra_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral dendrite'), brain)
+bilateral_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw bilateral dendrite'), brain)
+
+ipsi_axon = np.intersect1d(pymaid.get_skids_by_annotation('mw ipsilateral axon'), brain)
+contra_axon = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral axon'), brain)
+bilateral_axon = np.intersect1d(pymaid.get_skids_by_annotation('mw bilateral axon'), brain)
 
 # %%
 # number of dendrite_axon types
@@ -50,7 +56,7 @@ neuron_types = pd.DataFrame([[ipsi_ipsi, ipsi_bilateral, ipsi_contra],
 fig, ax = plt.subplots(1,1, figsize=(0.75,0.75))
 sns.heatmap(neuron_types, annot=True, fmt = 'd', ax=ax, vmax=600, cmap='Blues', cbar=False)
 ax.set(xticks=([]), yticks=([]))
-fig.savefig('interhemisphere/plots/cell_types_dendrite-axon.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/cell_types_dendrite-axon.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # plotting example neurons for supplemental figure
@@ -91,6 +97,6 @@ for i, celltype in enumerate(interhemi_types):
         ax.set_xlim3d((-4500, 110000))
         ax.set_ylim3d((-4500, 110000))
 
-    fig.savefig(f'interhemisphere/plots/morpho_{celltype.get_name()}.png', format='png', dpi=300, transparent=True)
+    fig.savefig(f'plots/morpho_{celltype.get_name()}.png', format='png', dpi=300, transparent=True)
 
 # %%
