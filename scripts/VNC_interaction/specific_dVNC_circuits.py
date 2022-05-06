@@ -1,7 +1,7 @@
 #%%
 
-from pymaid_creds import url, name, password, token
 import pymaid
+from pymaid_creds import url, name, password, token
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 import numpy as np
@@ -10,11 +10,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_graph as pg
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.cluster_analysis as clust
+from data_settings import data_date, pairs_path
+from contools import Promat, Prograph, Celltype, Celltype_Analyzer
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -22,18 +19,18 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-adj = pm.Promat.pull_adj('ad', subgraph='brain and accessory')
-edges = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
+adj = Promat.pull_adj('ad', data_date=data_date)
+edges = Promat.pull_edges('ad', threshold=0.01, data_date=data_date, pairs_combined=False)
 
 # ignore all outputs to A1 neurons; this will make sure dVNC feedback only goes to brain
 # while also allowing ascending -> dVNC connections
-VNC_neurons = pymaid.get_skids_by_annotation('mw A1 neurons paired') + pymaid.get_skids_by_annotation('mw A00c')
-edges = edges[[x not in VNC_neurons for x in edges.downstream_skid]]
+#VNC_neurons = pymaid.get_skids_by_annotation('mw A1 neurons paired') + pymaid.get_skids_by_annotation('mw A00c')
+#edges = edges[[x not in VNC_neurons for x in edges.downstream_skid]]
 
-pairs = pm.Promat.get_pairs()
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
 
-dVNC_pairs = pm.Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_ids_bothsides', skids=dVNCs, use_skids=True)
+dVNC_pairs = Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='all_pair_ids_bothsides', skids=dVNCs, use_skids=True)
 
 # %%
 # dVNC projectome data prep
@@ -97,7 +94,7 @@ blue_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Blues', color
 cmap = blue_cmap
 fig, ax = plt.subplots(1,1,figsize=(2,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output_norm.loc[sort, :], ax=ax, cmap=cmap)
-plt.savefig(f'VNC_interaction/plots/projectome/A8-T1_sort_projectome_normalized_sortThres{sort_threshold}.pdf', bbox_inches='tight')
+plt.savefig(f'plots/projectome_A8-T1_sort_normalized_sortThres{sort_threshold}.pdf', bbox_inches='tight')
 
 # sorting with raw data
 sort_threshold = 0
@@ -112,7 +109,9 @@ vmax = 70
 cmap = blue_cmap
 fig, ax = plt.subplots(1,1,figsize=(2,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output.loc[sort, :], ax=ax, cmap=cmap, vmax=vmax)
-plt.savefig(f'VNC_interaction/plots/projectome/A8-T1_sort_projectome_sortThres{sort_threshold}.pdf', bbox_inches='tight')
+plt.savefig(f'plots/projectome_A8-T1_sort_projectome_sortThres{sort_threshold}.pdf', bbox_inches='tight')
+
+dVNC_projectome_pairs_summed_output.to_csv('data/projectome/dVNC_projectome.csv')
 
 # %%
 # paths 2-hop upstream of each dVNC
@@ -127,70 +126,151 @@ dVNC_pairs.reset_index(inplace=True, drop=True)
 hops = 2
 threshold = 0.01
 
-dVNC_pair_paths_us = [pm.Promat.upstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops) for i in tqdm(range(0, len(dVNC_pairs)))]
-dVNC_pair_paths_ds = [pm.Promat.downstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops) for i in tqdm(range(0, len(dVNC_pairs)))]
-
-# %%
-# plotting individual dVNC paths
-
-_, celltypes = ct.Celltype_Analyzer.default_celltypes()
-
-skids_list = [list(adj.index)] + [x.get_skids() for x in celltypes]
-
-# UPSTREAM
-all_layers_us = [ct.Celltype_Analyzer.layer_id(dVNC_pair_paths_us, dVNC_pairs.leftid, skids_type)[0] for skids_type in skids_list]
-layer_names = ['Total'] + [x.get_name() for x in celltypes]
-
-threshold = 0.01
-
-layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds']
-layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50, 50, 50, 50, 50, 50]
-save_path = 'VNC_interaction/plots/dVNC_partners/Upstream_'
-ct.Celltype_Analyzer.plot_layer_types(layer_types=all_layers_us, layer_names=layer_names, layer_colors=layer_colors,
-                        layer_vmax=layer_vmax, pair_ids=dVNC_pairs.leftid, figsize=(.5*hops/3, 1.5), save_path=save_path, threshold=threshold, hops=hops)
-
-# DOWNSTREAM
-all_layers_ds = [ct.Celltype_Analyzer.layer_id(dVNC_pair_paths_ds, dVNC_pairs.leftid, skids_type)[0] for skids_type in skids_list]
-layer_names = ['Total'] + [x.get_name() for x in celltypes]
-threshold = 0.01
-
-layer_colors = ['Greens', 'Greens', 'Blues', 'Greens', 'Oranges', 'Reds', 'Greens', 'Blues', 'Purples', 'Blues', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds', 'Purples', 'Reds']
-layer_vmax = [200, 50, 50, 50, 50, 50, 50, 50, 50, 50, 100, 50, 50, 50, 50, 50, 50]
-save_path = 'VNC_interaction/plots/dVNC_partners/Downstream-in-brain_'
-ct.Celltype_Analyzer.plot_layer_types(layer_types=all_layers_ds, layer_names=layer_names, layer_colors=layer_colors,
-                        layer_vmax=layer_vmax, pair_ids=dVNC_pairs.leftid, figsize=(.5*hops/3, 1.5), save_path=save_path, threshold=threshold, hops=hops)
+ascendings = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending') # exclude ascendings from downstream b/c only interested in downstream partners in the brain
+dVNC_pair_paths_us = [Promat.upstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops, pairs=pairs) for i in tqdm(range(0, len(dVNC_pairs)))]
+dVNC_pair_paths_ds = [Promat.downstream_multihop(edges=edges, sources=dVNC_pairs.loc[i].to_list(), hops=hops, pairs=pairs, exclude=ascendings) for i in tqdm(range(0, len(dVNC_pairs)))]
 
 # %%
 # make bar plots for 1-hop and 2-hop
 
-_, celltypes = ct.Celltype_Analyzer.default_celltypes()
+_, celltypes = Celltype_Analyzer.default_celltypes()
 
 figsize = (2,0.5)
 # UPSTREAM
-us_1order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_us)])
-us_2order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_us)])
+us_1order = Celltype_Analyzer([Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_us)])
+us_2order = Celltype_Analyzer([Celltype(str(dVNC_pairs.loc[i].leftid) + '_us_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_us)])
 us_1order.set_known_types(celltypes)
 us_2order.set_known_types(celltypes)
 
-path = 'VNC_interaction/plots/dVNC_partners/summary_plot_1st_order_upstream.pdf'
+path = 'plots/dVNC_partners_summary_plot_1st_order_upstream.pdf'
 us_1order.plot_memberships(path = path, figsize=figsize)
 
-path = 'VNC_interaction/plots/dVNC_partners/summary_plot_2nd_order_upstream.pdf'
+path = 'plots/dVNC_partners_summary_plot_2nd_order_upstream.pdf'
 us_2order.plot_memberships(path = path, figsize=figsize)
 
 # DOWNSTREAM
-ds_1order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_ds)])
-ds_2order = ct.Celltype_Analyzer([ct.Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_ds)])
+ds_1order = Celltype_Analyzer([Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_1o', x[0]) for i, x in enumerate(dVNC_pair_paths_ds)])
+ds_2order = Celltype_Analyzer([Celltype(str(dVNC_pairs.loc[i].leftid) + '_ds_2o', x[1]) for i, x in enumerate(dVNC_pair_paths_ds)])
 ds_1order.set_known_types(celltypes)
 ds_2order.set_known_types(celltypes)
 
-path = 'VNC_interaction/plots/dVNC_partners/summary_plot_1st_order_downstream.pdf'
+path = 'plots/dVNC_partners_summary_plot_1st_order_downstream.pdf'
 ds_1order.plot_memberships(path = path, figsize=figsize)
 
-path = 'VNC_interaction/plots/dVNC_partners/summary_plot_2nd_order_downstream.pdf'
+path = 'plots/dVNC_partners_summary_plot_2nd_order_downstream.pdf'
 ds_2order.plot_memberships(path = path, figsize=figsize)
 
+# %%
+# categorizing dVNCs into candidate behaviors
 
+fwd = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].A8 == dVNC_projectome_pairs_summed_output.iloc[:, 2:].max(axis=1)) & (dVNC_projectome_pairs_summed_output.A8>0)
+speed = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].A8 != dVNC_projectome_pairs_summed_output.iloc[:, 2:].max(axis=1)) & (dVNC_projectome_pairs_summed_output.A8>0)
+turn = (dVNC_projectome_pairs_summed_output.loc[:, ['A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['A2', 'A3', 'A4']].sum(axis=1)>0)
+backup = (dVNC_projectome_pairs_summed_output.loc[:, ['A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['A1']].sum(axis=1)>0)
+head_hunch = (dVNC_projectome_pairs_summed_output.loc[:, ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['T1', 'T2', 'T3']].sum(axis=1)>0)
+
+fwd = dVNC_projectome_pairs_summed_output.index[fwd]
+speed = dVNC_projectome_pairs_summed_output.index[speed]
+turn = dVNC_projectome_pairs_summed_output.index[turn]
+backup = dVNC_projectome_pairs_summed_output.index[backup]
+head_hunch = dVNC_projectome_pairs_summed_output.index[head_hunch]
+
+fwd_skids = Promat.get_paired_skids([int(x) for x in fwd], pairs)
+speed_skids = Promat.get_paired_skids([int(x) for x in speed], pairs)
+turn_skids = Promat.get_paired_skids([int(x) for x in turn], pairs)
+backup_skids = Promat.get_paired_skids([int(x) for x in backup], pairs)
+head_hunch_skids = Promat.get_paired_skids([int(x) for x in head_hunch], pairs)
+
+pymaid.add_annotations([x for sublist in fwd_skids for x in sublist], 'mw candidate forward')
+pymaid.add_annotations([x for sublist in speed_skids for x in sublist], 'mw candidate speed-modulation')
+pymaid.add_annotations([x for sublist in turn_skids for x in sublist], 'mw candidate turn')
+pymaid.add_annotations([x for sublist in backup_skids for x in sublist], 'mw candidate backup')
+pymaid.add_annotations([x for sublist in head_hunch_skids for x in sublist], 'mw candidate hunch_head-move')
+pymaid.add_meta_annotations(['mw candidate forward', 'mw candidate speed-modulation', 'mw candidate turn', 'mw candidate backup', 'mw candidate hunch_head-move'], 'mw dVNC candidate behaviors')
+
+# %%
+# which neurons talk to neurons of candidate behaviors
+
+from tqdm import tqdm
+
+def plot_12order(skids_list, edges, hops, pairs, figsize, behavior):
+    ascendings = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+    us = [Promat.upstream_multihop(edges=edges, sources=skids_list[i], hops=hops, pairs=pairs) for i in tqdm(range(0, len(skids_list)))]
+    ds = [Promat.downstream_multihop(edges=edges, sources=skids_list[i], hops=hops, pairs=pairs, exclude=ascendings) for i in tqdm(range(0, len(skids_list)))]
+
+    # UPSTREAM
+    us_1order = Celltype_Analyzer([Celltype(str(skids_list[i][0]) + '_us_1o', x[0]) for i, x in enumerate(us)])
+    us_2order = Celltype_Analyzer([Celltype(str(skids_list[i][0]) + '_us_2o', x[1]) for i, x in enumerate(us)])
+    us_1order.set_known_types(celltypes)
+    us_2order.set_known_types(celltypes)
+
+    # DOWNSTREAM
+    ds_1order = Celltype_Analyzer([Celltype(str(skids_list[i][0]) + '_ds_1o', x[0]) for i, x in enumerate(ds)])
+    ds_2order = Celltype_Analyzer([Celltype(str(skids_list[i][0]) + '_ds_2o', x[1]) for i, x in enumerate(ds)])
+    ds_1order.set_known_types(celltypes)
+    ds_2order.set_known_types(celltypes)
+
+    labels = us_1order.memberships().T.columns
+    errwidth = 0.5
+
+    fig, axs = plt.subplots(2,2, figsize=figsize)
+    fig.tight_layout(pad=3.0)
+    ax = axs[0,0]
+    sns.barplot(data=us_1order.memberships().T, ax=ax, errwidth=errwidth)
+    ax.set(ylim=(0, 1), title=f'{behavior}_upstream1')
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    ax = axs[0,1]
+    sns.barplot(data=us_2order.memberships().T, ax=ax, errwidth=errwidth)
+    ax.set(ylim=(0, 1), title=f'{behavior}_upstream2')
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    ax = axs[1,0]
+    sns.barplot(data=ds_1order.memberships().T, ax=ax, errwidth=errwidth)
+    ax.set(ylim=(0, 1), title=f'{behavior}_downstream1')
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    ax = axs[1,1]
+    sns.barplot(data=ds_2order.memberships().T, ax=ax, errwidth=errwidth)
+    ax.set(ylim=(0, 1), title=f'{behavior}_downstream2')
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+
+    plt.savefig(f'plots/dVNC_{behavior}_partners.pdf', bbox_inches='tight')
+    
+    return(us_1order.memberships(), us_2order.memberships(), ds_1order.memberships(), ds_2order.memberships())
+
+hops = 2
+figsize = (4,4)
+fwd_us, _, _, _ = plot_12order(skids_list=fwd_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='forward')
+speed_us, _, _, _ = plot_12order(skids_list=speed_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='speed')
+turn_us, _, _, _ = plot_12order(skids_list=turn_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='turn')
+backup_us, _, _, _ = plot_12order(skids_list=backup_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='backup')
+head_us, _, _, _ = plot_12order(skids_list=head_hunch_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='hunch_head-move')
+all_us, _, _, _ = plot_12order(skids_list=[list(x) for x in list(dVNC_pairs.values)], edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='all')
+
+# %%
+# comparison of LHN/MBON connectivity to dVNCs of candidate behaviors
+
+def prep_df(df_source, behavior):
+    df = df_source.copy()
+    df['class'] = df.index
+    df['behavior'] = [behavior]*len(df.index)
+    return(df.melt(['class', 'behavior']))
+
+fwd_df = prep_df(fwd_us, 'forward')
+speed_df = prep_df(speed_us, 'speed')
+turn_df = prep_df(turn_us, 'turn')
+backup_df = prep_df(backup_us, 'backup')
+head_df = prep_df(head_us, 'head')
+all_df = prep_df(all_us, 'all')
+
+df = pd.concat([fwd_df, turn_df, backup_df, speed_df, head_df, all_df], axis=0)
+df = df.set_index('class', drop=False)
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.barplot(data = df.loc[['LHNs', 'MBONs']], x='behavior', y='value', hue='class', order=['turn', 'backup', 'forward'], capsize=0.1, ci=68, ax=ax)
+ax.set(ylim=(0, 0.25), ylabel='Fraction upstream partners')
+plt.savefig(f'plots/dVNC_turn-back-forward_upstream_LHN-MBON.pdf', bbox_inches='tight')
 # %%
 # combine all data types for dVNCs: us1o, us2o, ds1o, ds2o, projectome
 
