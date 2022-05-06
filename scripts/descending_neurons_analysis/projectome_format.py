@@ -8,7 +8,6 @@ from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
 rm = pymaid.CatmaidInstance(url, token, name, password)
-import connectome_tools.process_matrix as pm
 
 projectome = pd.read_csv('data/projectome/projectome_mw brain paper all neurons_split.csv', header = 0)
 

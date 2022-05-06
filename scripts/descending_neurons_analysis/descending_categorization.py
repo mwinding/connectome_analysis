@@ -1,16 +1,4 @@
 #%%
-import os
-
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-
-    pass
-
-#%%
-import sys
-sys.path.append("/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/")
 
 import pandas as pd
 import numpy as np
@@ -19,19 +7,21 @@ import seaborn as sns
 from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
-
-
-projectome = pd.read_csv('descending_neurons_analysis/data/projectome_adjacency.csv', index_col = 0, header = 0)
 rm = pymaid.CatmaidInstance(url, token, name, password)
+
+from data_settings import data_date, pairs_path
+from contools import Promat
+
+projectome = pd.read_csv('data/projectome/projectome_adjacency.csv', index_col = 0, header = 0)
 
 # %%
 # identify skeleton ID of hemilateral neuron pair, based on CSV pair list
 
 dVNC = pymaid.get_skids_by_annotation('mw dVNC')
 dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
-RG = pymaid.get_skids_by_annotation('mw RG')
+RGN = pymaid.get_skids_by_annotation('mw RGN')
 
-pairs = pd.read_csv('data/pairs-2020-05-08.csv', header = 0)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 pairOrder_dVNC = []
 for skid in dVNC:
@@ -47,12 +37,12 @@ for skid in dSEZ:
         pairOrder_dSEZ.append(skid)
         pairOrder_dSEZ.append(pair_skid)
 
-pairOrder_RG = []
-for skid in RG:
+pairOrder_RGN = []
+for skid in RGN:
     if(skid in pairs["leftid"].values):
         pair_skid = pairs["rightid"][pairs["leftid"]==skid].iloc[0]
-        pairOrder_RG.append(skid)
-        pairOrder_RG.append(pair_skid)
+        pairOrder_RGN.append(skid)
+        pairOrder_RGN.append(pair_skid)
 
 # identify meshes
 meshes = ['SEZ_left', 'SEZ_right', 'T1_left', 'T1_right', 'T2_left', 'T2_right', 'T3_left', 'T3_right', 'A1_left', 'A1_right', 'A2_left', 'A2_right', 'A3_left', 'A3_right', 'A4_left', 'A4_right', 'A5_left', 'A5_right', 'A6_left', 'A6_right', 'A7_left', 'A7_right', 'A8_left', 'A8_right']
@@ -84,9 +74,8 @@ dVNC_projectome_pairs = pd.DataFrame(dVNC_projectome_pairs, index = indices, col
 dVNC_projectome_pairs_VNC = dVNC_projectome_pairs.iloc[:, 1:len(dVNC_projectome_pairs)]
 
 cluster = sns.clustermap(dVNC_projectome_pairs.iloc[:, 1:len(dVNC_projectome_pairs)], col_cluster = False, rasterized = True, figsize=(10,10))
-plt.savefig('descending_neurons_analysis/plots/projectome_cluster.pdf', bbox_inches='tight', transparent = True)
+plt.savefig('plots/projectome_cluster.pdf', bbox_inches='tight', transparent = True)
 
-pd.DataFrame(cluster_skids).to_csv('descending_neurons_analysis/plots/cluster_skids_top_to_bottom.csv')
 
 #cluster = sns.clustermap(dVNC_projectome_pairs.iloc[:, 1:len(dVNC_projectome_pairs)], col_cluster = False, rasterized = True, figsize=(40,40))
 #plt.savefig('descending_neurons_analysis/plots/projectome_cluster_readable_skids.pdf', bbox_inches='tight', transparent = True)
@@ -99,6 +88,8 @@ from scipy.cluster.hierarchy import fcluster
 
 cluster_skids = dVNC_projectome_pairs.index[cluster.dendrogram_row.reordered_ind]
 cluster_dendrogram = cluster.dendrogram_row.dendrogram 
+
+#pd.DataFrame(cluster_skids).to_csv('plots/cluster_skids_top_to_bottom.csv')
 
 #assignments = fcluster(linkage(cluster_dendrogram.Z, method='complete'),4,'distance')
 
