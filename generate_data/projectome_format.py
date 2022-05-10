@@ -7,9 +7,12 @@ import seaborn as sns
 from tqdm import tqdm
 import pymaid
 from pymaid_creds import url, name, password, token
+from data_settings import data_date_projectome
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-projectome = pd.read_csv('data/projectome/projectome_mw brain paper all neurons_split.csv', header = 0)
+# this CSV comes from a script from Chris Barnes
+# see the readme here: https://github.com/clbarnes/brain_completion/tree/af9c85457eaf2a4096fd5787caef7b2641055c6e
+projectome = pd.read_csv(f'data/projectome/projectome_mw brain paper all neurons_split_{data_date_projectome}.csv', header = 0)
 
 # %%
 # format into adjacency matrix
@@ -17,6 +20,7 @@ skids = np.unique(projectome['skeleton']).tolist()
 meshes = projectome.columns[8:34].tolist()
 meshes.sort()
 meshes = meshes[16:20] + meshes[20:26] + meshes[0:16]
+print(f'Meshes used:{meshes}')
 
 # projectome matrix
 zeros_array = np.zeros(shape=(len(meshes) + len(skids),len(meshes) + len(skids)))
@@ -66,6 +70,6 @@ for skid in tqdm(skids):
 # %%
 # export adjacency to csv
 
-project_mat.to_csv('data/projectome/projectome_adjacency.csv')
+project_mat.to_csv(f'data/projectome/projectome_adjacency_{data_date_projectome}.csv')
 
 # %%
