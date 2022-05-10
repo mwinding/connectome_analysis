@@ -10,7 +10,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from data_settings import data_date, pairs_path
+from data_settings import data_date, pairs_path, data_date_projectome
 from contools import Promat, Prograph, Celltype, Celltype_Analyzer
 
 # allows text to be editable in Illustrator
@@ -37,7 +37,7 @@ dVNC_pairs = Promat.load_pairs_from_annotation('mw dVNC', pairs, return_type='al
 
 import cmasher as cmr
 
-projectome = pd.read_csv('data/projectome/projectome_adjacency.csv', index_col = 0, header = 0)
+projectome = pd.read_csv(f'data/projectome/projectome_adjacency_{data_date_projectome}.csv', index_col = 0, header = 0)
 projectome.index = [str(x) for x in projectome.index]
 
 # identify meshes
@@ -111,7 +111,8 @@ fig, ax = plt.subplots(1,1,figsize=(2,2))
 sns.heatmap(dVNC_projectome_pairs_summed_output.loc[sort, :], ax=ax, cmap=cmap, vmax=vmax)
 plt.savefig(f'plots/projectome_A8-T1_sort_projectome_sortThres{sort_threshold}.pdf', bbox_inches='tight')
 
-dVNC_projectome_pairs_summed_output.to_csv('data/projectome/dVNC_projectome.csv')
+dVNC_projectome_pairs_summed_output.index = [int(x) for x in dVNC_projectome_pairs_summed_output.index]
+dVNC_projectome_pairs_summed_output.to_csv(f'data/projectome/dVNC_projectome_{data_date_projectome}.csv')
 
 # %%
 # paths 2-hop upstream of each dVNC
@@ -163,8 +164,8 @@ ds_2order.plot_memberships(path = path, figsize=figsize)
 # %%
 # categorizing dVNCs into candidate behaviors
 
-fwd = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].A8 == dVNC_projectome_pairs_summed_output.iloc[:, 2:].max(axis=1)) & (dVNC_projectome_pairs_summed_output.A8>0)
-speed = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].A8 != dVNC_projectome_pairs_summed_output.iloc[:, 2:].max(axis=1)) & (dVNC_projectome_pairs_summed_output.A8>0)
+fwd = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].idxmax(axis=1)=='A8') & (dVNC_projectome_pairs_summed_output.A8>0)
+speed = (dVNC_projectome_pairs_summed_output.iloc[:, 2:].idxmax(axis=1)!='A8') & (dVNC_projectome_pairs_summed_output.A8>0)
 turn = (dVNC_projectome_pairs_summed_output.loc[:, ['A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['A2', 'A3', 'A4']].sum(axis=1)>0)
 backup = (dVNC_projectome_pairs_summed_output.loc[:, ['A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['A1']].sum(axis=1)>0)
 head_hunch = (dVNC_projectome_pairs_summed_output.loc[:, ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']].sum(axis=1)==0) & (dVNC_projectome_pairs_summed_output.loc[:, ['T1', 'T2', 'T3']].sum(axis=1)>0)
@@ -188,15 +189,26 @@ pymaid.add_annotations([x for sublist in backup_skids for x in sublist], 'mw can
 pymaid.add_annotations([x for sublist in head_hunch_skids for x in sublist], 'mw candidate hunch_head-move')
 pymaid.add_meta_annotations(['mw candidate forward', 'mw candidate speed-modulation', 'mw candidate turn', 'mw candidate backup', 'mw candidate hunch_head-move'], 'mw dVNC candidate behaviors')
 
+# plot uncategorized dVNCs
+sns.heatmap(dVNC_projectome_pairs_summed_output.loc[np.setdiff1d(dVNC_projectome_pairs_summed_output.index, list(fwd) + list(speed) + list(turn) + list(backup) + list(head_hunch))], cmap='Blues')
+
+# plot categorized dVNCs for proofreading purposes
+sns.heatmap(dVNC_projectome_pairs_summed_output.loc[list(fwd) + list(speed) + list(turn) + list(backup) + list(head_hunch)].iloc[:, 2:], cmap='Blues')
+
+
 # %%
 # which neurons talk to neurons of candidate behaviors
 
 from tqdm import tqdm
 
-def plot_12order(skids_list, edges, hops, pairs, figsize, behavior):
+def plot_12order(skids_list, edges, hops, pairs, figsize, behavior, colors):
     ascendings = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
     us = [Promat.upstream_multihop(edges=edges, sources=skids_list[i], hops=hops, pairs=pairs) for i in tqdm(range(0, len(skids_list)))]
     ds = [Promat.downstream_multihop(edges=edges, sources=skids_list[i], hops=hops, pairs=pairs, exclude=ascendings) for i in tqdm(range(0, len(skids_list)))]
+
+    # only use dVNCs with downstream brain partners
+    ds_true = np.array([len(x[0]) for x in ds])>0
+    ds = [x for i, x in enumerate(ds) if ds_true[i]==True]
 
     # UPSTREAM
     us_1order = Celltype_Analyzer([Celltype(str(skids_list[i][0]) + '_us_1o', x[0]) for i, x in enumerate(us)])
@@ -216,22 +228,22 @@ def plot_12order(skids_list, edges, hops, pairs, figsize, behavior):
     fig, axs = plt.subplots(2,2, figsize=figsize)
     fig.tight_layout(pad=3.0)
     ax = axs[0,0]
-    sns.barplot(data=us_1order.memberships().T, ax=ax, errwidth=errwidth)
+    sns.barplot(data=us_1order.memberships().T, ax=ax, errwidth=errwidth, ci=68, palette=colors)
     ax.set(ylim=(0, 1), title=f'{behavior}_upstream1')
     ax.set_xticklabels(labels, rotation=45, ha='right')
 
     ax = axs[0,1]
-    sns.barplot(data=us_2order.memberships().T, ax=ax, errwidth=errwidth)
+    sns.barplot(data=us_2order.memberships().T, ax=ax, errwidth=errwidth, ci=68, palette=colors)
     ax.set(ylim=(0, 1), title=f'{behavior}_upstream2')
     ax.set_xticklabels(labels, rotation=45, ha='right')
 
     ax = axs[1,0]
-    sns.barplot(data=ds_1order.memberships().T, ax=ax, errwidth=errwidth)
+    sns.barplot(data=ds_1order.memberships().T, ax=ax, errwidth=errwidth, ci=68, palette=colors)
     ax.set(ylim=(0, 1), title=f'{behavior}_downstream1')
     ax.set_xticklabels(labels, rotation=45, ha='right')
 
     ax = axs[1,1]
-    sns.barplot(data=ds_2order.memberships().T, ax=ax, errwidth=errwidth)
+    sns.barplot(data=ds_2order.memberships().T, ax=ax, errwidth=errwidth, ci=68, palette=colors)
     ax.set(ylim=(0, 1), title=f'{behavior}_downstream2')
     ax.set_xticklabels(labels, rotation=45, ha='right')
 
@@ -241,15 +253,16 @@ def plot_12order(skids_list, edges, hops, pairs, figsize, behavior):
 
 hops = 2
 figsize = (4,4)
-fwd_us, _, _, _ = plot_12order(skids_list=fwd_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='forward')
-speed_us, _, _, _ = plot_12order(skids_list=speed_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='speed')
-turn_us, _, _, _ = plot_12order(skids_list=turn_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='turn')
-backup_us, _, _, _ = plot_12order(skids_list=backup_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='backup')
-head_us, _, _, _ = plot_12order(skids_list=head_hunch_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='hunch_head-move')
-all_us, _, _, _ = plot_12order(skids_list=[list(x) for x in list(dVNC_pairs.values)], edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='all')
+colors = [cell.color for cell in celltypes] + ['#7F7F7F']
+fwd_us, _, fwd_ds, _ = plot_12order(skids_list=fwd_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='forward', colors=colors)
+speed_us, _, speed_ds, _ = plot_12order(skids_list=speed_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='speed', colors=colors)
+turn_us, _, turn_ds, _ = plot_12order(skids_list=turn_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='turn', colors=colors)
+backup_us, _, backup_ds, _ = plot_12order(skids_list=backup_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='backup', colors=colors)
+hunch_us, _, hunch_ds, _ = plot_12order(skids_list=head_hunch_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='hunch_head-move', colors=colors)
+all_us, _, all_ds, _ = plot_12order(skids_list=[list(x) for x in list(dVNC_pairs.values)], edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='all', colors=colors)
 
 # %%
-# comparison of LHN/MBON connectivity to dVNCs of candidate behaviors
+# comparison of cell type connectivity to dVNCs of candidate behaviors
 
 def prep_df(df_source, behavior):
     df = df_source.copy()
@@ -257,20 +270,38 @@ def prep_df(df_source, behavior):
     df['behavior'] = [behavior]*len(df.index)
     return(df.melt(['class', 'behavior']))
 
+# upstream of dVNCs of different candidate behavioral categories
 fwd_df = prep_df(fwd_us, 'forward')
 speed_df = prep_df(speed_us, 'speed')
 turn_df = prep_df(turn_us, 'turn')
 backup_df = prep_df(backup_us, 'backup')
-head_df = prep_df(head_us, 'head')
+hunch_df = prep_df(hunch_us, 'hunch')
 all_df = prep_df(all_us, 'all')
 
-df = pd.concat([fwd_df, turn_df, backup_df, speed_df, head_df, all_df], axis=0)
-df = df.set_index('class', drop=False)
+df_us = pd.concat([fwd_df, turn_df, backup_df, speed_df, hunch_df, all_df], axis=0)
+df_us = df_us.set_index('class', drop=False)
 
 fig, ax = plt.subplots(1,1,figsize=(2,2))
-sns.barplot(data = df.loc[['LHNs', 'MBONs']], x='behavior', y='value', hue='class', order=['turn', 'backup', 'forward'], capsize=0.1, ci=68, ax=ax)
-ax.set(ylim=(0, 0.25), ylabel='Fraction upstream partners')
-plt.savefig(f'plots/dVNC_turn-back-forward_upstream_LHN-MBON.pdf', bbox_inches='tight')
+sns.barplot(data = df_us.loc[['LHNs', 'MBONs']], x='behavior', y='value', hue='class', order=['turn', 'backup', 'hunch', 'forward', 'speed'], capsize=0.1, ci=68, errwidth=0.5, ax=ax)
+ax.set(ylim=(0, 0.4), ylabel='Fraction upstream partners')
+plt.savefig(f'plots/dVNC_all-behavior_upstream_LHN-MBON.pdf', bbox_inches='tight')
+
+# downstream of dVNCs of different candidate behavioral categories (in brain only)
+fwd_df = prep_df(fwd_ds, 'forward')
+speed_df = prep_df(speed_ds, 'speed')
+turn_df = prep_df(turn_ds, 'turn')
+backup_df = prep_df(backup_ds, 'backup')
+hunch_df = prep_df(hunch_ds, 'hunch')
+all_df = prep_df(all_ds, 'all')
+
+df_ds = pd.concat([fwd_df, turn_df, backup_df, speed_df, hunch_df, all_df], axis=0)
+df_ds = df_ds.set_index('class', drop=False)
+
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+sns.barplot(data = df_ds.loc[['PNs', 'PNs-somato', 'FFNs', 'MBINs']], x='behavior', y='value', hue='class', order=['turn', 'backup', 'hunch', 'forward', 'speed'], capsize=0.1, ci=68, errwidth=0.5, ax=ax)
+ax.set(ylim=(0, 1.0), ylabel='Fraction downstream partners')
+plt.savefig(f'plots/dVNC_all-behavior_downstream_PNs-FFNs-MBINs.pdf', bbox_inches='tight')
+
 # %%
 # combine all data types for dVNCs: us1o, us2o, ds1o, ds2o, projectome
 
