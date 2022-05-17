@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
-from data_settings import data_date, pairs_path
+from data_settings import data_date, pairs_path, data_date_projectome
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -58,6 +58,35 @@ pymaid.add_meta_annotations([annot for annot in annots], 'mw pdVNC-ho partners')
 # %%
 # plot projectome data for associated dVNCs
 
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+ds_dVNCs = [list(np.intersect1d(x, dVNC)) for x in list(partners.downstream.values)]
+
+ds_dVNCs_ct = [Celltype(name=f'ds-{partners.source_pairid[i]}', skids=ds_dVNCs[i]) for i in range(len(ds_dVNCs))]
+ds_dVNCs_cta = Celltype_Analyzer(ds_dVNCs_ct)
+
+ds_dVNCs_cta.compare_membership(sim_type='dice') # all dVNCs are unique
+
+o2 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order', split=True, return_celltypes=True)
+o3 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order', split=True, return_celltypes=True)
+o4 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order', split=True, return_celltypes=True)
+
+# membership to different sensory circuit categories
+ds_dVNCs_cta.set_known_types(o2 + o3 + o4)
+ds_dVNCs_cta.memberships()[ds_dVNCs_cta.memberships().sum(axis=1)>0]
+
+# dVNC candidate behaviors
+ds_dVNCs_cta.set_known_types(Celltype_Analyzer.get_skids_from_meta_annotation('mw dVNC candidate behaviors', split=True, return_celltypes=True))
+ds_dVNCs_cta.memberships()[ds_dVNCs_cta.memberships().sum(axis=1)>0]
+
+# dVNC projections to VNC
+projectome = pd.read_csv(f'data/projectome/dVNC_projectome_{data_date_projectome}.csv', header=0, index_col=0)
+sns.heatmap(projectome.loc[np.intersect1d(projectome.index, [x for sublist in ds_dVNCs_cta.Celltypes for x in sublist.get_skids()])], cmap='Blues')
+
+
+# extra analysis of all dVNCs
+dVNC_cta = Celltype_Analyzer([Celltype(name=skids[0], skids=skids) for skids in list(Promat.extract_pairs_from_list(dVNC, pairs)[0].values)])
+dVNC_cta.set_known_types(o2 + o3 + o4)
+dVNC_cta.memberships()[dVNC_cta.memberships().sum(axis=1)>0]
 
 # %%
 # plot neurons morphologies together and by pair
