@@ -53,10 +53,18 @@ order2 = [Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {nam
 order3 = [Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
 order4 = [Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
-LNs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
-LNs_o = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
-LNs_io = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_noncohort'), pymaid.get_skids_by_annotation('mw LNs_cohort')))
-LNs_both = list(np.intersect1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
+# collect LN types per layer
+LNs2_o = list(np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN_io')))
+LNs2_io = list(np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN_io'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN')))
+LNs2_both = list(np.intersect1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order LN_io')))
+
+LNs3_o = list(np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN_io')))
+LNs3_io = list(np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN_io'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN')))
+LNs3_both = list(np.intersect1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order LN_io')))
+
+LNs4_o = list(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN')) #there are no 4th-order LN_io #np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN_io')))
+#LNs4_io = list(np.setdiff1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN_io'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN')))
+#LNs4_both = list(np.intersect1d(Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN'), Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order LN_io')))
 
 KC = pymaid.get_skids_by_annotation('mw KC')
 MBON = pymaid.get_skids_by_annotation('mw MBON')
@@ -72,38 +80,38 @@ columns_expanded = []
 for i in range(0, len(sens)):
     sens_len = len(sens[i].get_skids())
 
-    order2_LN = len(np.intersect1d(order2[i].get_skids(), LNs))
-    order2_LN_o = len(np.intersect1d(order2[i].get_skids(), LNs_o))
-    order2_LN_io = len(np.intersect1d(order2[i].get_skids(), LNs_io))
-    order2_LN_both = len(np.intersect1d(order2[i].get_skids(), LNs_both))
+    order2_LN = len(np.intersect1d(order2[i].get_skids(), LNs2_o+LNs2_io+LNs2_both))
+    order2_LN_o = len(np.intersect1d(order2[i].get_skids(), LNs2_o))
+    order2_LN_io = len(np.intersect1d(order2[i].get_skids(), LNs2_io))
+    order2_LN_both = len(np.intersect1d(order2[i].get_skids(), LNs2_both))
     order2_MB = len(np.intersect1d(order2[i].get_skids(), MB))
     order2_RGN = len(np.intersect1d(order2[i].get_skids(), RGN))
     order2_dSEZ = len(np.intersect1d(order2[i].get_skids(), dSEZ))
     order2_dVNC = len(np.intersect1d(order2[i].get_skids(), dVNC))
-    order2_other = len(np.setdiff1d(order2[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
-    order2_other_expanded = len(np.setdiff1d(order2[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order2_other = len(np.setdiff1d(order2[i].get_skids(), LNs2_o+LNs2_io+LNs2_both + MB + RGN + dSEZ + dVNC))
+    order2_other_expanded = len(np.setdiff1d(order2[i].get_skids(), LNs2_o+LNs2_io+LNs2_both + MB + RGN + dSEZ + dVNC))
 
-    order3_LN = len(np.intersect1d(order3[i].get_skids(), LNs))
-    order3_LN_o = len(np.intersect1d(order3[i].get_skids(), LNs_o))
-    order3_LN_io = len(np.intersect1d(order3[i].get_skids(), LNs_io))
-    order3_LN_both = len(np.intersect1d(order3[i].get_skids(), LNs_both))
+    order3_LN = len(np.intersect1d(order3[i].get_skids(), LNs3_o+LNs3_io+LNs3_both))
+    order3_LN_o = len(np.intersect1d(order3[i].get_skids(), LNs3_o))
+    order3_LN_io = len(np.intersect1d(order3[i].get_skids(), LNs3_io))
+    order3_LN_both = len(np.intersect1d(order3[i].get_skids(), LNs3_both))
     order3_MB = len(np.intersect1d(order3[i].get_skids(), MB))
     order3_RGN = len(np.intersect1d(order3[i].get_skids(), RGN))
     order3_dSEZ = len(np.intersect1d(order3[i].get_skids(), dSEZ))
     order3_dVNC = len(np.intersect1d(order3[i].get_skids(), dVNC))
-    order3_other = len(np.setdiff1d(order3[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
-    order3_other_expanded = len(np.setdiff1d(order3[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order3_other = len(np.setdiff1d(order3[i].get_skids(), LNs3_o+LNs3_io+LNs3_both + MB + RGN + dSEZ + dVNC))
+    order3_other_expanded = len(np.setdiff1d(order3[i].get_skids(), LNs3_o+LNs3_io+LNs3_both + MB + RGN + dSEZ + dVNC))
 
-    order4_LN = len(np.intersect1d(order4[i].get_skids(), LNs))
-    order4_LN_o = len(np.intersect1d(order4[i].get_skids(), LNs_o))
-    order4_LN_io = len(np.intersect1d(order4[i].get_skids(), LNs_io))
-    order4_LN_both = len(np.intersect1d(order4[i].get_skids(), LNs_both))
+    order4_LN = len(np.intersect1d(order4[i].get_skids(), LNs4_o))
+    order4_LN_o = len(np.intersect1d(order4[i].get_skids(), LNs4_o))
+    order4_LN_io = len(np.intersect1d(order4[i].get_skids(), []))
+    order4_LN_both = len(np.intersect1d(order4[i].get_skids(), []))
     order4_MB = len(np.intersect1d(order4[i].get_skids(), MB))
     order4_RGN = len(np.intersect1d(order4[i].get_skids(), RGN))
     order4_dSEZ = len(np.intersect1d(order4[i].get_skids(), dSEZ))
     order4_dVNC = len(np.intersect1d(order4[i].get_skids(), dVNC))
-    order4_other = len(np.setdiff1d(order4[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
-    order4_other_expanded = len(np.setdiff1d(order4[i].get_skids(), LNs + MB + RGN + dSEZ + dVNC))
+    order4_other = len(np.setdiff1d(order4[i].get_skids(), LNs4_o + MB + RGN + dSEZ + dVNC))
+    order4_other_expanded = len(np.setdiff1d(order4[i].get_skids(), LNs4_o + MB + RGN + dSEZ + dVNC))
 
     print(f'{order[i]}:')
     print(f'sensory count: {sens_len}')
@@ -139,7 +147,7 @@ ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['
 ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'] + df['MB'] + spacer*5, width = width)
 ax.axis('off')
 
-plt.savefig('identify_neuron_classes/plots/source_for_sankey_plot.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_source_for_sankey_plot.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot counts of each type
 row_sum = df.sum(axis=1).values
@@ -155,7 +163,7 @@ ax.bar(x = df.index, height = df['RGN'], bottom = df['LN'] + df['Other'] + df['M
 ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['MB'], color = '#D77F51')
 ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN'] + df['Other'] + df['RGN'] + df['dSEZ'] + df['MB'], color = '#A5292A')
 
-plt.savefig('identify_neuron_classes/plots/counts_LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_counts_LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot fraction of each type
 row_sum = df_expanded.sum(axis=1).values
@@ -177,7 +185,7 @@ ax.bar(x = df.index, height = df['dSEZ'], bottom = df['LN_o'] + df['LN_io'] + df
 ax.bar(x = df.index, height = df['dVNC'], bottom = df['LN_o'] + df['LN_io'] + df['LN_both'] + df['MB'] + df['Other'] + df['RGN'] + df['dSEZ'], color='#A5292A')
 ax.axis('off')
 
-plt.savefig('identify_neuron_classes/plots/fraction-LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_fraction-LNs-and-outputs_per_neuropil.pdf', bbox_inches='tight', format = 'pdf')
 
 # %% 
 # modality layers LH vs MB
@@ -227,7 +235,7 @@ order_cts.set_known_types(selected_celltypes_ct)
 memberships = order_cts.memberships(raw_num=True).loc[['sensories', 'ascendings', 'LNs','PNs', 'PNs-somato', 'LHNs', 'MBINs', 'KCs', 'MBONs', 'unknown', 'RGNs', 'dSEZs', 'dVNCs'], :]
 colors = selected_colors + ['#a6a8ab']
 colors = [colors[i] for i in [0,1,2,3,4,5,6,7,8,12,9,10,11]]
-order_cts.plot_memberships('identify_neuron_classes/plots/fraction-selected-celltypes_sensory-orders.pdf', (15,6), memberships = memberships, raw_num=True, celltype_colors=colors)
+order_cts.plot_memberships('plots/sensory-circuits_fraction-selected-celltypes_sensory-orders.pdf', (15,6), memberships = memberships, raw_num=True, celltype_colors=colors)
 
 # %%
 # known cell types per 2nd/3rd order
@@ -271,7 +279,7 @@ annotations[annotations=='0']=''
 
 fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
-plt.savefig('identify_neuron_classes/plots/cell-identities_2nd_order.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_cell-identities_2nd_order.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot 3rd order identities
 order3_cta.set_known_types(celltypes)
@@ -287,7 +295,7 @@ annotations[annotations=='0']=''
 
 fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
-plt.savefig('identify_neuron_classes/plots/cell-identites_3rd-order.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_cell-identites_3rd-order.pdf', bbox_inches='tight', format = 'pdf')
 
 # plot 4th order identities
 order4_cta.set_known_types(celltypes)
@@ -303,7 +311,7 @@ annotations[annotations=='0']=''
 
 fig, ax = plt.subplots(1,1, figsize=(2.35,1.25))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
-plt.savefig('identify_neuron_classes/plots/cell-identites_4th-order.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_cell-identites_4th-order.pdf', bbox_inches='tight', format = 'pdf')
 
 # celltype identities not split by modality (4th- and 5th-order)
 order4_all = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order')
@@ -323,7 +331,7 @@ annotations[annotations=='0']=''
 
 fig, ax = plt.subplots(1,1, figsize=(2.35,1.25/6))
 sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cmap='Greens', cbar=False, ax=ax)
-plt.savefig('identify_neuron_classes/plots/cell-identites_4th-5th-all-order.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig('plots/sensory-circuits_cell-identites_4th-5th-all-order.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
 # adjacency matrix of all types
@@ -332,7 +340,7 @@ brain_inputs = Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain s
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + list(np.unique([skid for sublist in [x.get_skids() for x in (order2 + order3 + order4)] for skid in sublist]))
 
 adj_names = ['ad', 'aa', 'dd', 'da']
-adj_ad, adj_aa, adj_dd, adj_da = [pd.read_csv(f'data/adj/all-neurons_{name}.csv', index_col = 0).rename(columns=int) for name in adj_names]
+adj_ad, adj_aa, adj_dd, adj_da = [pd.read_csv(f'data/adj/{name}_{data_date}.csv', index_col = 0).rename(columns=int) for name in adj_names]
 adj_ad = adj_ad.loc[np.intersect1d(adj_ad.index, brain), np.intersect1d(adj_ad.index, brain)]
 adj_aa = adj_aa.loc[np.intersect1d(adj_aa.index, brain), np.intersect1d(adj_aa.index, brain)]
 adj_dd = adj_dd.loc[np.intersect1d(adj_dd.index, brain), np.intersect1d(adj_dd.index, brain)]
@@ -345,7 +353,7 @@ for i, adj in enumerate(adjs):
     summed_mat = neuron_types_cta.connectivity(adj=adj, normalize_post_num=True)
     fig, ax = plt.subplots(1,1,figsize=(5,5))
     sns.heatmap(summed_mat, square=True, vmax=vmaxs[i])
-    plt.savefig(f'identify_neuron_classes/plots/connectivity-between-neuropils_{adj_names[i]}_vmax-{vmaxs[i]}.pdf', bbox_inches='tight', format = 'pdf')
+    plt.savefig(f'plots/sensory-circuits_connectivity-between-neuropils_{adj_names[i]}_vmax-{vmaxs[i]}.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
 # cascades through sensory neuropils
