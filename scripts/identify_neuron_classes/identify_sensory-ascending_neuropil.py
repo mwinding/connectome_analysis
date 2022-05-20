@@ -88,28 +88,28 @@ sim_type = 'dice'
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
 cts_analyze = Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True, vmin=0, vmax=1)
 fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order3 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
 cts_analyze = Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True, vmin=0, vmax=1)
 fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order4 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
 cts_analyze = Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True, vmin=0, vmax=1)
 fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order5 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
 cts = [Celltype(i + ' 5th-order', input_types.order5.loc[i]) for i in order if len(input_types.order5.loc[i])!=0]
 cts_analyze = Celltype_Analyzer(cts)
-sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
+sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True, vmin=0, vmax=1)
 fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_5th-order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
