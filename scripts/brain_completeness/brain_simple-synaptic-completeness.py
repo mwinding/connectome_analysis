@@ -1,11 +1,4 @@
 #%%
-import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
 
 import numpy as np
 import pandas as pd
