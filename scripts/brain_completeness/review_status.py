@@ -1,12 +1,4 @@
 #%%
-import os
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
-
-#%%
 import pandas as pd
 import numpy as np
 import seaborn as sns
