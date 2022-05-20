@@ -5,14 +5,11 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import connectome_tools.cascade_analysis as casc
+from contools import Celltype, Celltype_Analyzer, Promat
 import navis
 
 # allows text to be editable in Illustrator
@@ -37,9 +34,9 @@ order2 = [pymaid.get_skids_by_annotation(annot) for annot in order2_names]
 order3 = [pymaid.get_skids_by_annotation(annot) for annot in order3_names]
 order4 = [pymaid.get_skids_by_annotation(annot) for annot in order4_names]
 
-order2_ct = ct.Celltype_Analyzer([ct.Celltype(order2_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order2)])
-order3_ct = ct.Celltype_Analyzer([ct.Celltype(order3_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order3)])
-order4_ct = ct.Celltype_Analyzer([ct.Celltype(order4_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order4)])
+order2_ct = Celltype_Analyzer([Celltype(order2_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order2)])
+order3_ct = Celltype_Analyzer([Celltype(order3_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order3)])
+order4_ct = Celltype_Analyzer([Celltype(order4_names[i].replace('mw ', ''), skids) for i, skids in enumerate(order4)])
 
 # upset plots of 2nd/3rd order centers
 #   returned values are Celltypes of upset plot partitions 
@@ -51,12 +48,12 @@ order4_cats = order4_ct.upset_members(path='identify_neuron_classes/plots/4th-or
 # manually generate Sankey-like plots
 # use numbers extracted here for sizes of each bar
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
-order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
-order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
-order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
+sens = [Celltype(name, Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
+order2 = [Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
+order3 = [Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
+order4 = [Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
-LNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+LNs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
 LNs_o = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
 LNs_io = list(np.setdiff1d(pymaid.get_skids_by_annotation('mw LNs_noncohort'), pymaid.get_skids_by_annotation('mw LNs_cohort')))
 LNs_both = list(np.intersect1d(pymaid.get_skids_by_annotation('mw LNs_cohort'), pymaid.get_skids_by_annotation('mw LNs_noncohort')))
@@ -186,16 +183,16 @@ plt.savefig('identify_neuron_classes/plots/fraction-LNs-and-outputs_per_neuropil
 # modality layers LH vs MB
 
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-inputs = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
-order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
-order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
-order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
+inputs = [Celltype(name, Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
+order2 = [Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
+order3 = [Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
+order4 = [Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
-sens = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain sensories')
-asc = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain ascendings')
-LN = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
-PN = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs')
-PNsomato = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs-somato')
+sens = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain sensories')
+asc = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain ascendings')
+LN = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+PN = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs')
+PNsomato = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain PNs-somato')
 MBIN = pymaid.get_skids_by_annotation('mw MBIN')
 KC = pymaid.get_skids_by_annotation('mw KC')
 MBON = pymaid.get_skids_by_annotation('mw MBON')
@@ -221,11 +218,11 @@ for i in range(len(selected_celltypes)):
 selected_names = ['sensories', 'ascendings', 'LNs','PNs', 'PNs-somato', 'LHNs', 'MBINs', 'KCs', 'MBONs', 'RGNs', 'dSEZs', 'dVNCs']
 selected_colors = ['#00753f','#a0ddf2','#4f7577','#1d79b7','#21cef7','#d4e29e', '#ff8734','#e55560','#f9eb4d','#9467bd','#d88052','#a52a2a']
 
-selected_celltypes_ct = [ct.Celltype(name, selected_celltypes_exclus[i], color=selected_colors[i]) for i, name in enumerate(selected_names)]
+selected_celltypes_ct = [Celltype(name, selected_celltypes_exclus[i], color=selected_colors[i]) for i, name in enumerate(selected_names)]
 
-order_cts = [[inputs[i], order2[i], order3[i], order4[i], ct.Celltype(f'spacer{i}', [])] for i in range(len(order))]
+order_cts = [[inputs[i], order2[i], order3[i], order4[i], Celltype(f'spacer{i}', [])] for i in range(len(order))]
 order_cts = [x for sublist in order_cts for x in sublist]
-order_cts = ct.Celltype_Analyzer(order_cts)
+order_cts = Celltype_Analyzer(order_cts)
 order_cts.set_known_types(selected_celltypes_ct)
 memberships = order_cts.memberships(raw_num=True).loc[['sensories', 'ascendings', 'LNs','PNs', 'PNs-somato', 'LHNs', 'MBINs', 'KCs', 'MBONs', 'unknown', 'RGNs', 'dSEZs', 'dVNCs'], :]
 colors = selected_colors + ['#a6a8ab']
@@ -235,21 +232,21 @@ order_cts.plot_memberships('identify_neuron_classes/plots/fraction-selected-cell
 # %%
 # known cell types per 2nd/3rd order
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
-order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
-order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
-order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
+sens = [Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
+order2 = [Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
+order3 = [Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
+order4 = [Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
-sens_cta = ct.Celltype_Analyzer(sens)
-order2_cta = ct.Celltype_Analyzer(order2)
-order3_cta = ct.Celltype_Analyzer(order3)
-order4_cta = ct.Celltype_Analyzer(order4)
+sens_cta = Celltype_Analyzer(sens)
+order2_cta = Celltype_Analyzer(order2)
+order3_cta = Celltype_Analyzer(order3)
+order4_cta = Celltype_Analyzer(order4)
 
-celltypes_data, celltypes = ct.Celltype_Analyzer.default_celltypes() # will have to add a way of removing particular groups from this list in the future
+celltypes_data, celltypes = Celltype_Analyzer.default_celltypes() # will have to add a way of removing particular groups from this list in the future
 
 # intercalated 2nd/3rd order identities
 intercalated = [x for sublist in list(zip(order2, order3, order4)) for x in sublist]
-intercalated_cta = ct.Celltype_Analyzer(intercalated)
+intercalated_cta = Celltype_Analyzer(intercalated)
 intercalated_cta.set_known_types(celltypes)
 memberships = intercalated_cta.memberships(raw_num=True).drop('sensories').T
 
@@ -309,10 +306,10 @@ sns.heatmap(memberships.iloc[:, 1:], annot=annotations.iloc[:, 1:], fmt='s', cma
 plt.savefig('identify_neuron_classes/plots/cell-identites_4th-order.pdf', bbox_inches='tight', format = 'pdf')
 
 # celltype identities not split by modality (4th- and 5th-order)
-order4_all = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order')
-order5_all = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order')
+order4_all = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order')
+order5_all = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order')
 
-order45_cta = ct.Celltype_Analyzer([ct.Celltype('4th_order', order4_all), ct.Celltype('5th_order', order5_all)])
+order45_cta = Celltype_Analyzer([Celltype('4th_order', order4_all), Celltype('5th_order', order5_all)])
 order45_cta.set_known_types(celltypes)
 memberships = order45_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
@@ -331,7 +328,7 @@ plt.savefig('identify_neuron_classes/plots/cell-identites_4th-5th-all-order.pdf'
 # %%
 # adjacency matrix of all types
 
-brain_inputs = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
+brain_inputs = Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + list(np.unique([skid for sublist in [x.get_skids() for x in (order2 + order3 + order4)] for skid in sublist]))
 
 adj_names = ['ad', 'aa', 'dd', 'da']
@@ -344,7 +341,7 @@ adjs = [adj_ad, adj_aa, adj_dd, adj_da]
 
 vmaxs = [75, 30, 30, 10]
 for i, adj in enumerate(adjs):
-    neuron_types_cta = ct.Celltype_Analyzer(order2 + order3 + [ct.Celltype('4th_order', order4_all)] + [ct.Celltype('5th_order', order5_all)])
+    neuron_types_cta = Celltype_Analyzer(order2 + order3 + [Celltype('4th_order', order4_all)] + [Celltype('5th_order', order5_all)])
     summed_mat = neuron_types_cta.connectivity(adj=adj, normalize_post_num=True)
     fig, ax = plt.subplots(1,1,figsize=(5,5))
     sns.heatmap(summed_mat, square=True, vmax=vmaxs[i])
@@ -357,16 +354,16 @@ for i, adj in enumerate(adjs):
 import pickle
 
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
-order2 = [ct.Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
-order3 = [ct.Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
-order4 = [ct.Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
+sens = [Celltype(name, pymaid.get_skids_by_annotation(f'mw {name}')) for name in order]
+order2 = [Celltype(f'{name} 2nd_order', pymaid.get_skids_by_annotation(f'mw {name} 2nd_order')) for name in order]
+order3 = [Celltype(f'{name} 3rd_order', pymaid.get_skids_by_annotation(f'mw {name} 3rd_order')) for name in order]
+order4 = [Celltype(f'{name} 4th_order', pymaid.get_skids_by_annotation(f'mw {name} 4th_order')) for name in order]
 
 n_init=1000
 hops=8
 input_hit_hist_list = pickle.load(open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'rb'))
 
-all_cta = ct.Celltype_Analyzer(order2 + order3 + order4)
+all_cta = Celltype_Analyzer(order2 + order3 + order4)
 
 columns = []
 for hit_hist in input_hit_hist_list:
@@ -387,10 +384,10 @@ plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils_2nd-3rd-order.
 
 
 # combine all 4th and 5th together
-order4_all = ct.Celltype('4th_order', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order'))
-order5_all = ct.Celltype('5th_order', ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order'))
+order4_all = Celltype('4th_order', Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order'))
+order5_all = Celltype('5th_order', Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 5th_order'))
 
-all_cta = ct.Celltype_Analyzer(order2 + order3 + [order4_all] + [order5_all])
+all_cta = Celltype_Analyzer(order2 + order3 + [order4_all] + [order5_all])
 
 columns = []
 for hit_hist in input_hit_hist_list:

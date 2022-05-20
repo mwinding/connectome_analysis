@@ -5,13 +5,11 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+from contools import Celltype, Celltype_Analyzer, Promat
 import navis
 
 # allows text to be editable in Illustrator
@@ -22,27 +20,15 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-# %%
-# load previously generated adjacency matrices
-# see 'network_analysis/generate_all_edges.py'
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
-adj_names = ['ad', 'aa', 'dd', 'da']
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
-adj_aa = pm.Promat.pull_adj(type_adj='aa', subgraph='brain')
-adj_dd = pm.Promat.pull_adj(type_adj='dd', subgraph='brain')
-adj_da = pm.Promat.pull_adj(type_adj='da', subgraph='brain')
-adjs = [adj_ad, adj_aa, adj_dd, adj_da]
+# load previously generated edge list with % threshold
+ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=False)
 
-# load input counts
-inputs = pd.read_csv('data/graphs/inputs.csv', index_col=0)
-outputs = pd.read_csv('data/graphs/outputs.csv', index_col=0)
-
-# process to produce %input pairwise matrix
-mat_ad, mat_aa, mat_dd, mat_da = [pm.Adjacency_matrix(adj=adj, input_counts=inputs, mat_type=adj_names[i]) for i, adj in enumerate(adjs)]
 # %%
 # load appropriate sensory and ascending types
 modalities = 'mw brain sensory modalities'
-input_types, input_names = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=True)
+input_types, input_names = Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=True)
 input_names = [annot.replace('mw ', '') for annot in input_names]
 input_types = pd.DataFrame(zip(input_names, input_types), columns = ['type', 'source'])
 
@@ -50,30 +36,31 @@ input_types = pd.DataFrame(zip(input_names, input_types), columns = ['type', 'so
 # identify all 2nd/3rd/4th-order neurons
 
 modalities = 'mw brain sensory modalities'
-brain_inputs = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=False)
+brain_inputs = Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=False)
 brain_inputs = brain_inputs + pymaid.get_skids_by_annotation('mw A1 ascending unknown')
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + brain_inputs
 
 pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+SEZ_motor = pymaid.get_skids_by_annotation('mw motor')
 
 threshold = 0.01
-order2 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff)[0] for skids in input_types.source]
+order2 = [Promat.downstream_multihop(edges=ad_edges, sources=skids, hops=1, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor)[0] for skids in input_types.source]
 input_types['order2'] = order2
 
 all_order2 = list(np.unique([x for sublist in input_types.order2 for x in sublist]))
-order3 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order2)[0] for skids in input_types.order2]
+order3 = [Promat.downstream_multihop(edges=ad_edges, sources=skids, hops=1, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor+all_order2)[0] for skids in input_types.order2]
 input_types['order3'] = order3
 
 all_order3 = list(np.unique([x for sublist in input_types.order3 for x in sublist]))
-order4 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order3+all_order2)[0] for skids in input_types.order3]
+order4 = [Promat.downstream_multihop(edges=ad_edges, sources=skids, hops=1, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor+all_order3+all_order2)[0] for skids in input_types.order3]
 input_types['order4'] = order4
 
 all_order4 = list(np.unique([x for sublist in input_types.order4 for x in sublist]))
-order5 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order4+all_order3+all_order2)[0] for skids in input_types.order4]
+order5 = [Promat.downstream_multihop(edges=ad_edges, sources=skids, hops=1, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor+all_order4+all_order3+all_order2)[0] for skids in input_types.order4]
 input_types['order5'] = order5
 
 all_order5 = list(np.unique([x for sublist in input_types.order5 for x in sublist]))
-order6 = [mat_ad.downstream_multihop(source=skids, threshold=threshold, hops=1, exclude=brain_inputs+pdiff+all_order5+all_order4+all_order3+all_order2)[0] for skids in input_types.order5]
+order6 = [Promat.downstream_multihop(edges=ad_edges, sources=skids, hops=1, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor+all_order5+all_order4+all_order3+all_order2)[0] for skids in input_types.order5]
 input_types['order6'] = order6
 
 all_order6 = list(np.unique([x for sublist in input_types.order6 for x in sublist]))
@@ -99,31 +86,31 @@ sim_type = 'dice'
 
 # look at overlap between order2 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
-cts = [ct.Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
-cts_analyze = ct.Celltype_Analyzer(cts)
+cts = [Celltype(i + ' 2nd-order', input_types.order2.loc[i]) for i in order]
+cts_analyze = Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
+fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_2nd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order3 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
-cts = [ct.Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
-cts_analyze = ct.Celltype_Analyzer(cts)
+cts = [Celltype(i + ' 3rd-order', input_types.order3.loc[i]) for i in order]
+cts_analyze = Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
+fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_3rd-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order4 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
-cts = [ct.Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
-cts_analyze = ct.Celltype_Analyzer(cts)
+cts = [Celltype(i + ' 4th-order', input_types.order4.loc[i]) for i in order]
+cts_analyze = Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
+fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_4th-order.pdf', format='pdf', bbox_inches='tight')
 
 # look at overlap between order5 neurons
 fig, ax = plt.subplots(1,1, figsize=(3,2))
-cts = [ct.Celltype(i + ' 5th-order', input_types.order5.loc[i]) for i in order if len(input_types.order5.loc[i])!=0]
-cts_analyze = ct.Celltype_Analyzer(cts)
+cts = [Celltype(i + ' 5th-order', input_types.order5.loc[i]) for i in order if len(input_types.order5.loc[i])!=0]
+cts_analyze = Celltype_Analyzer(cts)
 sns.heatmap(cts_analyze.compare_membership(sim_type=sim_type), ax=ax, square=True)
-fig.savefig(f'identify_neuron_classes/plots/similarity-{sim_type}_sens_5th-order.pdf', format='pdf', bbox_inches='tight')
+fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_5th-order.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # identify LNs in each layer
@@ -252,7 +239,7 @@ for i, skids in enumerate(input_types.source.loc[order]):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_asc.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/sensory-circuits_morpho_sens_asc.png', format='png', dpi=300, transparent=True)
 
 # %%
 # plot 2nd-order types
@@ -289,7 +276,7 @@ for i, skids in enumerate(input_types.order2.loc[order]):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2ndOrder.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/sensory-circuits_morpho_sens_2ndOrder.png', format='png', dpi=300, transparent=True)
 
 # %%
 # plot 3rd-order
@@ -326,7 +313,7 @@ for i, skids in enumerate(input_types.order3.loc[order]):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_3rdOrder.png', format='png', dpi=300)
+fig.savefig(f'plots/sensory-circuits_morpho_sens_3rdOrder.png', format='png', dpi=300)
 
 # %%
 # plot each type sequentially: sens -> 2nd-order -> 3rd-order
@@ -371,6 +358,6 @@ for i, neuron_types in enumerate(neurons):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_sens_2nd_3rd_order.png', format='png', dpi=300)
+fig.savefig(f'plots/sensory-circuits_morpho_sens_2nd_3rd_order.png', format='png', dpi=300)
 
 # %%
