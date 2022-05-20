@@ -186,7 +186,7 @@ other_ct = Celltype('Other', np.setdiff1d(partners_df.index, all_celltypes), 'ta
 MBIN_DAN_ct = Celltype('DANs/MBINs', np.setdiff1d(pymaid.get_skids_by_annotation('mw MBIN'), pymaid.get_skids_by_annotation('mw MBIN subclass_OAN')), '#FF8734')
 OAN_ct = Celltype('OANs', pymaid.get_skids_by_annotation('mw MBIN subclass_OAN'), '#FF8734')
 celltypes = celltypes + [OAN_ct, MBIN_DAN_ct, other_ct]
-celltypes = [x for x in celltypes if x.name!='MBINs']
+celltypes = [x for x in celltypes if x.name!='MBINs'] # remove MBINs category, which is now replaced with separate OAN and MBIN/DAN categories
 
 partners_df = recurrent_plots(partners_df=partners_df, hops=8, celltypes=celltypes, pairs=pairs)
 _ = recurrent_plots(partners_df=partners_df, hops=5, celltypes=celltypes, pairs=pairs)
@@ -316,8 +316,9 @@ print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
 # %%
 # check MBIN recurrence in more detail
 
+hops = 8
 MBIN_hit_hist_list = hit_hist_list.loc[np.intersect1d(MBIN_DAN_ct.skids, partners_df.index)]
-MBIN_counts_8hop, MBIN_lengths_8hop, MBIN_multilayered_8hop = multilength_plots(MBIN_hit_hist_list, partners_df, hops=8, plot=False)
+MBIN_counts_8hop, MBIN_lengths_8hop, MBIN_multilayered_8hop = multilength_plots(MBIN_hit_hist_list, partners_df, hops=hops, plot=False)
 
 paths_mean = np.mean([x for x in MBIN_counts_8hop if x!=0])
 paths_std = np.std([x for x in MBIN_counts_8hop if x!=0])
@@ -334,9 +335,34 @@ length_min_std = np.std([np.min(x) for x in all_lengths])
 length_max = np.mean([np.max(x) for x in all_lengths])
 length_max_std = np.std([np.max(x) for x in all_lengths])
 
-print(f'8-hops to MBINs: The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
+print(f'{hops}-hops to MBINs: The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
 print(f'with on average the shortest path at {length_min:.1f}+/-{length_min_std:.1f}')
 print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
+
+# DAN only
+
+DAN_hit_hist_list = hit_hist_list.loc[np.intersect1d(pymaid.get_skids_by_annotation('mw MBIN subclass_DAN'), partners_df.index)]
+DAN_counts_8hop, DAN_lengths_8hop, DAN_multilayered_8hop = multilength_plots(DAN_hit_hist_list, partners_df, hops=hops, plot=False)
+
+paths_mean = np.mean([x for x in DAN_counts_8hop if x!=0])
+paths_std = np.std([x for x in DAN_counts_8hop if x!=0])
+print(f'{hops}hop Cascades to DANs: Recurrent pathways were multilength with {paths_mean:.2f} +/- {paths_std:.2f} different lengths (mean+/-std)')
+
+all_lengths = [x for sublist in DAN_lengths_8hop.lengths for x in sublist if len(x)>1]
+
+length_mean = np.mean([np.mean(x) for x in all_lengths])
+length_std = np.std([np.mean(x) for x in all_lengths])
+
+length_min = np.mean([np.min(x) for x in all_lengths])
+length_min_std = np.std([np.min(x) for x in all_lengths])
+
+length_max = np.mean([np.max(x) for x in all_lengths])
+length_max_std = np.std([np.max(x) for x in all_lengths])
+
+print(f'{hops}-hops to DANs: The mean recurrent path length was {length_mean:.1f}+/-{length_std:.1f}')
+print(f'with on average the shortest path at {length_min:.1f}+/-{length_min_std:.1f}')
+print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
+
 
 # %%
 # checking neurons upstream of KCs, do they receive cascade signal?
