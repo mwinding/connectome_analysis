@@ -5,13 +5,11 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+from contools import Celltype, Celltype_Analyzer, Promat
 import navis
 
 # allows text to be editable in Illustrator
@@ -22,10 +20,12 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+
 # %%
 # load and plot some LNs
 LNs = pymaid.get_skids_by_annotation('mw LNs to plot')
-LNs = pm.Promat.extract_pairs_from_list(LNs)[0]
+LNs = Promat.extract_pairs_from_list(LNs, pairList=pairs)[0]
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
@@ -52,12 +52,12 @@ for i, index in enumerate(LNs.index):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_LNs.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/morpho_LNs.png', format='png', dpi=300, transparent=True)
 
 # %%
 # load and plot some PNs
 PNs = pymaid.get_skids_by_annotation('mw PNs to plot')
-PNs = pm.Promat.extract_pairs_from_list(PNs)[0]
+PNs = pm.Promat.extract_pairs_from_list(PNs, pairList=pairs)[0]
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
@@ -84,7 +84,7 @@ for i, index in enumerate(PNs.index):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_PNs.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/morpho_PNs.png', format='png', dpi=300, transparent=True)
 
 # %%
 # plot all LNs types
@@ -92,7 +92,7 @@ import math
 
 neuropil = pymaid.get_volume('PS_Neuropil_manual')
 neuropil.color = (250, 250, 250, .075)
-LN = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+LN = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
 ipsi = pymaid.get_skids_by_annotation('mw ipsilateral axon')
 bilateral = pymaid.get_skids_by_annotation('mw bilateral axon')
 contra = pymaid.get_skids_by_annotation('mw contralateral axon')
@@ -101,12 +101,21 @@ LN_ipsi = np.intersect1d(LN, ipsi)
 LN_bilat = np.intersect1d(LN, bilateral)
 LN_contra = np.intersect1d(LN, contra)
 
-LN_ipsi, _, LN_ipsi_nonpaired = pm.Promat.extract_pairs_from_list(LN_ipsi)
-LN_ipsi.loc[42]=[LN_ipsi_nonpaired.values[0][0], LN_ipsi_nonpaired.values[0][0]] # *** warning, hard-coded
-
-LN_bilat, _, LN_bilat_nonpaired = pm.Promat.extract_pairs_from_list(LN_bilat) # no nonpaired neurons
-LN_contra, _, LN_contra_nonpaired = pm.Promat.extract_pairs_from_list(LN_contra) # no nonpaired neurons
+# create dataframes with left/right neuron pairs; nonpaired neurons had duplicated skids in left/right column
+LN_ipsi = Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_ids_bothsides', skids=LN_ipsi, use_skids=True)
+LN_bilat = Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_ids_bothsides', skids=LN_bilat, use_skids=True)
+LN_contra = Promat.load_pairs_from_annotation(annot='', pairList=pairs, return_type='all_pair_ids_bothsides', skids=LN_contra, use_skids=True)
 LN_color = '#5D8B90'
+
+# sort LN_ipsi with published neurons first
+pub = [7941652, 7941642, 7939979, 8311264, 7939890, 5291791, 8102935, 8877971, 8274021, 10555409, 7394271, 8273369, 17414715, 8700125, 8480418, 15571194]
+pub_names = ['Broad D1', 'Broad D2', 'Broad T1', 'Broad T2', 'Broad T3', 'picky 0', 'picky 1', 'picky 2', 'picky 3', 'picky 4', 'choosy 1', 'choosy 2', 'ChalOLP', 'OLP4', 'GlulOLP', 'APL']
+
+pub = pub + [4985759, 4620453]
+pub_names = pub_names + ['']*(len(LN_ipsi.index) - len(pub_names))
+LN_ipsi = LN_ipsi.set_index('leftid', drop=False)
+LN_ipsi = LN_ipsi.loc[pub + list(np.setdiff1d(LN_ipsi.index, pub)), :]
+LN_ipsi.index = range(len(LN_ipsi.index))
 
 # ipsi LNs
 n_cols = 8
@@ -129,8 +138,10 @@ for i, index in enumerate(LN_ipsi.index):
     ax.dist = 6
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
+    ax.text(x=(ax.get_xlim()[0] + ax.get_xlim()[1])/2 - ax.get_xlim()[1]*0.06, y=ax.get_ylim()[1]*4/5, z=0, 
+                    s=pub_names[i], transform=ax.transData, color=LN_color, alpha=1)
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_ipsi_LNs.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/morpho_ipsi_LNs.png', format='png', dpi=300, transparent=True)
 
 # bilat LNs
 n_cols = 8
@@ -154,7 +165,7 @@ for i, index in enumerate(LN_bilat.index):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_bilat_LNs.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/morpho_bilat_LNs.png', format='png', dpi=300, transparent=True)
 
 # contra LNs
 n_cols = 8
@@ -178,7 +189,7 @@ for i, index in enumerate(LN_contra.index):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'identify_neuron_classes/plots/morpho_contra_LNs.png', format='png', dpi=300, transparent=True)
+fig.savefig(f'plots/morpho_contra_LNs.png', format='png', dpi=300, transparent=True)
 # %%
 # plot many 2nd-order PNs
 
