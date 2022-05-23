@@ -121,6 +121,7 @@ LN_ipsi.index = range(len(LN_ipsi.index))
 n_cols = 8
 n_rows = math.ceil(len(LN_ipsi)/n_cols) # round up to determine how many rows there should be
 alpha = 1
+zoom = 5.5
 
 fig = plt.figure(figsize=(n_cols*2, n_rows*2))
 gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0)
@@ -135,7 +136,7 @@ for i, index in enumerate(LN_ipsi.index):
     navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=LN_color, alpha=alpha, ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 6
+    ax.dist = zoom
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
     ax.text(x=(ax.get_xlim()[0] + ax.get_xlim()[1])/2 - ax.get_xlim()[1]*0.06, y=ax.get_ylim()[1]*4/5, z=0, 
@@ -161,7 +162,7 @@ for i, index in enumerate(LN_bilat.index):
     navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=LN_color, alpha=alpha, ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 6
+    ax.dist = zoom
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
@@ -185,7 +186,7 @@ for i, index in enumerate(LN_contra.index):
     navis.plot2d(x=[neurons, neuropil], connectors_only=False, color=LN_color, alpha=alpha, ax=ax)
     ax.azim = -90
     ax.elev = -90
-    ax.dist = 6
+    ax.dist = zoom
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
