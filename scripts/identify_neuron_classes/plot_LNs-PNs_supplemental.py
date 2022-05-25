@@ -109,7 +109,7 @@ LN_color = '#5D8B90'
 
 # sort LN_ipsi with published neurons first
 pub = [7941652, 7941642, 7939979, 8311264, 7939890, 5291791, 8102935, 8877971, 8274021, 10555409, 7394271, 8273369, 17414715, 8700125, 8480418, 15571194]
-pub_names = ['Broad D1', 'Broad D2', 'Broad T1', 'Broad T2', 'Broad T3', 'picky 0', 'picky 1', 'picky 2', 'picky 3', 'picky 4', 'choosy 1', 'choosy 2', 'ChalOLP', 'OLP4', 'GlulOLP', 'APL']
+pub_names = ['Broad D1', 'Broad D2', 'Broad T1', 'Broad T2', 'Broad T3', 'picky 0', 'picky 1', 'picky 2', 'picky 3', 'picky 4', 'choosy 1', 'choosy 2', 'ChalOLP', 'GlulOLP', 'OLP4', 'APL']
 
 pub = pub + [4985759, 4620453]
 pub_names = pub_names + ['']*(len(LN_ipsi.index) - len(pub_names))
@@ -139,8 +139,8 @@ for i, index in enumerate(LN_ipsi.index):
     ax.dist = zoom
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
-    ax.text(x=(ax.get_xlim()[0] + ax.get_xlim()[1])/2 - ax.get_xlim()[1]*0.06, y=ax.get_ylim()[1]*4/5, z=0, 
-                    s=pub_names[i], transform=ax.transData, color=LN_color, alpha=1)
+    ax.text(x=(ax.get_xlim()[0] + ax.get_xlim()[1])/2 + ax.get_xlim()[1]*0.05, y=ax.get_ylim()[1]*4/5, horizontalalignment="center", z=0, 
+                    s=pub_names[i], transform=ax.transData, color=LN_color, alpha=1, fontsize=10)
 
 fig.savefig(f'plots/morpho_ipsi_LNs.png', format='png', dpi=300, transparent=True)
 
