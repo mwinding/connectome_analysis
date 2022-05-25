@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
-from contools import Celltype, Celltype_Analyzer, Promat, Analyze_Nx_G
+from contools import Celltype, Celltype_Analyzer, Promat, Analyze_Nx_G, Analyze_Cluster
 from data_settings import data_date
 
 import networkx as nx
@@ -71,8 +71,8 @@ skids = skids_unfiltered + skids_filtered
 names = ['unfiltered_ad-hub', 'unfiltered_aa-hub', 'unfiltered_dd-hub', 'unfiltered_da-hub',
             'filtered_ad-hub', 'filtered_aa-hub', 'filtered_dd-hub', 'filtered_da-hub']
 
-hub_ctas = [ct.Celltype(name=names[i], skids=skids[i]) for i in range(len(skids))]
-hub_ctas = ct.Celltype_Analyzer(hub_ctas)
+hub_ctas = [Celltype(name=names[i], skids=skids[i]) for i in range(len(skids))]
+hub_ctas = Celltype_Analyzer(hub_ctas)
 hub_ctas.compare_membership(sim_type='cosine')
 
 # %%
@@ -170,7 +170,7 @@ for i, hubs in enumerate(G_hubs):
 # %%
 # cell type identification
 # ad hubs
-celltypes_data, celltypes = ct.Celltype_Analyzer.default_celltypes()
+celltypes_data, celltypes = Celltype_Analyzer.default_celltypes()
 blue = sns.color_palette()[0]
 orange = sns.color_palette()[1]
 green = sns.color_palette()[2]
@@ -178,26 +178,26 @@ red = sns.color_palette()[3]
 
 # plot all hub-types at once
 for adj_name in adj_names:
-    try: in_hubs_ct = ct.Celltype('Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out'), orange)
-    except: in_hubs_ct = ct.Celltype('Out Hubs', [], orange)
+    try: in_hubs_ct = Celltype('Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out'), orange)
+    except: in_hubs_ct = Celltype('Out Hubs', [], orange)
 
-    try: out_hubs_ct = ct.Celltype('In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in'), green)
-    except: out_hubs_ct = ct.Celltype('In Hubs', [], green)
+    try: out_hubs_ct = Celltype('In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in'), green)
+    except: out_hubs_ct = Celltype('In Hubs', [], green)
 
-    try: in_out_hubs_ct = ct.Celltype('In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out'), red)
-    except: in_out_hubs_ct = ct.Celltype('In-Out Hubs', [], red)
+    try: in_out_hubs_ct = Celltype('In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out'), red)
+    except: in_out_hubs_ct = Celltype('In-Out Hubs', [], red)
 
-    hubs = ct.Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
+    hubs = Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
     hubs.set_known_types(celltypes)
     hubs.plot_memberships(f'network_analysis/plots/{adj_name}_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
 
 
-ad_hubs_ct = ct.Celltype('a-d', pymaid.get_skids_by_annotation(f'mw ad all_hubs'), blue)
-aa_hubs_ct = ct.Celltype('a-a', pymaid.get_skids_by_annotation(f'mw aa all_hubs'), orange)
-dd_hubs_ct = ct.Celltype('d-d', pymaid.get_skids_by_annotation(f'mw dd all_hubs'), green)
-da_hubs_ct = ct.Celltype('d-a', pymaid.get_skids_by_annotation(f'mw da all_hubs'), red)
+ad_hubs_ct = Celltype('a-d', pymaid.get_skids_by_annotation(f'mw ad all_hubs'), blue)
+aa_hubs_ct = Celltype('a-a', pymaid.get_skids_by_annotation(f'mw aa all_hubs'), orange)
+dd_hubs_ct = Celltype('d-d', pymaid.get_skids_by_annotation(f'mw dd all_hubs'), green)
+da_hubs_ct = Celltype('d-a', pymaid.get_skids_by_annotation(f'mw da all_hubs'), red)
 
-hubs = ct.Celltype_Analyzer([ad_hubs_ct, aa_hubs_ct, dd_hubs_ct, da_hubs_ct])
+hubs = Celltype_Analyzer([ad_hubs_ct, aa_hubs_ct, dd_hubs_ct, da_hubs_ct])
 hubs.set_known_types(celltypes)
 hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
 hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes_raw.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,525), raw_num=True)
@@ -206,26 +206,130 @@ hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes_raw.pdf', (0.6
 # %%
 # location in cluster structure
 
-cluster_level = 6
-size = (2,0.5)
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None):
 
+    # all cell types plot data
+    if(all_celltypes==None):
+        _, all_celltypes = Celltype_Analyzer.default_celltypes()
+        
+    clusters = Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_level}', split=True, return_celltypes=True)
+    cluster_analyze = Celltype_Analyzer(clusters)
+
+    cluster_analyze.set_known_types(all_celltypes)
+    celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
+    all_memberships = cluster_analyze.memberships()
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16]] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    
+    # particular cell type data
+    cluster_analyze.set_known_types([particular_cell_type])
+    membership = cluster_analyze.memberships()
+
+    # plot
+    fig = plt.figure(figsize=size) 
+    fig.subplots_adjust(hspace=0.1)
+    gs = plt.GridSpec(4, 1)
+
+    ax = fig.add_subplot(gs[0:3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, membership.iloc[0, :], color=particular_color)
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]), title=particular_cell_type.get_name())
+
+    ax = fig.add_subplot(gs[3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, all_memberships.iloc[0, :], color=celltype_colors[0])
+    bottom = all_memberships.iloc[0, :]
+    for i in range(1, len(all_memberships.index)):
+        plt.bar(ind, all_memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+        bottom = bottom + all_memberships.iloc[i, :]
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]))
+    ax.axis('off')
+    ax.axis('off')
+
+    plt.savefig(path, format='pdf', bbox_inches='tight')
+
+cluster_level = 7
+size = (2,0.5)
+adj_names = ['ad', 'aa', 'dd', 'da']
+_, celltypes = Celltype_Analyzer.default_celltypes()
+
+blue = sns.color_palette()[0]
+orange = sns.color_palette()[1]
+green = sns.color_palette()[2]
+red = sns.color_palette()[3]
+colors = [blue, orange, green, red]
+
+# plot ad, aa, dd, da hubs (each type: in, out, in/out) within cluster level 7
 for adj_name in adj_names:
-    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'network_analysis/plots/{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
-    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'network_analysis/plots/{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
         
-    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'network_analysis/plots/{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
-cluster_level = 3
+# plot all ad, aa, dd, and da hubs within cluster level 4
+cluster_level = 4
 size = (0.5,0.5)
 
-for adj_name in adj_names:
-    try: ct.plot_marginal_cell_type_cluster(size, ct.Celltype(f'{adj_name} All Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} all_hubs')), orange, cluster_level, f'network_analysis/plots/{adj_name}-all-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
-    except: print('no annotation')
-    
+for i, adj_name in enumerate(adj_names):
+    plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} All Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} all_hubs')), colors[i], cluster_level, f'plots/network-analysis_{adj_name}-all-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
+# plot a-d hubs (in, out, in/out hubs) within cluster level 4
+cluster_level = 4
+size = (0.5,0.5)
+adj_name = 'ad'
+
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
+# %%
+# plot cell type memberships of ad hubs
+
+ad_hubs = [Celltype('ad out hubs', pymaid.get_skids_by_annotation('mw ad hubs_out')),
+            Celltype('ad in-out hubs', pymaid.get_skids_by_annotation('mw ad hubs_in_out')),
+            Celltype('ad in hubs', pymaid.get_skids_by_annotation('mw ad hubs_in'))]
+
+celltype_annots = pymaid.get_annotated('mw brain simple groups').name
+celltype_skids = [Celltype_Analyzer.get_skids_from_meta_annotation(annot) for annot in celltype_annots]
+celltype_names = [x.replace('mw brain ', '') for x in celltype_annots.values]
+celltypes_full = [Celltype(celltype_names[i], celltype_skids[i]) for i in range(len(celltype_names))]
+
+ad_hubs_cta = Celltype_Analyzer(ad_hubs)
+ad_hubs_cta.set_known_types(celltypes_full)
+ad_hubs_cta.memberships()
+
+ad_hubs_cta.set_known_types(celltypes)
+ad_hubs_cta.memberships()
+
+bar_df = ad_hubs_cta.memberships(raw_num=True).iloc[:, 1].loc[official_order]
+
+# gave priority to other celltypes over LNs, performed in CATMAID
+# *** WARNING: hardcoded ***
+bar_df.loc['LNs'] = 0
+bar_df.loc['MB-FBNs'] = bar_df.loc['MB-FBNs'] + 4
+bar_df.loc['LHNs'] = bar_df.loc['LHNs'] + 2
+
+
+# pull official celltype colors
+colors = list(pymaid.get_annotated('mw brain simple colors').name)
+colors_names = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
+color_sort = [np.where(x.replace('mw brain ', '')==np.array(official_order))[0][0] for x in colors_names]
+colors = [element for _, element in sorted(zip(color_sort, colors))]
+
+# donut plot of cell types
+fig, ax = plt.subplots(1,1,figsize=(2,2))
+ax.pie(bar_df, colors=colors)
+
+my_circle=plt.Circle( (0,0), 0.7, color='white')
+p=plt.gcf()
+p.gca().add_artist(my_circle)
+
+plt.savefig('plots/hubs_ad-in-out_celltypes.pdf', format='pdf', bbox_inches='tight')
+
 # %%
 # plot some examples of hubs
 import math 
@@ -285,7 +389,7 @@ fig.savefig(f'network_analysis/plots/morpho_hubs.png', format='png', dpi=300, tr
 # how many a-d in-out hubs are downstream of MB or upstream of DANs (FBNs, FFNs, MBONs)
 ad_inout_hub = pymaid.get_skids_by_annotation('mw ad hubs_in_out')
 MBONs = pymaid.get_skids_by_annotation('mw MBON')
-FBNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain MB-FBNs')
+FBNs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain MB-FBNs')
 FFNs = pymaid.get_skids_by_annotation('mw FFN')
 MB_types = list(np.unique(MBONs + FBNs + FFNs))
 
