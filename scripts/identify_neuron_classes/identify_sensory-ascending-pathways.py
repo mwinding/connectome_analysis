@@ -27,15 +27,6 @@ ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_dat
 Gad = Analyze_Nx_G(ad_edges)
 
 # %%
-# load 2nd-order, 3rd-order, 4th-order and generate pathways
-
-order2 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 2nd_order', split=True, return_celltypes=True)
-order3 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 3rd_order', split=True, return_celltypes=True)
-order4 = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs 4th_order', split=True, return_celltypes=True)
-
-
-
-# %%
 # all pathways from PNs to dVNCs
 
 PN_annots = pymaid.get_annotated('mw brain inputs 2nd_order PN').name
@@ -139,7 +130,11 @@ for i in (range(len(modality_paths_sims))):
 
 # piece the individual PNGs together to make grid of clustermaps 
 import matplotlib.image as mpimg
-save_paths = [f'plots/pathway-similarity_{names[i]}_clusters_linkage-threshold{color_threshold[i]}.png' for i in range(len(modality_paths_sims))]
+names = [PN_annots[i].replace('mw ', '') + ' paths' for i in range(len(PN_annots))]
+names = [x.replace('2nd_order PN ', '') for x in names]
+names = [x.replace('/', '_') for x in names] # replace '/' in mechano-II/III to prevent issues in path
+save_paths = [f'plots/pathway-similarity_{names[i]}_clusters_linkage-threshold{color_threshold[i]}.png' for i in range(len(names))]
+
 
 n_cols = 4
 n_rows = 3
@@ -148,21 +143,20 @@ gs = plt.GridSpec(n_rows, n_cols, figure=fig, wspace=0, hspace=0.01)
 axs = np.empty((n_rows, n_cols), dtype=object)
 names_plot = ['Olfactory', 'Gustatory-external', 'Gustatory-pharyngeal', 'Gut', 'Thermo-warm', 'Thermo-cold', 'Visual', 'Nociceptive', 'Mechano-Ch', 'Mechano-II/III', 'Proprioceptive', 'Respiratory']
 
-for i in range(len(modality_paths_sims)):
+for i in range(len(names)):
     inds = np.unravel_index(i, shape=(n_rows, n_cols))
     ax = fig.add_subplot(gs[inds])
     axs[inds] = ax
 
     ax.imshow(mpimg.imread(save_paths[i]))
-    ax.text((ax.get_xlim()[0] + ax.get_xlim()[1])/2 - ax.get_xlim()[1]*0.05, y=20,
-                s=names_plot[i], transform=ax.transData, color='k', alpha=1)
+    #ax.text((ax.get_xlim()[0] + ax.get_xlim()[1])/2, y=20,
+    #            s=names_plot[i], transform=ax.transData, color='k', alpha=1, fontsize=6, ha='center')
 
     # turn off x and y axis
-
     plt.tight_layout()
     ax.set_axis_off()
 
-    plt.savefig(f'plots/pathway-similarity_clusters_all.png', format='png', dpi=600, transparent=True)
+    plt.savefig(f'plots/pathway-similarity_clusters_all_no-names.png', format='png', dpi=600, transparent=True)
 
 # %%
 # extract clusters from each modality
@@ -197,7 +191,7 @@ for paths_mod in paths_clusters_modalities:
 
 # set up coloring for modalities
 clusters_len = [len(x.Celltypes) for x in paths_clusters_ctas]
-colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#35B3E7', '#ed1c24',
+colors  = ['#00A651', '#8DC63F', '#D7DF23', '#DBA728', '#ed1c24', '#35B3E7'
             '#5c62ad', '#f15a29', '#007c70', '#49b292', '#e04f9c', '#662d91']
 colors_clusters = [x*[colors[i]] for i, x in enumerate(clusters_len)]
 colors_clusters = [x for sublist in colors_clusters for x in sublist]
@@ -226,14 +220,30 @@ plt.savefig(f'plots/pathway-clusters_all-connectivity_vmax10.png', format='png',
 
 # unique pathways across all modalities
 fraction_unique=[]
+fraction_unique_neurons=[]
 for i in range(len(paths_cta.Celltypes)):
     all_other_paths = [x for j, x in enumerate(paths_cta.Celltypes) if j!=i]
     all_other_paths = list(np.unique([x for sublist in all_other_paths for x in sublist.get_skids()]))
+    all_other_paths_neurons = list(np.unique([x for sublist in all_other_paths for x in sublist]))
 
     paths_this_celltype = paths_cta.Celltypes[i].get_skids()
+    paths_this_celltype_neurons = list(np.unique([x for sublist in paths_this_celltype for x in sublist]))
+
     fraction_unique.append(len(np.setdiff1d(paths_this_celltype, all_other_paths))/len(paths_this_celltype))
+    fraction_unique_neurons.append(len(np.setdiff1d(paths_this_celltype_neurons, all_other_paths_neurons))/len(paths_this_celltype_neurons))
 
-# truly unique pathways (don't share any nodes within modalities)
+# plot unique pathways
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+sns.barplot(x=names, y=fraction_unique, ax=ax, palette=colors)
+ax.set(ylim=(0,1))
+plt.xticks(rotation=45, ha='right')
+plt.savefig(f'plots/pathway-modalities_unique-inter-modality.pdf', format='pdf', bbox_inches='tight')
 
+# plot unique pathways
+fig, ax = plt.subplots(1,1, figsize=(2,2))
+sns.barplot(x=names, y=fraction_unique_neurons, ax=ax, palette=colors)
+ax.set(ylim=(0,1))
+plt.xticks(rotation=45, ha='right')
+plt.savefig(f'plots/pathway-modalities_unique-neurons-inter-modality.pdf', format='pdf', bbox_inches='tight')
 
 
