@@ -15,7 +15,7 @@ today_date = '2022-03-15'
 # %%
 # load adjacency matrix for cascades
 subgraph = ['mw brain paper clustered neurons', 'mw brain accessory neurons']
-adj_ad = Promat.pull_adj(type_adj='ad', date=data_date, subgraph=subgraph)
+adj_ad = Promat.pull_adj(type_adj='ad', data_date=data_date, subgraph=subgraph)
 
 # prep start and stop nodes
 skids = pymaid.get_skids_by_annotation(['mw brain neurons', 'mw brain accessory neurons'])
