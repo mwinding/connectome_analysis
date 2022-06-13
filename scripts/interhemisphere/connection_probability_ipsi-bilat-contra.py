@@ -55,6 +55,7 @@ cta = Celltype_Analyzer([ipsi_axon_left, bilat_axon_left, contra_axon_left, cont
 cta_connect_prob = cta.connection_prob(edges=edges, pairs_combined=False)
 cta_connect_prob
 sns.heatmap(cta_connect_prob, cmap='Blues', square=True)
+
 # %%
 # connection probability without pair loops
 
@@ -84,22 +85,47 @@ sns.heatmap(cta_no_pl_connect_prob, cmap='Blues', square=True)
 edges_test = edges.copy()
 edges_test = edges_test.set_index('upstream_skid', drop=False)
 edges_contra = edges_test.loc[np.intersect1d(edges_test.index, contra_axon)]
-edges_contra = edges_contra.set_index('downstream_skid', drop=False)
-edges_contra_contra = edges_contra.loc[np.intersect1d(edges_contra.index, contra_axon)]
+edges_contra['downstream_type'] = ['contra' if x in contra_axon else 'non-contra' for x in edges_contra.downstream_skid]
+edges_contra.index = [i for i in range(len(edges_contra.index))]
 
-num_contra_partners = np.mean(edges_contra_contra.groupby('upstream_skid').count().downstream_skid)
-std_contra_partners = np.std(edges_contra_contra.groupby('upstream_skid').count().downstream_skid)
+edges_contra_df = edges_contra.groupby(['upstream_skid', 'downstream_type']).count().unstack(fill_value=0).stack().downstream_skid
+
+num_contra_partners = np.mean(edges_contra_df.loc[(slice(None), 'contra')])
+std_contra_partners = np.std(edges_contra_df.loc[(slice(None), 'contra')])
+fraction_contra_partners = edges_contra_df.loc[(slice(None), 'contra')]/(edges_contra_df.loc[(slice(None), 'contra')] + edges_contra_df.loc[(slice(None), 'non-contra')])
+
+num_contra_partners_total = np.mean(edges_contra_df.loc[(slice(None), 'contra')]+edges_contra_df.loc[(slice(None), 'non-contra')])
+std_contra_partners_total = np.std(edges_contra_df.loc[(slice(None), 'contra')]+edges_contra_df.loc[(slice(None), 'non-contra')])
+
+mean_fraction_contra_partners = np.mean(fraction_contra_partners)
+std_fraction_contra_partners = np.std(fraction_contra_partners)
 
 # ipsi
 edges_test = edges.copy()
 edges_test = edges_test.set_index('upstream_skid', drop=False)
 edges_ipsi = edges_test.loc[np.intersect1d(edges_test.index, ipsi_axon)]
-edges_ipsi = edges_ipsi.set_index('downstream_skid', drop=False)
-edges_ipsi_contra = edges_ipsi.loc[np.intersect1d(edges_ipsi.index, contra_axon)]
+edges_ipsi['downstream_type'] = ['contra' if x in contra_axon else 'non-contra' for x in edges_ipsi.downstream_skid]
+edges_ipsi.index = [i for i in range(len(edges_ipsi.index))]
 
-num_ipsi_partners = np.mean(edges_ipsi_contra.groupby('upstream_skid').count().downstream_skid)
-std_ipsi_partners = np.std(edges_ipsi_contra.groupby('upstream_skid').count().downstream_skid)
+edges_ipsi_df = edges_ipsi.groupby(['upstream_skid', 'downstream_type']).count().unstack(fill_value=0).stack().downstream_skid
 
-print(f'Individual contralateral neurons synapse onto {num_contra_partners:.1f}+/-{std_contra_partners:.1f} contralateral neurons,')
-print(f'while individual ipsilateral neurons synapsed onto {num_ipsi_partners:.1f}+/-{std_ipsi_partners:.1f} contralateral neurons.')
+num_ipsi_partners = np.mean(edges_ipsi_df.loc[(slice(None), 'contra')])
+std_ipsi_partners = np.std(edges_ipsi_df.loc[(slice(None), 'contra')])
+fraction_ipsi_partners = edges_ipsi_df.loc[(slice(None), 'contra')]/(edges_ipsi_df.loc[(slice(None), 'contra')] + edges_ipsi_df.loc[(slice(None), 'non-contra')])
+
+num_ipsi_partners_total = np.mean(edges_ipsi_df.loc[(slice(None), 'contra')]+edges_ipsi_df.loc[(slice(None), 'non-contra')])
+std_ipsi_partners_total = np.std(edges_ipsi_df.loc[(slice(None), 'contra')]+edges_ipsi_df.loc[(slice(None), 'non-contra')])
+
+mean_fraction_ipsi_partners = np.mean(fraction_ipsi_partners)
+std_fraction_ipsi_partners = np.std(fraction_ipsi_partners)
+
+
+print(f'Individual contralateral neurons synapse onto {num_contra_partners:.1f}+/-{std_contra_partners:.1f} contralateral neurons')
+print(f'Individual contralateral neurons synapse onto {num_contra_partners_total:.1f}+/-{std_contra_partners_total:.1f} neurons total')
+print(f'Individual contralateral neurons have {mean_fraction_contra_partners*100:.1f}+/-{std_fraction_contra_partners*100:.1f}% downstream partners that are contralateral axon neurons')
+
+print(f'Individual ipsilateral neurons synapsed onto {num_ipsi_partners:.1f}+/-{std_ipsi_partners:.1f} contralateral neurons')
+print(f'Individual ipsilateral neurons synapse onto {num_ipsi_partners_total:.1f}+/-{std_ipsi_partners_total:.1f} neurons total')
+print(f'Individual ipsilateral neurons have {mean_fraction_ipsi_partners*100:.1f}+/-{std_fraction_ipsi_partners*100:.1f}% downstream partners that are contralateral axon neurons')
+
 # %%
