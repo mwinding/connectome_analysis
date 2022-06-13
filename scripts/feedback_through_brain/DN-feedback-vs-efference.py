@@ -230,7 +230,7 @@ plt.savefig(f'plots/feedback-efference_{hops}hop_celltypes.pdf', format='pdf', b
 # %%
 # identify directly 1-hop/2-hop downstream neurons: how many are feedback vs efference? (based on cascades)
 
-# characterization of dVNC 1-/2-hop downstream partners
+# characterization of dVNC multihop downstream partners (using %input thresholds)
 pairs = Promat.get_pairs(pairs_path=pairs_path)
 hops = 8
 
@@ -238,180 +238,87 @@ select_neurons = pymaid.get_skids_by_annotation(['mw brain neurons', 'mw brain a
 ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=False, select_neurons=select_neurons)
 
 dVNC_pairs = Promat.load_pairs_from_annotation('mw dVNC', pairs)
-ds_dVNCs = [Promat.downstream_multihop(edges=ad_edges, sources=dVNC_pair, hops=2, pairs=pairs) for dVNC_pair in dVNC_pairs.values]
+ds_dVNCs = [Promat.downstream_multihop(edges=ad_edges, sources=dVNC_pair, hops=5, pairs=pairs) for dVNC_pair in dVNC_pairs.values]
 
-ds_dVNCs_df = pd.DataFrame(ds_dVNCs, columns=['dVNC-ds-1hop', 'dVNC-ds-2hop'], index=dVNC_pairs.leftid)
+ds_dVNCs_df = pd.DataFrame(ds_dVNCs, columns=[f'dVNC-ds-{i}hop' for i in range(1,6)], index=dVNC_pairs.leftid)
 ds_dVNCs_df = ds_dVNCs_df[[False if ds_dVNCs_df.loc[i, 'dVNC-ds-1hop']==[] else True for i in ds_dVNCs_df.index]]
 
-feedback_1hop_list = []
-feedback_2hop_list = []
-efference_1hop_list = []
-efference_2hop_list = []
+# hop_level refers to %input thresholds, hops refers to cascade max hops
+def split_fb_ec(ds_df, name, hop_level, hops, pairs_path):
 
-for skid in ds_dVNCs_df.index:
-    feedback_1hop = []
-    feedback_2hop = []
-    efference_1hop = []
-    efference_2hop = []
+    pairs = Promat.get_pairs(pairs_path=pairs_path)
 
-    ds_1hop = ds_dVNCs_df.loc[skid, 'dVNC-ds-1hop']
-    ds_2hop = ds_dVNCs_df.loc[skid, 'dVNC-ds-2hop']
+    # identify neurons that are feedback (in feedforward cascade of max {hops} hops to {skid} DN)
+    # identify neurons that are efference copy (not in feedforward cascade to {skid} DN)
+    feedback_list = []
+    efference_list = []
+    for skid in ds_df.index:
+        feedback = []
+        efference = []
 
-    ds_1hop_pairs = Promat.load_pairs_from_annotation('ds_1hop', pairs, skids=ds_1hop, use_skids=True).leftid
-    ds_2hop_pairs = Promat.load_pairs_from_annotation('ds_2hop', pairs, skids=ds_2hop, use_skids=True).leftid
+        ds_hop = ds_df.loc[skid, f'{name}-ds-{hop_level}hop']
+        ds_hop_pairs = Promat.load_pairs_from_annotation(f'ds_{hop_level}hop', pairs, skids=ds_hop, use_skids=True).leftid
+        
+        for pair in ds_hop_pairs:
+            ds_ds_pairs = partners_df.loc[pair, f'ds_partners_{hops}hop']
+            if(skid in ds_ds_pairs):
+                feedback.append(pair)
+            if(skid not in ds_ds_pairs):
+                efference.append(pair)
 
-    for pair in ds_1hop_pairs:
-        ds_ds_pairs = partners_df.loc[pair, f'ds_partners_{hops}hop']
-        if(skid in ds_ds_pairs):
-            feedback_1hop.append(pair)
-        if(skid not in ds_ds_pairs):
-            efference_1hop.append(pair)
+        feedback_list.append(feedback)
+        efference_list.append(efference)
 
-    for pair in ds_2hop_pairs:
-        ds_ds_pairs = partners_df.loc[pair, f'ds_partners_{hops}hop']
-        if(skid in ds_ds_pairs):
-            feedback_2hop.append(pair)
-        if(skid not in ds_ds_pairs):
-            efference_2hop.append(pair) 
+    # include both left and right skids from each pair in feedback/efference lists
+    pairs.set_index('leftid', inplace=True)
+    feedback_list_all = []
+    for skid_list in feedback_list:
+        skids_leftid = list(np.intersect1d(skid_list, pairs.index))
+        skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
+        skids_rightid = list(pairs.loc[skids_leftid].rightid)
 
-    feedback_1hop_list.append(feedback_1hop)
-    feedback_2hop_list.append(feedback_2hop)
-    efference_1hop_list.append(efference_1hop)
-    efference_2hop_list.append(efference_2hop)
+        feedback_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
 
+    efference_list_all = []
+    for skid_list in efference_list:
+        skids_leftid = list(np.intersect1d(skid_list, pairs.index))
+        skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
+        skids_rightid = list(pairs.loc[skids_leftid].rightid)
 
-# add left/right neurons
-pairs = Promat.get_pairs(pairs_path=pairs_path)
-pairs.set_index('leftid', inplace=True)
+        efference_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
 
-feedback_1hop_list_all = []
-for skid_list in feedback_1hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
+    # add skid pairs to appropriate column categories in ds_df
+    ds_df[f'{name}-ds-{hop_level}hop_feedback'] = feedback_list_all
+    ds_df[f'{name}-ds-{hop_level}hop_efference'] = efference_list_all
+    return(ds_df)
 
-    feedback_1hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
+ds_dVNCs_df = split_fb_ec(ds_dVNCs_df, 'dVNC', hop_level=1, hops=8, pairs_path=pairs_path)
+ds_dVNCs_df = split_fb_ec(ds_dVNCs_df, 'dVNC', hop_level=2, hops=8, pairs_path=pairs_path)
+ds_dVNCs_df = split_fb_ec(ds_dVNCs_df, 'dVNC', hop_level=3, hops=8, pairs_path=pairs_path)
+ds_dVNCs_df = split_fb_ec(ds_dVNCs_df, 'dVNC', hop_level=4, hops=8, pairs_path=pairs_path)
+ds_dVNCs_df = split_fb_ec(ds_dVNCs_df, 'dVNC', hop_level=5, hops=8, pairs_path=pairs_path)
 
-feedback_2hop_list_all = []
-for skid_list in feedback_2hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    feedback_2hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-efference_1hop_list_all = []
-for skid_list in efference_1hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    efference_1hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-efference_2hop_list_all = []
-for skid_list in efference_2hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    efference_2hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-ds_dVNCs_df['dVNC-ds-1hop_feedback'] = feedback_1hop_list_all
-ds_dVNCs_df['dVNC-ds-2hop_feedback'] = feedback_2hop_list_all
-ds_dVNCs_df['dVNC-ds-1hop_efference'] = efference_1hop_list_all
-ds_dVNCs_df['dVNC-ds-2hop_efference'] = efference_2hop_list_all
-
-# characterization of dSEZ 1-/2-hop downstream partners
+# characterization of dSEZ multihop downstream partners
 pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 select_neurons = pymaid.get_skids_by_annotation(['mw brain neurons', 'mw brain accessory neurons'])
 ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=False, select_neurons=select_neurons)
 
 dSEZ_pairs = Promat.load_pairs_from_annotation('mw dSEZ', pairs)
-ds_dSEZs = [Promat.downstream_multihop(edges=ad_edges, sources=dSEZ_pair, hops=2, pairs=pairs) for dSEZ_pair in dSEZ_pairs.values]
+ds_dSEZs = [Promat.downstream_multihop(edges=ad_edges, sources=dSEZ_pair, hops=5, pairs=pairs) for dSEZ_pair in dSEZ_pairs.values]
 
-ds_dSEZs_df = pd.DataFrame(ds_dSEZs, columns=['dSEZ-ds-1hop', 'dSEZ-ds-2hop'], index=dSEZ_pairs.leftid)
+ds_dSEZs_df = pd.DataFrame(ds_dSEZs, columns=[f'dSEZ-ds-{i}hop' for i in range(1,6)], index=dSEZ_pairs.leftid)
 ds_dSEZs_df = ds_dSEZs_df[[False if ds_dSEZs_df.loc[i, 'dSEZ-ds-1hop']==[] else True for i in ds_dSEZs_df.index]]
 
-feedback_1hop_list = []
-feedback_2hop_list = []
-efference_1hop_list = []
-efference_2hop_list = []
-
-for skid in ds_dSEZs_df.index:
-    feedback_1hop = []
-    feedback_2hop = []
-    efference_1hop = []
-    efference_2hop = []
-
-    ds_1hop = ds_dSEZs_df.loc[skid, 'dSEZ-ds-1hop']
-    ds_2hop = ds_dSEZs_df.loc[skid, 'dSEZ-ds-2hop']
-
-    ds_1hop_pairs = Promat.load_pairs_from_annotation('ds_1hop', pairs, skids=ds_1hop, use_skids=True).leftid
-    ds_2hop_pairs = Promat.load_pairs_from_annotation('ds_2hop', pairs, skids=ds_2hop, use_skids=True).leftid
-
-    for pair in ds_1hop_pairs:
-        ds_ds_pairs = partners_df.loc[pair, f'ds_partners_{hops}hop']
-        if(skid in ds_ds_pairs):
-            feedback_1hop.append(pair)
-        if(skid not in ds_ds_pairs):
-            efference_1hop.append(pair)
-
-    for pair in ds_2hop_pairs:
-        ds_ds_pairs = partners_df.loc[pair, f'ds_partners_{hops}hop']
-        if(skid in ds_ds_pairs):
-            feedback_2hop.append(pair)
-        if(skid not in ds_ds_pairs):
-            efference_2hop.append(pair)
-
-    feedback_1hop_list.append(feedback_1hop)  
-    feedback_2hop_list.append(feedback_2hop)  
-    efference_1hop_list.append(efference_1hop)  
-    efference_2hop_list.append(efference_2hop)
-
-# add left/right neurons
-pairs = Promat.get_pairs(pairs_path=pairs_path)
-pairs.set_index('leftid', inplace=True)
-
-feedback_1hop_list_all = []
-for skid_list in feedback_1hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    feedback_1hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-feedback_2hop_list_all = []
-for skid_list in feedback_2hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    feedback_2hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-efference_1hop_list_all = []
-for skid_list in efference_1hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    efference_1hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-efference_2hop_list_all = []
-for skid_list in efference_2hop_list:
-    skids_leftid = list(np.intersect1d(skid_list, pairs.index))
-    skids_nonpaired = list(np.setdiff1d(skid_list, pairs.index))
-    skids_rightid = list(pairs.loc[skids_leftid].rightid)
-
-    efference_2hop_list_all.append(skids_leftid + skids_rightid + skids_nonpaired)
-
-ds_dSEZs_df['dSEZ-ds-1hop_feedback'] = feedback_1hop_list_all
-ds_dSEZs_df['dSEZ-ds-2hop_feedback'] = feedback_2hop_list_all
-ds_dSEZs_df['dSEZ-ds-1hop_efference'] = efference_1hop_list_all
-ds_dSEZs_df['dSEZ-ds-2hop_efference'] = efference_2hop_list_all
+ds_dSEZs_df = split_fb_ec(ds_dSEZs_df, 'dSEZ', hop_level=1, hops=8, pairs_path=pairs_path)
+ds_dSEZs_df = split_fb_ec(ds_dSEZs_df, 'dSEZ', hop_level=2, hops=8, pairs_path=pairs_path)
+ds_dSEZs_df = split_fb_ec(ds_dSEZs_df, 'dSEZ', hop_level=3, hops=8, pairs_path=pairs_path)
+ds_dSEZs_df = split_fb_ec(ds_dSEZs_df, 'dSEZ', hop_level=4, hops=8, pairs_path=pairs_path)
+ds_dSEZs_df = split_fb_ec(ds_dSEZs_df, 'dSEZ', hop_level=5, hops=8, pairs_path=pairs_path)
 
 # %%
 # fraction feedback vs efference
+# needs to be updated
 
 ds_dSEZs_df['fraction_feedback_1hop'] = [len(ds_dSEZs_df.loc[i, 'dSEZ-ds-1hop_feedback'])/(len(ds_dSEZs_df.loc[i, 'dSEZ-ds-1hop'])) if (len(ds_dSEZs_df.loc[i, 'dSEZ-ds-1hop']))>0 else 0 for i in ds_dSEZs_df.index]
 ds_dSEZs_df['fraction_feedback_2hop'] = [len(ds_dSEZs_df.loc[i, 'dSEZ-ds-2hop_feedback'])/(len(ds_dSEZs_df.loc[i, 'dSEZ-ds-2hop'])) if (len(ds_dSEZs_df.loc[i, 'dSEZ-ds-2hop']))>0 else 0 for i in ds_dSEZs_df.index]
@@ -575,13 +482,88 @@ sns.heatmap(data=dSEZs_cts.memberships().drop(labels=['sensories', 'ascendings']
 plt.savefig('plots/efference_dSEZ_celltypes.pdf', format='pdf', bbox_inches='tight')
 
 # %%
+# 1-5 hops downstream of dVNCs or dSEZs in brain (feedback vs efference)
+
+_, celltypes = Celltype_Analyzer.default_celltypes()
+
+# build Celltype() objects for different feedback and efference types (1-hop)
+
+dVNC_feedback_all_hops = []
+dVNC_efference_all_hops = []
+for hop_level in range(1,6):
+    dVNC_feedback_hop = [ds_dVNCs_df.loc[ind, f'dVNC-ds-{hop_level}hop_feedback'] for ind in ds_dVNCs_df.index]
+    dVNC_feedback_hop = list(np.unique([x for sublist in dVNC_feedback_hop for x in sublist]))
+    dVNC_efference_hop = [ds_dVNCs_df.loc[ind, f'dVNC-ds-{hop_level}hop_efference'] for ind in ds_dVNCs_df.index]
+    dVNC_efference_hop = list(np.unique([x for sublist in dVNC_efference_hop for x in sublist]))
+
+    dVNC_feedback_all_hops.append(dVNC_feedback_hop)
+    dVNC_efference_all_hops.append(dVNC_efference_hop)
+
+dSEZ_feedback_all_hops = []
+dSEZ_efference_all_hops = []
+for hop_level in range(1,6):
+    dSEZ_feedback_hop = [ds_dSEZs_df.loc[ind, f'dSEZ-ds-{hop_level}hop_feedback'] for ind in ds_dSEZs_df.index]
+    dSEZ_feedback_hop = list(np.unique([x for sublist in dSEZ_feedback_hop for x in sublist]))
+    dSEZ_efference_hop = [ds_dSEZs_df.loc[ind, f'dSEZ-ds-{hop_level}hop_efference'] for ind in ds_dSEZs_df.index]
+    dSEZ_efference_hop = list(np.unique([x for sublist in dSEZ_efference_hop for x in sublist]))
+
+    dSEZ_feedback_all_hops.append(dSEZ_feedback_hop)
+    dSEZ_efference_all_hops.append(dSEZ_efference_hop)
+
+# plot celltypes at each hop_level
+import matplotlib as mpl
+
+figsize=(1.25,1.5)
+vmax = 0.25
+# dVNCs
+dVNCs_cts = [Celltype(f'dVNC-feedback-{hop_level+1}hop', dVNC_feedback_all_hops[hop_level]) for hop_level in range(0,5)]
+dVNCs_cts = Celltype_Analyzer(dVNCs_cts)
+dVNCs_cts.set_known_types(celltypes)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+sns.heatmap(data=dVNCs_cts.memberships().drop(labels=['sensories', 'ascendings'], axis=0), annot=True, fmt='.0%', cmap=orange_cmap, vmax=vmax) 
+plt.savefig('plots/feedback_hops1-5_dVNC_celltypes.pdf', format='pdf', bbox_inches='tight')
+
+dVNCs_cts = [Celltype(f'dVNC-efference-{hop_level+1}hop', dVNC_efference_all_hops[hop_level]) for hop_level in range(0,5)]
+dVNCs_cts = Celltype_Analyzer(dVNCs_cts)
+dVNCs_cts.set_known_types(celltypes)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+sns.heatmap(data=dVNCs_cts.memberships().drop(labels=['sensories', 'ascendings'], axis=0), annot=True, fmt='.0%', cmap=red_cmap, vmax=vmax) 
+plt.savefig('plots/efference_hops1-5_dVNC_celltypes.pdf', format='pdf', bbox_inches='tight')
+
+# dSEZs
+dSEZs_cts = [Celltype(f'dSEZ-feedback-{hop_level+1}hop', dSEZ_feedback_all_hops[hop_level]) for hop_level in range(0,5)]
+dSEZs_cts = Celltype_Analyzer(dSEZs_cts)
+dSEZs_cts.set_known_types(celltypes)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+sns.heatmap(data=dSEZs_cts.memberships().drop(labels=['sensories', 'ascendings'], axis=0), annot=True, fmt='.0%', cmap=orange_cmap, vmax=vmax) 
+plt.savefig('plots/feedback_hops1-5_dSEZ_celltypes.pdf', format='pdf', bbox_inches='tight')
+
+dSEZs_cts = [Celltype(f'dSEZ-efference-{hop_level+1}hop', dSEZ_efference_all_hops[hop_level]) for hop_level in range(0,5)]
+dSEZs_cts = Celltype_Analyzer(dSEZs_cts)
+dSEZs_cts.set_known_types(celltypes)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+sns.heatmap(data=dSEZs_cts.memberships().drop(labels=['sensories', 'ascendings'], axis=0), annot=True, fmt='.0%', cmap=red_cmap, vmax=vmax) 
+plt.savefig('plots/efference_hops1-5_dSEZ_celltypes.pdf', format='pdf', bbox_inches='tight')
+
+
+# %%
 # plot memberships
 
-dSEZs_cts = [Celltype('dSEZ-feedback-1hop', dSEZ_feedback_1hop),
-            Celltype('dSEZ-feedback-2hop', dSEZ_feedback_2hop),
+dSEZs_cts = [Celltype('dSEZ-feedback-1hop', dSEZ_feedback_all_hops[0]),
+            Celltype('dSEZ-feedback-2hop', dSEZ_feedback_all_hops[1]),
+            Celltype('dSEZ-feedback-3hop', dSEZ_feedback_all_hops[2]),
+            Celltype('dSEZ-feedback-4hop', dSEZ_feedback_all_hops[3]),
+            Celltype('dSEZ-feedback-5hop', dSEZ_feedback_all_hops[4]),
             Celltype('dSEZ-feedback-casc', dSEZ_feedback_casc),
-            Celltype('dSEZ-efference-1hop', dSEZ_efference_1hop),
-            Celltype('dSEZ-efference-2hop', dSEZ_efference_2hop),
+            Celltype('dSEZ-efference-1hop', dSEZ_efference_all_hops[0]),
+            Celltype('dSEZ-efference-2hop', dSEZ_efference_all_hops[1]),
+            Celltype('dSEZ-efference-3hop', dSEZ_efference_all_hops[2]),
+            Celltype('dSEZ-efference-4hop', dSEZ_efference_all_hops[3]),
+            Celltype('dSEZ-efference-5hop', dSEZ_efference_all_hops[4]),
             Celltype('dSEZ-efference-casc', dSEZ_efference_casc)]
 dSEZs_cts = Celltype_Analyzer(dSEZs_cts)
 dSEZs_cts.set_known_types(celltypes)
@@ -589,11 +571,17 @@ dSEZs_cts.plot_memberships('plots/feedback-efference_dSEZ_celltypes.pdf', figsiz
 dSEZs_cts.plot_memberships('plots/feedback-efference_dSEZ_celltypes_raw.pdf', figsize=(1,1), raw_num=True)
 
 
-dVNCs_cts = [Celltype('dVNC-feedback-1hop', dVNC_feedback_1hop),
-            Celltype('dVNC-feedback-2hop', dVNC_feedback_2hop),
+dVNCs_cts = [Celltype('dVNC-feedback-1hop', dVNC_feedback_all_hops[0]),
+            Celltype('dVNC-feedback-2hop', dVNC_feedback_all_hops[1]),
+            Celltype('dVNC-feedback-3hop', dVNC_feedback_all_hops[2]),
+            Celltype('dVNC-feedback-4hop', dVNC_feedback_all_hops[3]),
+            Celltype('dVNC-feedback-5hop', dVNC_feedback_all_hops[4]),
             Celltype('dVNC-feedback-casc', dVNC_feedback_casc),
-            Celltype('dVNC-efference-1hop', dVNC_efference_1hop),
-            Celltype('dVNC-efference-2hop', dVNC_efference_2hop),
+            Celltype('dVNC-efference-1hop', dVNC_efference_all_hops[0]),
+            Celltype('dVNC-efference-2hop', dVNC_efference_all_hops[1]),
+            Celltype('dVNC-efference-3hop', dVNC_efference_all_hops[2]),
+            Celltype('dVNC-efference-4hop', dVNC_efference_all_hops[3]),
+            Celltype('dVNC-efference-5hop', dVNC_efference_all_hops[4]),
             Celltype('dVNC-efference-casc', dVNC_efference_casc)]
 dVNCs_cts = Celltype_Analyzer(dVNCs_cts)
 dVNCs_cts.set_known_types(celltypes)
