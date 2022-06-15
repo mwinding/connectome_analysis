@@ -34,43 +34,6 @@ brain = list(np.intersect1d(brain, cascades_df.index))
 cascades_df = cascades_df.loc[brain, :]
 
 pairs = Promat.get_pairs(pairs_path=pairs_path)
-
-# %%
-# preliminary analysis of cascade signal before the primary recurrence analysis
-
-# how many 5-hop and 8-hop partners do individual neurons have? what fraction of all brain neurons?
-inputs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs')
-brain = pymaid.get_skids_by_annotation('mw brain neurons')
-brain = list(np.setdiff1d(brain, pymaid.get_skids_by_annotation('mw brain incomplete') + pymaid.get_skids_by_annotation('mw partially differentiated')))
-
-fract_brain_5hop = [len(x)/len(brain) for x in cascades_df.ds_partners_5hop]
-fract_brain_8hop = [len(x)/len(brain) for x in cascades_df.ds_partners_8hop]
-
-fract_brain_5hop_input = [len(x)/len(brain) for x in cascades_df_with_inputs.loc[np.intersect1d(inputs, cascades_df_with_inputs.index)].ds_partners_5hop]
-fract_brain_8hop_input = [len(x)/len(brain) for x in cascades_df_with_inputs.loc[np.intersect1d(inputs, cascades_df_with_inputs.index)].ds_partners_8hop]
-
-print(f'From individual 5-hop cascades from sensory pairs, {np.mean(fract_brain_5hop_input)*100:.1f}% +/- {np.std(fract_brain_5hop_input)*100:.1f}% of brain neurons are encountered')
-print(f'From individual 8-hop cascades from sensory pairs, {np.mean(fract_brain_8hop_input)*100:.1f}% +/- {np.std(fract_brain_8hop_input)*100:.1f}% of brain neurons are encountered')
-
-print(f'From individual 5-hop cascades from individual brain pairs, {np.mean(fract_brain_5hop)*100:.1f}% +/- {np.std(fract_brain_5hop)*100:.1f}% of brain neurons are encountered')
-print(f'From individual 8-hop cascades from individual brain pairs, {np.mean(fract_brain_8hop)*100:.1f}% +/- {np.std(fract_brain_8hop)*100:.1f}% of brain neurons are encountered')
-
-# how many neurons receive signal from single pairs of neurons?
-skids_brain_5hop = [x for x in cascades_df.ds_partners_5hop]
-skids_brain_8hop = [x for x in cascades_df.ds_partners_8hop]
-skids_brain_5hop = list(np.unique([x for sublist in skids_brain_5hop for x in sublist]))
-skids_brain_8hop = list(np.unique([x for sublist in skids_brain_8hop for x in sublist]))
-
-skids_brain_5hop_input = [x for x in cascades_df_with_inputs.loc[np.intersect1d(inputs, cascades_df_with_inputs.index)].ds_partners_5hop]
-skids_brain_8hop_input = [x for x in cascades_df_with_inputs.loc[np.intersect1d(inputs, cascades_df_with_inputs.index)].ds_partners_8hop]
-skids_brain_5hop_input = list(np.unique([x for sublist in skids_brain_5hop_input for x in sublist]))
-skids_brain_8hop_input = list(np.unique([x for sublist in skids_brain_8hop_input for x in sublist]))
-
-print(f'From all 5-hop cascades from sensory pairs, {len(skids_brain_5hop_input)/len(brain)*100:.1f}% of brain neurons are encountered')
-print(f'From all 8-hop cascades from sensory pairs, {len(skids_brain_8hop_input)/len(brain)*100:.1f}% of brain neurons are encountered')
-
-print(f'From all 5-hop cascades from individual brain pairs, {len(skids_brain_5hop)/len(brain)*100:.1f}% of brain neurons are encountered')
-print(f'From all 8-hop cascades from individual brain pairs, {len(skids_brain_8hop)/len(brain)*100:.1f}% of brain neurons are encountered')
 # %%
 # how many partners are in recurrent loops?
 
@@ -126,6 +89,7 @@ hops = 5
 frac_recurrent = [len(partners_df.loc[i, f'recurrent_partners_{hops}hop'])/len(partners_df.loc[i, f'ds_partners_{hops}hop']) if len(partners_df.loc[i, f'ds_partners_{hops}hop'])>0 else 0 for i in partners_df.index]
 partners_df[f'fraction_recurrent_{hops}hop'] = frac_recurrent
 partners_df[f'fraction_nonrecurrent_{hops}hop'] = 1-partners_df.loc[:, f'fraction_recurrent_{hops}hop']
+
 
 # %%
 # analysis of recurrent partners at 5- and 8-hops
