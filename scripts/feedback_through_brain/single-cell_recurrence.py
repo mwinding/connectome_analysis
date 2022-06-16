@@ -197,8 +197,9 @@ partners_df.groupby('celltype').std()
 
 # %%
 # multilength recurrence onto upstream neurons?
+# takes ~30 minutes
 
-def multilength_plots(hit_hist_list, partners_df, hops, plot=True):
+def multilength_plots(hit_hist_list, hit_thres, partners_df, hops, plot=True):
     multilayered_df = []
     for i, hit_hist in enumerate(hit_hist_list):
         skid_hit_hist = hit_hist.hh_pairwise.iloc[:, 1:(hops+1)]
@@ -276,8 +277,8 @@ def multilength_plots(hit_hist_list, partners_df, hops, plot=True):
 
 hit_thres = n_init/10
 hit_hist_list = cascades_df.loc[:, 'cascade_objs']
-counts_8hop, lengths_8hop, multilayered_8hop = multilength_plots(hit_hist_list, partners_df, hops=8)
-counts_5hop, lengths_5hop, multilayered_5hop = multilength_plots(hit_hist_list, partners_df, hops=5)
+counts_8hop, lengths_8hop, multilayered_8hop = multilength_plots(hit_hist_list, hit_thres, partners_df, hops=8)
+counts_5hop, lengths_5hop, multilayered_5hop = multilength_plots(hit_hist_list, hit_thres, partners_df, hops=5)
 
 # %%
 # investigate lengths a bit more
@@ -317,7 +318,7 @@ print(f'and longest path at {length_max:.1f}+/-{length_max_std:.1f}')
 # %%
 # check MBIN recurrence in more detail
 
-hops = 8
+hops = 5
 MBIN_hit_hist_list = hit_hist_list.loc[np.intersect1d(MBIN_DAN_ct.skids, partners_df.index)]
 MBIN_counts_8hop, MBIN_lengths_8hop, MBIN_multilayered_8hop = multilength_plots(MBIN_hit_hist_list, partners_df, hops=hops, plot=False)
 
