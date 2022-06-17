@@ -152,7 +152,7 @@ def recurrent_plots(partners_df, hops, celltypes, pairs):
     sns.barplot(x=partners_df.celltype, y=partners_df.loc[:, f'fraction_recurrent_{hops}hop'], order=order)
     sns.stripplot(x=partners_df.celltype, y=partners_df.loc[:, f'fraction_recurrent_{hops}hop'], s=1, alpha=0.5, color='black', order=order)
     plt.xticks(rotation=45, ha='right')
-    ax.set(ylim=(-0.05, 1))
+    ax.set(ylim=(-0.05, 1.05))
     plt.savefig(f'plots/recurrent-partner-fractions_{hops}hops_by-celltype_barplot-with-points.pdf', format='pdf', bbox_inches='tight')
 
     fig, ax = plt.subplots(1,1,figsize=(2,1))
@@ -195,6 +195,32 @@ _ = recurrent_plots(partners_df=partners_df, hops=5, celltypes=celltypes, pairs=
 partners_df.groupby('celltype').mean()
 partners_df.groupby('celltype').std()
 
+# %%
+# additional investigation of DANs
+
+DANs = list(Promat.load_pairs_from_annotation('mw MBIN subclass_DAN', pairs).leftid)
+OANs = list(Promat.load_pairs_from_annotation('mw MBIN subclass_OAN', pairs).leftid)
+MBINs = list(Promat.load_pairs_from_annotation('mw MBIN', pairs).leftid)
+MBINs = list(np.setdiff1d(MBINs, OANs + DANs))
+
+# sort neurons by recurrence and plot recurrence while highlighting specific neuron types
+recurrence_sorted = partners_df.fraction_recurrent_5hop.sort_values(ascending=True)
+fig,ax=plt.subplots(figsize=(2,1))
+sns.scatterplot(x=[i for i in range(0, len(recurrence_sorted))], y=recurrence_sorted, ec='tab:gray', fc='none', alpha=0.1, ax=ax, s=5)
+
+# add MBIN nodes to plot
+MBINs_ind = [i for i in range(0, len(recurrence_sorted)) if recurrence_sorted.index[i] in MBINs]
+sns.scatterplot(x=MBINs_ind, y=recurrence_sorted.iloc[MBINs_ind], ec='#FF8734', fc='none', ax=ax, s=5, alpha=0.8)
+
+# add DAN nodes to plot
+DANs_ind = [i for i in range(0, len(recurrence_sorted)) if recurrence_sorted.index[i] in DANs]
+sns.scatterplot(x=DANs_ind, y=recurrence_sorted.iloc[DANs_ind], ec='#FF8734', fc='#FF8734', ax=ax, s=5, alpha=0.8)
+
+# draw percentile lines
+[plt.axvline(len(recurrence_sorted)*x, color='gray', linewidth=0.25, alpha=0.5) for x in [1, .9, .8, .7, .6, .5, .4, .3, .2, .1, 0]]
+
+plt.savefig('plots/DANs_individual_recurrence.pdf', format='pdf', bbox_inches='tight')
+[x/len(recurrence_sorted) for x in DANs_ind]
 # %%
 # multilength recurrence onto upstream neurons?
 # takes ~30 minutes
