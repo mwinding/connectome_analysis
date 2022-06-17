@@ -127,7 +127,7 @@ dSEZ_partners_df = identify_fb_ec(dSEZ_partners_df, partners_df, threshold, hops
 # in text data
 
 # for dVNCs
-hops=8
+hops=5
 average_upstream_feedback = np.mean([len(x) for x in dVNC_partners_df.loc[:, f'feedback_partners_{hops}hop'] if len(x)>0])
 print(f'dVNCs provide feedback to an average of {average_upstream_feedback:.0f} neurons using {hops}-hop cascades')
 
@@ -159,7 +159,7 @@ print(f'There are {dVNC_rpath_mean:.1f}+/-{dVNC_rpath_std:.1f} paths of differen
 
 
 # for dSEZs
-hops=8
+hops=5
 average_upstream_feedback = np.mean([len(x) for x in dSEZ_partners_df.loc[:, f'feedback_partners_{hops}hop'] if len(x)>0])
 print(f'dSEZs provide feedback to an average of {average_upstream_feedback:.0f} neurons using {hops}-hop cascades')
 
