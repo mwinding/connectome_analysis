@@ -64,6 +64,9 @@ ds_unk = Promat.downstream_multihop(edges=ad_edges_A1, sources=A1_unk, hops=hops
 VNC_layers = [us_MN, ds_proprio, ds_noci, ds_chord, ds_classII_III, ds_external, ds_unk]
 cat_order = ['pre-MN', 'Proprio', 'Noci', 'Chord', 'ClassII_III', 'ES', 'Unknown']
 
+#[pymaid.add_annotations(skids[0], f'mw A1 interneuron {cat_order[i]} 2nd_order') for i, skids in enumerate(VNC_layers)]
+#[pymaid.add_annotations(skids[1], f'mw A1 interneuron {cat_order[i]} 3rd_order') for i, skids in enumerate(VNC_layers)]
+
 # flatten layers and check how many A1 neurons are of each type
 VNC_layers_flattened = []
 for layer in VNC_layers:
@@ -75,18 +78,6 @@ VNC_flat_layers_cts = Celltype_Analyzer(VNC_flat_layers_cts)
 A1_cta = Celltype_Analyzer([Celltype('A1 interneurons', A1_interneurons)])
 A1_cta.set_known_types(VNC_flat_layers_cts.Celltypes)
 A1_cta.memberships()
-
-# in text data
-num_preMN = A1_cta.memberships(raw_num=True).loc['pre-MN', :].values[0]
-num_non_preMN = len(A1_interneurons) - num_preMN
-print(f'There were {num_non_preMN} neurons ({num_non_preMN/len(A1_interneurons)*100:.1f}% of A1 neurons) had neither direct nor indirect connections to motorneurons')
-
-names = ['Proprio', 'Noci', 'Chord', 'ClassII_III', 'ES', 'Unknown']
-
-for name in names:
-    num = A1_cta.memberships(raw_num=True).loc[name, :].values[0]
-    num_non = len(A1_interneurons) - num
-    print(f'There were {num_non} neurons ({num_non/len(A1_interneurons)*100:.1f}% of A1 neurons) had neither direct nor indirect connections from {name}')
 
 # upset plot
 all_neurons_us_ds = np.unique([x for sublist in VNC_flat_layers_cts.Celltypes for x in sublist.skids])
@@ -109,6 +100,19 @@ A1_cta.set_known_types(VNC_layers12_cts.Celltypes)
 A1_cta.memberships(raw_num=True)
 
 print(f'{(len(VNC_layers12_cts.Celltypes[0].skids)/len(VNC_flat_layers_cts.Celltypes[0].skids))*100:.1f}% of the motor layer neurons were 1- or 2-hops from motorneurons')
+# [pymaid.add_annotations(x.skids, f'mw A1 interneuron {x.name} 2nd/3rd-order') for x in VNC_layers12_cts.Celltypes]
+
+# in text data
+num_preMN = A1_cta.memberships(raw_num=True).loc['pre-MN', :].values[0]
+num_non_preMN = len(A1_interneurons) - num_preMN
+print(f'There were {num_non_preMN} neurons ({num_non_preMN/len(A1_interneurons)*100:.1f}% of A1 neurons) had neither direct nor indirect connections to motorneurons')
+
+names = ['Proprio', 'Noci', 'Chord', 'ClassII_III', 'ES', 'Unknown']
+
+for name in names:
+    num = A1_cta.memberships(raw_num=True).loc[name, :].values[0]
+    num_non = len(A1_interneurons) - num
+    print(f'There were {num_non} neurons ({num_non/len(A1_interneurons)*100:.1f}% of A1 neurons) had neither direct nor indirect connections from {name}')
 
 # %%
 ##################
@@ -168,17 +172,22 @@ plt.savefig(f'plots/VNC-layers_threshold-{threshold}_ascending-neuron_layers.pdf
 # number of neurons downstream of dVNC at each VNC layer
 
 ds_dVNC = Promat.downstream_multihop(edges=ad_edges_A1, sources=dVNC, hops=1, pairs=pairs)
+ds_dVNC_asc = [list(np.intersect1d(skids, A1_ascending)) for skids in ds_dVNC]
+ds_dVNC_non_asc = [list(np.setdiff1d(skids, A1_ascending)) for skids in ds_dVNC]
 
 ds_dVNC_layers, ds_dVNC_layers_skids = Celltype_Analyzer.layer_id(VNC_layers, general_names, ds_dVNC)
+ds_dVNC_na_layers, ds_dVNC_na_layers_skids = Celltype_Analyzer.layer_id(VNC_layers, general_names, ds_dVNC_non_asc)
+ds_dVNC_a_layers, ds_dVNC_a_layers_skids = Celltype_Analyzer.layer_id(VNC_layers, general_names, ds_dVNC_asc)
 
-fig, axs = plt.subplots(
-    1, 1, figsize = (1.5, 3)
-)
-ax = axs
-sns.heatmap(ds_dVNC_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot = True, square=True, cmap = 'Reds', cbar = False, ax = ax)
+fig, ax = plt.subplots(figsize=(1.5, 3))
+sns.heatmap(ds_dVNC_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot=True, square=True, cmap='Reds', cbar=False, ax=ax)
 ax.set_title('Downstream of dVNCs')
 plt.savefig(f'plots/VNC-layers_threshold-{threshold}_dVNC-downstream-targets.pdf', bbox_inches='tight')
 
+fig, ax = plt.subplots(figsize=(1.5, 3))
+sns.heatmap(ds_dVNC_a_layers.T, cbar_kws={'label': 'Number of Neurons'}, annot=True, square=True, cmap='Reds', cbar=False, ax=ax)
+ax.set_title('Downstream of dVNCs: Ascending')
+plt.savefig(f'plots/VNC-layers_threshold-{threshold}_dVNC-downstream-targets_ascending.pdf', bbox_inches='tight')
 # %%
 # in text data for paper
 
@@ -247,15 +256,17 @@ print(f'dVNCs synapse onto only {len(A1_ds_dVNC)} A1 interneurons ({(len(A1_ds_d
 print(f'Each dVNC on average synapses onto only {mean_ds_dVNC_A1s:.1f}+/-{std_ds_dVNC_A1s:.1f} A1 interneurons')
 
 mean_us_dVNC_A1s = np.mean(ad_edges_A1_copy.groupby('downstream_skid').count().upstream_skid)
+median_us_dVNC_A1s = np.median(ad_edges_A1_copy.groupby('downstream_skid').count().upstream_skid)
 std_us_dVNC_A1s = np.std(ad_edges_A1_copy.groupby('downstream_skid').count().upstream_skid)
 print(f'Each dVNC target in A1 on average receives from only {mean_us_dVNC_A1s:.1f}+/-{std_us_dVNC_A1s:.1f} dVNCs')
+print(f'Each dVNC target in A1 receives from only {median_us_dVNC_A1s:.0f} dVNCs (median)')
 
 # %%
 # annotate neurons from previous chunks
 
-pymaid.add_annotations(A1_ds_dVNC, 'mw A1 ds_dVNC')
-pymaid.add_annotations(dVNC_A1, 'mw dVNC to A1')
-pymaid.add_annotations(np.setdiff1d(dVNC, dVNC_A1), 'mw dVNC not to A1')
+#pymaid.add_annotations(A1_ds_dVNC, 'mw A1 ds_dVNC')
+#pymaid.add_annotations(dVNC_A1, 'mw dVNC to A1')
+#pymaid.add_annotations(np.setdiff1d(dVNC, dVNC_A1), 'mw dVNC not to A1')
 
 # %%
 # multimodal identity of A1_ds_dVNC neurons
@@ -312,12 +323,12 @@ print(f'There are {len(all_4th_ds_VNC_premotor)} 3rd-order sensory neurons + ds-
 # how many 2nd-order proprioceptive neurons were also premotor?
 proprio_2nd = ds_proprio[0]
 all_proprio_ds_VNC = np.intersect1d(proprio_2nd, A1_ds_dVNC)
-all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_2nd, us_MN[0])
+all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_ds_VNC, us_MN[0])
 print(f'There are {len(all_proprio_ds_VNC_premotor)} 2rd-order proprio neurons + ds-VNC ({(len(all_proprio_ds_VNC_premotor)/len(all_proprio_ds_VNC))*100:.1f}%) are also premotor neurons')
 
 proprio_2nd = ds_proprio[0]
 all_proprio_ds_VNC = np.intersect1d(proprio_2nd, A1_ds_dVNC)
-all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_2nd, us_MN[1])
+all_proprio_ds_VNC_premotor = np.intersect1d(all_proprio_ds_VNC, us_MN[1])
 print(f'There are {len(all_proprio_ds_VNC_premotor)} 2rd-order proprio neurons + ds-VNC ({(len(all_proprio_ds_VNC_premotor)/len(all_proprio_ds_VNC))*100:.1f}%) are also pre-premotor neurons')
 
 # how many A1-ds-dVNC neurons are motor, premotor, or pre-motor
@@ -328,10 +339,20 @@ print(f'There are {len(A1_ds_dVNC_motor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_m
 print(f'There are {len(A1_ds_dVNC_premotor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_premotor)/len(A1_ds_dVNC))*100:.1f}%) were premotor neurons')
 print(f'There are {len(A1_ds_dVNC_prepremotor)} A1-ds-dVNC neurons ({(len(A1_ds_dVNC_prepremotor)/len(A1_ds_dVNC))*100:.1f}%) were pre-premotor neurons')
 
+# %%
+# celltypes within A1_ds_dVNC
+
+len(np.intersect1d(A1_ds_dVNC, A1_ascending))/len(A1_ds_dVNC)
+A1asc_ds_dVNC = list(np.intersect1d(A1_ds_dVNC, A1_ascending))
+pymaid.add_annotations('mw A1 zigzag ascending', A1asc_ds_dVNC)
+
+VNC_layers12_types_cta = Celltype_Analyzer(VNC_layers12_types_cts)
+VNC_layers12_types_cta.set_known_types([Celltype('DN-ANs', A1asc_ds_dVNC)])
+VNC_layers12_types_cta.memberships()
 
 # %%
 #########
-# OLD ANALYSIS; not sure if A00cs/gorogoro are in current dataset
+# OLD ANALYSIS; not sure if A00cs/gorogoro are even in current dataset
 ########
 
 # location of special-case neurons in VNC layering
