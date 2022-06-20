@@ -105,19 +105,40 @@ plt.savefig(f'plots/connection-probability_ascendings_all-brain-celltypes.pdf', 
 # dVNCs to A1
 motorneuron_pairs = Promat.load_pairs_from_annotation('mw A1 MN', pairs)
 exclude = A1_MN + dVNCs
+
+# sensories
+A1_sens = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories')
+
+# pre-motorneurons
 pre_motorneurons = Promat.upstream_multihop(edges=ad_edges_A1, sources=A1_MN, hops=1, exclude=exclude, pairs=pairs)[0]
 pre_motorneuron_pairids = Promat.extract_pairs_from_list(pre_motorneurons, pairs, return_pair_ids = True)
 pre_motorneuron_pairids = list(np.intersect1d(pre_motorneuron_pairids, pymaid.get_skids_by_annotation('mw A1 neurons paired')))
 pre_motorneurons = pre_motorneuron_pairids + list(pairs.set_index('leftid').loc[pre_motorneuron_pairids, 'rightid'])
 
-A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + pre_motorneurons + ascendings_all)
+# post-sensory neurons
+post_sens = [pymaid.get_skids_by_annotation(f'mw A1 interneuron {x} 2nd_order') for x in ['ES', 'Proprio', 'Chord', 'ClassII_III', 'ES', 'Unknown']]
+post_sens = [x for sublist in post_sens for x in sublist]
+post_sens_pairs = Promat.load_pairs_from_annotation('post-sens', pairs, return_type='all_pair_ids_bothsides', skids=post_sens, use_skids=True)
+
+# pre-motor only
+premotor_only_pairids = list(np.setdiff1d(pre_motorneuron_pairids, post_sens_pairs.leftid))
+
+# post-sensory only
+postsens_only_pairids = list(np.setdiff1d(post_sens_pairs.leftid, pre_motorneuron_pairids))
+
+# both pre-motor and post-sensory
+both_premotor_postsens_pairids = list(np.intersect1d(post_sens_pairs.leftid, pre_motorneuron_pairids))
+
+# other A1 interneurons
+A1_cells = np.setdiff1d(pymaid.get_skids_by_annotation('mw A1 neurons paired'), pymaid.get_skids_by_annotation('mw A1 MN') + A1_sens + pre_motorneurons + ascendings_all + post_sens)
 A1_pairs = Promat.load_pairs_from_annotation('A1', pairs, return_type='all_pair_ids_bothsides', skids=A1_cells, use_skids=True)
+
 dVNC_A1_pairs = Promat.load_pairs_from_annotation('mw dVNC to A1', pairs, return_type='all_pair_ids_bothsides')
 
 dVNC_nonA1 = np.setdiff1d(pymaid.get_skids_by_annotation('mw dVNC'), pymaid.get_skids_by_annotation('mw dVNC to A1'))
 dVNC_nonA1_pairs = Promat.load_pairs_from_annotation('mw dVNC not to A1', pairs, return_type='all_pair_ids_bothsides', skids=dVNC_nonA1, use_skids=True)
 celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid)]
-celltypes_post = [list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
+celltypes_post = [list(asc_pairs.leftid), list(A1_pairs.leftid), postsens_only_pairids, premotor_only_pairids, both_premotor_postsens_pairids, list(motorneuron_pairs.leftid)]
 
 mat = np.zeros(shape=(len(celltypes_pre), len(celltypes_post)))
 for i, pair_type1 in enumerate(celltypes_pre):
@@ -130,7 +151,7 @@ for i, pair_type1 in enumerate(celltypes_pre):
 
             mat[i, j] = sum(connection)/len(connection)
 
-df = pd.DataFrame(mat, columns = ['A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'],
+df = pd.DataFrame(mat, columns = ['A1-ascending', 'A1-interneuron', 'A1-post-sensory', 'A1-pre-motorneuron', 'A1-post-sens-pre-motor', 'A1-motorneuron'],
                         index = ['dVNC to A1', 'dVNC not to A1'])
 
 cmap = blue_cmap
@@ -141,8 +162,8 @@ sns.heatmap(df, square=True, cmap=cmap, vmax=vmax)
 plt.savefig(f'plots/connection-probability_dVNCs_A1cells.pdf', format='pdf', bbox_inches='tight')
 
 # summary connectivity probability plot
-celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
-celltypes_post = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), list(A1_pairs.leftid), pre_motorneuron_pairids, list(motorneuron_pairs.leftid)]
+celltypes_pre = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), postsens_only_pairids, premotor_only_pairids, both_premotor_postsens_pairids, list(A1_pairs.leftid), list(motorneuron_pairs.leftid)]
+celltypes_post = [list(dVNC_A1_pairs.leftid), list(dVNC_nonA1_pairs.leftid), list(dSEZ_pairs.leftid), list(RGN_pairs.leftid), list(asc_pairs.leftid), postsens_only_pairids, premotor_only_pairids, both_premotor_postsens_pairids, list(A1_pairs.leftid), list(motorneuron_pairs.leftid)]
 
 mat = np.zeros(shape=(len(celltypes_pre), len(celltypes_post)))
 for i, pair_type1 in enumerate(celltypes_pre):
@@ -155,8 +176,8 @@ for i, pair_type1 in enumerate(celltypes_pre):
 
             mat[i, j] = sum(connection)/len(connection)
 
-df = pd.DataFrame(mat, columns = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'],
-                        index = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-interneuron', 'A1-pre-motorneuron', 'A1-motorneuron'])
+df = pd.DataFrame(mat, columns = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-post-sensory', 'A1-pre-motorneuron', 'A1-post-sens-pre-motor', 'A1-interneuron', 'A1-motorneuron'],
+                        index = ['dVNC to A1', 'dVNC not to A1', 'dSEZ', 'RGN', 'A1-ascending', 'A1-post-sensory', 'A1-pre-motorneuron', 'A1-post-sens-pre-motor', 'A1-interneuron', 'A1-motorneuron'])
 
 cmap = blue_cmap
 vmax = 0.04
