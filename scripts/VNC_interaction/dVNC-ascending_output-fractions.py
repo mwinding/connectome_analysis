@@ -148,4 +148,31 @@ input_counts_dVNC[input_counts_dVNC==0]=1
 
 print(f'dVNCs receive {np.mean(input_from_asc/input_counts_dVNC)*100:.1f}+/-{np.std(input_from_asc/input_counts_dVNC)*100:.1f}% input from ascendings-nonA1')
 
+# %%
+# how many dVNCs synapse onto ascending neurons?
+#select_neurons = pymaid.get_skids_by_annotation(['mw A1 neurons paired', 'mw dVNC'])
+#select_neurons = select_neurons + Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories')
+ad_edges_A1 = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date_A1_brain, pairs_combined=False)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+
+asc_zigzag_pairs = Promat.load_pairs_from_annotation('mw A1 zigzag ascending', pairs)
+asc_pairs = Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending')
+asc_pairs = Promat.load_pairs_from_annotation('mw A1 ascending', pairs, skids=asc_pairs, use_skids=True)
+dVNC_A1_pairs = Promat.load_pairs_from_annotation('mw dVNC to A1', pairs)
+
+us_zigzag_asc = [Promat.upstream_multihop(edges=ad_edges_A1, sources=list(asc_zigzag_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(asc_zigzag_pairs))]
+ds_zigzag_asc = [Promat.downstream_multihop(edges=ad_edges_A1, sources=list(asc_zigzag_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(asc_zigzag_pairs))]
+
+ds_zigzag_asc = [Promat.downstream_multihop(edges=ad_edges_A1, sources=list(asc_zigzag_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(asc_zigzag_pairs))]
+ds_asc = [Promat.downstream_multihop(edges=ad_edges_A1, sources=list(asc_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(asc_pairs))]
+ds_asc_all = Promat.downstream_multihop(edges=ad_edges_A1, sources=Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 ascending'), pairs_combined=False, hops=1, pairs=pairs)[0]
+
+ds_dVNC_A1 = [Promat.downstream_multihop(edges=ad_edges_A1, sources=list(dVNC_A1_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(dVNC_A1_pairs))]
+us_dVNC_A1 = [Promat.upstream_multihop(edges=ad_edges_A1, sources=list(dVNC_A1_pairs.iloc[i]), pairs_combined=False, hops=1, pairs=pairs)[0] for i in range(0, len(dVNC_A1_pairs))]
+
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+ds_dVNC = Promat.downstream_multihop(edges=ad_edges_A1, sources=dVNC, hops=1, pairs=pairs)
+
+sum([(4206755 in x)|(14522404 in x) for x in ds_dVNC_A1])
+
 # %%
