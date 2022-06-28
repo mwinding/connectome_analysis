@@ -194,13 +194,23 @@ print(f'There are {dSEZ_rpath_mean:.1f}+/-{dSEZ_rpath_std:.1f} paths of differen
 
 dVNC_ds_feedback_partners = list(np.unique([x for sublist in dVNC_partners_df.feedback_partners_8hop for x in sublist]))
 dVNC_ds_efference_partners = list(np.unique([x for sublist in dVNC_partners_df.efference_partners_8hop for x in sublist]))
-dSEZ_ds_feedback_partners = list(np.unique([x for sublist in dVNC_partners_df.feedback_partners_8hop for x in sublist]))
-dSEZ_ds_efference_partners = list(np.unique([x for sublist in dVNC_partners_df.efference_partners_8hop for x in sublist]))
+dSEZ_ds_feedback_partners = list(np.unique([x for sublist in dSEZ_partners_df.feedback_partners_8hop for x in sublist]))
+dSEZ_ds_efference_partners = list(np.unique([x for sublist in dSEZ_partners_df.efference_partners_8hop for x in sublist]))
 
-pymaid.add_annotations(dVNC_ds_feedback_partners, 'mw dVNC ds-cascade_FB_8hop 2022-03-15')
-pymaid.add_annotations(dVNC_ds_efference_partners, 'mw dVNC ds-cascade_EC_8hop 2022-03-15')
-pymaid.add_annotations(dSEZ_ds_feedback_partners, 'mw dSEZ ds-cascade_FB_8hop 2022-03-15')
-pymaid.add_annotations(dSEZ_ds_efference_partners, 'mw dSEZ ds-cascade_EC_8hop 2022-03-15')
+pymaid.add_annotations(dVNC_ds_feedback_partners, 'mw dVNC-feedback-casc-8hop 2022-03-15')
+pymaid.add_annotations(dVNC_ds_efference_partners, 'mw dVNC-efference-casc-8hop 2022-03-15')
+pymaid.add_annotations(dSEZ_ds_feedback_partners, 'mw dSEZ-feedback-casc-8hop 2022-03-15')
+pymaid.add_annotations(dSEZ_ds_efference_partners, 'mw dSEZ-efference-casc-8hop 2022-03-15')
+
+dVNC_ds_feedback_partners = list(np.unique([x for sublist in dVNC_partners_df.feedback_partners_5hop for x in sublist]))
+dVNC_ds_efference_partners = list(np.unique([x for sublist in dVNC_partners_df.efference_partners_5hop for x in sublist]))
+dSEZ_ds_feedback_partners = list(np.unique([x for sublist in dSEZ_partners_df.feedback_partners_5hop for x in sublist]))
+dSEZ_ds_efference_partners = list(np.unique([x for sublist in dSEZ_partners_df.efference_partners_5hop for x in sublist]))
+
+pymaid.add_annotations(dVNC_ds_feedback_partners, 'mw dVNC-feedback-casc-5hop 2022-03-15')
+pymaid.add_annotations(dVNC_ds_efference_partners, 'mw dVNC-efference-casc-5hop 2022-03-15')
+pymaid.add_annotations(dSEZ_ds_feedback_partners, 'mw dSEZ-feedback-casc-5hop 2022-03-15')
+pymaid.add_annotations(dSEZ_ds_efference_partners, 'mw dSEZ-efference-casc-5hop 2022-03-15')
 
 # %%
 # which celltypes receive feedback or efference signal?
