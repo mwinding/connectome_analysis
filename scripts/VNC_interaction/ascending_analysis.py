@@ -179,7 +179,7 @@ def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_prese
             fig.savefig(f'plots/individual-asc-morpho_CNS-morphology-{view}.png', dpi=200)
 
     if(view == 'front'):
-        ax.azim = 90
+        ax.elev = 90
         ax.dist = 5.2 # zoom
         navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
@@ -191,7 +191,7 @@ def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_prese
             fig.savefig(f'plots/individual-asc-morpho_CNS-morphology-{view}.png', dpi=200)
  
     if(view == 'top'):
-        ax.elev=90
+        ax.azim = -90
         ax.dist = 5.2 # zoom
         navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
@@ -224,29 +224,11 @@ method='3d_complex'
 for i in range(0, len(asc_pairs)):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'side', method)
-'''
-for i in range(0, len(asc_pairs)):
-    neurons = pymaid.get_neurons(asc_pairs[i])
-    plot_pair(i, neurons, cns, neuropil, segments, 'front', method)
-'''
+
 for i in range(0, len(asc_pairs)):
     neurons = pymaid.get_neurons(asc_pairs[i])
     plot_pair(i, neurons, cns, neuropil, segments, 'top', method)
 
-segments = [SEZ_left, SEZ_right,
-            T1_left, T1_right,
-            T2_left, T2_right,
-            T3_left, T3_right,
-            A1_left, A1_right,
-            A2_left, A2_right,
-            A3_left, A3_right,
-            A4_left, A4_right,
-            A5_left, A5_right,
-            A6_left, A6_right,
-            A7_left, A7_right,
-            A8_left, A8_right]
-
-method='3d_complex'
 #plot_pair('', [], cns, [], segments, 'side', method=method, neurons_present=False)
 #plot_pair('', [], cns, [], segments, 'front', method=method,neurons_present=False)
 #plot_pair('', [], cns, [], segments, 'top', method=method,neurons_present=False)
