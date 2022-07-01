@@ -95,6 +95,67 @@ print(f'From all 8-hop cascades from sensory pairs, {len(skids_brain_8hop_input)
 print(f'From all 5-hop cascades from individual brain pairs, {len(skids_brain_5hop)/len(brain)*100:.1f}% of brain neurons are encountered')
 print(f'From all 8-hop cascades from individual brain pairs, {len(skids_brain_8hop)/len(brain)*100:.1f}% of brain neurons are encountered')
 
+# %%
+# similar analysis with 1% threshold of a-d connections
+
+# identify all brain pairs
+brain = pymaid.get_skids_by_annotation('mw brain neurons')
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+incomplete = pymaid.get_skids_by_annotation('mw brain incomplete')
+brain = list(np.setdiff1d(brain, pdiff+incomplete))
+brain_pairs = Promat.load_pairs_from_annotation('brain', pairs, return_type='all_pair_ids_bothsides', skids=brain, use_skids=True)
+
+# load previously generated edge list with % threshold
+ad_edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=False)
+
+# identify neurons to exclude
+modalities = 'mw brain sensory modalities'
+brain_inputs = Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=False)
+brain_inputs = brain_inputs + pymaid.get_skids_by_annotation('mw A1 ascending unknown')
+inputs_pairs = Promat.load_pairs_from_annotation('inputs', pairs, return_type='all_pair_ids_bothsides', skids=Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities, split=False), use_skids=True)
+
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+SEZ_motor = pymaid.get_skids_by_annotation('mw motor')
+
+# identify all 5-hop partners from each brain pair
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
+threshold = 0.01
+brain_pairs_5hops = Parallel(n_jobs=-1)(delayed(Promat.downstream_multihop)(edges=ad_edges, sources=brain_pairs.values[i], hops=5, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor) for i in tqdm(range(0, len(brain_pairs.values))))
+input_pairs_5hops = Parallel(n_jobs=-1)(delayed(Promat.downstream_multihop)(edges=ad_edges, sources=inputs_pairs.values[i], hops=5, pairs=pairs, exclude=brain_inputs+pdiff+SEZ_motor) for i in tqdm(range(0, len(inputs_pairs.values))))
+
+# flatten 5-hop partners
+brain_pairs_5hops_flatten = []
+for i in range(len(brain_pairs_5hops)):
+    skids = [x for sublist in brain_pairs_5hops[i] for x in sublist]
+    skids = list(np.unique(skids))
+    brain_pairs_5hops_flatten.append(skids)
+
+input_pairs_5hops_flatten = []
+for i in range(len(input_pairs_5hops)):
+    skids = [x for sublist in input_pairs_5hops[i] for x in sublist]
+    skids = list(np.unique(skids))
+    input_pairs_5hops_flatten.append(skids)
+
+# fraction of brain reached in 5-hops per neuron pair
+brain_pairs_5hops_brain = [len(skids)/len(brain) for skids in brain_pairs_5hops_flatten]
+input_pairs_5hops_brain = [len(skids)/len(brain) for skids in input_pairs_5hops_flatten]
+
+fig, axs = plt.subplots(1,2,figsize=(2,1), sharey=True)
+
+ax = axs[0]
+sns.barplot(y=input_pairs_5hops_brain, ax=ax, ci='sd', capsize=0.1)
+ax.set(ylim=(0,1), title='Input pairs -> all brain')
+
+ax = axs[1]
+sns.barplot(y=brain_pairs_5hops_brain, ax=ax, ci='sd', capsize=0.1)
+ax.set(ylim=(0,1), title='Brain pairs -> all brain')
+plt.savefig('plots/standard-ad-threshold-1%_individual-pairs_throughout-brain.pdf', format='pdf', bbox_inches='tight')
+
+print(f'From 5-hop thresholds from sensory pairs, {np.mean(input_pairs_5hops_brain)*100:.0f}% +/- {np.std(input_pairs_5hops_brain)*100:.0f}% of brain neurons are encountered')
+print(f'From 5-hop thresholds from individual brain pairs, {np.mean(brain_pairs_5hops_brain)*100:.0f}% +/- {np.std(brain_pairs_5hops_brain)*100:.0f}% of brain neurons are encountered')
+
 # %%
 # identify upstream partners via cascade
 
@@ -261,3 +322,7 @@ print(f'Cascade out-hubs output to {mean:.1f}% +/- {std:.1f}% of the brain')
 np.mean(partners_df.loc[in_hub_5hop, 'in_degree_5hop'])/len(brain_pairids)
 np.mean(partners_df.loc[in_out_hub_5hop, 'in_degree_5hop'])/len(brain_pairids)
 np.mean(partners_df.loc[out_hub_5hop, 'out_degree_5hop'])/len(brain_pairids)
+
+# %%
+# celltypes in overlapping cascade/connectivity hubs
+
