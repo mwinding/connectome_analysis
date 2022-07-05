@@ -219,8 +219,15 @@ sns.scatterplot(x=DANs_ind, y=recurrence_sorted.iloc[DANs_ind], ec='#FF8734', fc
 # draw percentile lines
 [plt.axvline(len(recurrence_sorted)*x, color='gray', linewidth=0.25, alpha=0.5) for x in [1, .9, .8, .7, .6, .5, .4, .3, .2, .1, 0]]
 
+
+# OAN indices
+OANs_ind = [i for i in range(0, len(recurrence_sorted)) if recurrence_sorted.index[i] in OANs]
+
 plt.savefig('plots/DANs_individual_recurrence.pdf', format='pdf', bbox_inches='tight')
 [x/len(recurrence_sorted) for x in DANs_ind]
+
+# recurrent per individual MBIN
+pd.concat([recurrence_sorted.loc[DANs].sort_values(ascending=False), recurrence_sorted.loc[OANs].sort_values(ascending=False), recurrence_sorted.loc[MBINs].sort_values(ascending=False)])
 # %%
 # multilength recurrence onto upstream neurons?
 # takes ~30 minutes
