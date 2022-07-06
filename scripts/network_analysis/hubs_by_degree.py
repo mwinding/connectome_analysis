@@ -305,6 +305,7 @@ ad_hubs_cta.memberships()
 ad_hubs_cta.set_known_types(celltypes)
 ad_hubs_cta.memberships()
 
+official_order = ['sensories', 'ascendings','PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 bar_df = ad_hubs_cta.memberships(raw_num=True).iloc[:, 1].loc[official_order]
 
 # gave priority to other celltypes over LNs, performed in CATMAID
