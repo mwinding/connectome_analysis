@@ -288,6 +288,7 @@ plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid
 
 # %%
 # plot cell type memberships of ad hubs
+_, celltypes = Celltype_Analyzer.default_celltypes()
 
 ad_hubs = [Celltype('ad out hubs', pymaid.get_skids_by_annotation('mw ad hubs_out')),
             Celltype('ad in-out hubs', pymaid.get_skids_by_annotation('mw ad hubs_in_out')),
@@ -305,7 +306,7 @@ ad_hubs_cta.memberships()
 ad_hubs_cta.set_known_types(celltypes)
 ad_hubs_cta.memberships()
 
-official_order = ['sensories', 'ascendings','PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+official_order = ['sensories', 'ascendings', 'PNs', 'PNs-somato', 'LNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 bar_df = ad_hubs_cta.memberships(raw_num=True).iloc[:, 1].loc[official_order]
 
 # gave priority to other celltypes over LNs, performed in CATMAID
@@ -314,12 +315,22 @@ bar_df.loc['LNs'] = 0
 bar_df.loc['MB-FBNs'] = bar_df.loc['MB-FBNs'] + 4
 bar_df.loc['LHNs'] = bar_df.loc['LHNs'] + 2
 
+# switch priority of CNs over LHNs and MBONs, new class of CN/FBNs
+# will use pre-dSEZs to mean CNs and CNs to mean CN/MB-FBNs, so that the order works out
+# will need to manually change the colors
+bar_df['pre-dSEZs'] = bar_df['pre-dSEZs'] + 4
+bar_df['LHNs'] = bar_df['LHNs'] - 4
+bar_df['pre-dSEZs'] = bar_df['pre-dSEZs'] + 2
+bar_df['MBONs'] = bar_df['MBONs'] - 2
+bar_df['CNs'] = bar_df['CNs'] + 6
+bar_df['MB-FBNs'] = bar_df['MB-FBNs'] - 6
 
 # pull official celltype colors
 colors = list(pymaid.get_annotated('mw brain simple colors').name)
 colors_names = [x.name.values[0] for x in list(map(pymaid.get_annotated, colors))] # use order of colors annotation for now
 color_sort = [np.where(x.replace('mw brain ', '')==np.array(official_order))[0][0] for x in colors_names]
 colors = [element for _, element in sorted(zip(color_sort, colors))]
+colors = colors + ['tab:gray']
 
 # donut plot of cell types
 fig, ax = plt.subplots(1,1,figsize=(2,2))
