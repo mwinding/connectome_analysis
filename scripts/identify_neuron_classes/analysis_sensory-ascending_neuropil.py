@@ -40,9 +40,9 @@ order4_ct = Celltype_Analyzer([Celltype(order4_names[i].replace('mw ', ''), skid
 
 # upset plots of 2nd/3rd order centers
 #   returned values are Celltypes of upset plot partitions 
-order2_cats = order2_ct.upset_members(path='identify_neuron_classes/plots/2nd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
-order3_cats = order3_ct.upset_members(path='identify_neuron_classes/plots/3rd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
-order4_cats = order4_ct.upset_members(path='identify_neuron_classes/plots/4th-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
+order2_cats = order2_ct.upset_members(path='plots/2nd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
+order3_cats = order3_ct.upset_members(path='plots/3rd-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
+order4_cats = order4_ct.upset_members(path='plots/4th-order_upset-plot', plot_upset=True, threshold=10, exclude_singletons_from_threshold=True)
 
 # %%
 # manually generate Sankey-like plots
@@ -384,11 +384,11 @@ cascades_neuropil = pd.concat(columns, axis=1)
 
 fig, ax = plt.subplots(1,1, figsize=(4,1.5))
 sns.heatmap(cascades_neuropil.T, ax=ax, cmap='Reds', vmax=1, square=True)
-plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig(f'plots/cascades-to-neuropils.pdf', bbox_inches='tight', format = 'pdf')
 
 fig, ax = plt.subplots(1,1, figsize=(2,1))
 sns.heatmap(cascades_neuropil.T.iloc[:, 0:len(order)*2], ax=ax, cmap='Reds', vmax=1, square=True)
-plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils_2nd-3rd-order.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig(f'plots/cascades-to-neuropils_2nd-3rd-order.pdf', bbox_inches='tight', format = 'pdf')
 
 
 # combine all 4th and 5th together
@@ -408,6 +408,6 @@ cascades_neuropil = pd.concat(columns, axis=1)
 
 fig, ax = plt.subplots(1,1, figsize=(4,1.5))
 sns.heatmap(cascades_neuropil.T, ax=ax, cmap='Reds', vmax=1, square=True)
-plt.savefig(f'identify_neuron_classes/plots/cascades-to-neuropils_combined4th-5th.pdf', bbox_inches='tight', format = 'pdf')
+plt.savefig(f'plots/cascades-to-neuropils_combined4th-5th.pdf', bbox_inches='tight', format = 'pdf')
 
 # %%
