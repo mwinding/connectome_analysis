@@ -1,14 +1,6 @@
 #%%
-import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
-
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 
 import matplotlib.pyplot as plt
@@ -16,8 +8,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import networkx as nx
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_graph as pg
+from contools import Promat, Prograph
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -30,19 +21,19 @@ plt.rcParams['font.family'] = 'arial'
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 brain = pymaid.get_skids_by_annotation('mw brain neurons')
-pairs = pd.read_csv('VNC_interaction/data/pairs-2020-10-26.csv', header = 0) # import pairs
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
-Gad = nx.readwrite.graphml.read_graphml('data/edges/Gad.graphml', node_type=int)
-Gaa = nx.readwrite.graphml.read_graphml('data/edges/Gaa.graphml', node_type=int)
-Gdd = nx.readwrite.graphml.read_graphml('data/edges/Gdd.graphml', node_type=int)
-Gda = nx.readwrite.graphml.read_graphml('data/edges/Gda.graphml', node_type=int)
+Gad = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gad.graphml', node_type=int)
+Gaa = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gaa.graphml', node_type=int)
+Gdd = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gdd.graphml', node_type=int)
+Gda = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gda.graphml', node_type=int)
 
 G_types = [Gad, Gaa, Gdd, Gda]
 G_names = ['Axon-Dendrite', 'Axon-Axon', 'Dendrite-Dendrite', 'Dendrite-Axon']
 
 def pull_edges_source_centric(G, skid, attribute):
-        in_edges = [pg.Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.in_edges(skid))] 
-        out_edges = [pg.Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.out_edges(skid))]
+        in_edges = [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.in_edges(skid))] 
+        out_edges = [Prograph.path_edge_attributes(G, edge, attribute)[0] for edge in list(G.out_edges(skid))]
         
         #if(len(out_edges)==1):
         #    out_edges = [out_edges]
@@ -70,7 +61,7 @@ def edge_fraction_by_synapse(max_bin, plot_type, edge_type, G_types, G_names):
         edges = []
         for node in G.nodes:
             if(edge_type!='all'):
-                edges.append(pg.Prograph.pull_edges(G, node, 'weight', edge_type))
+                edges.append(Prograph.pull_edges(G, node, 'weight', edge_type))
             if(edge_type=='all'):
                 edges.append(pull_edges_source_centric(G, node, 'weight'))
             
@@ -124,14 +115,14 @@ def edge_fraction_by_synapse(max_bin, plot_type, edge_type, G_types, G_names):
         ax.set(xlabel = 'Synaptic Strength', xlim=(-1, max_bin+1), ylim=(0, max_y))
         ax.set_title(f'{G_names[i]} {edge_type} Edges', y = 0.85)
 
-    plt.savefig(f'small_plots/plots/{edge_type}_edge-strength-per-node_{plot_type}.pdf', bbox_inches='tight')
+    plt.savefig(f'plots/{edge_type}_edge-strength-per-node_{plot_type}.pdf', bbox_inches='tight')
 
     all_hists = pd.concat(all_hists, axis=0)
 
     fig, ax = plt.subplots(1,1, figsize=(1.5,1.5)) #(3,1.5) before
     sns.barplot(data=all_hists, x='bin', y=plot_type, hue='edge_type', ax = ax, errwidth = 1)
     ax.set(ylabel = 'Fraction of Edges', xlabel = 'Edge Strength', ylim=(0,1))
-    plt.savefig(f'small_plots/plots/{edge_type}_edge-strength-per-node_{plot_type}_combined.pdf', bbox_inches='tight')
+    plt.savefig(f'plots/{edge_type}_edge-strength-per-node_{plot_type}_combined.pdf', bbox_inches='tight')
 
 max_bin = 4
 edge_fraction_by_synapse(max_bin, 'fraction', 'in', G_types, G_names)
@@ -150,7 +141,7 @@ def syn_fraction_by_synapse(max_bin, plot_type, edge_type, G_types, G_names):
         edges = []
         for node in G.nodes:
             if(edge_type!='all'):
-                edges.append(pg.Prograph.pull_edges(G, node, 'weight', edge_type))
+                edges.append(Prograph.pull_edges(G, node, 'weight', edge_type))
             if(edge_type=='all'):
                 edges.append(pull_edges_source_centric(G, node, 'weight'))
                 
@@ -211,7 +202,7 @@ def syn_fraction_by_synapse(max_bin, plot_type, edge_type, G_types, G_names):
         ax.set(xlabel = 'Edge Strength', ylim=(0, 1), ylabel='Fraction of Edges')
         ax.set_title(f'{G_names[i]}', y = 0.85)
 
-    plt.savefig(f'small_plots/plots/{edge_type}-counts_edge-strength-per-node_{plot_type}.pdf', bbox_inches='tight')
+    plt.savefig(f'plots/{edge_type}-counts_edge-strength-per-node_{plot_type}.pdf', bbox_inches='tight')
 
     all_hists_combined = pd.concat(all_hists, axis=0)
     all_hists_combined.index = [int(x) for x in all_hists_combined.index]
@@ -219,7 +210,7 @@ def syn_fraction_by_synapse(max_bin, plot_type, edge_type, G_types, G_names):
     fig, ax = plt.subplots(1,1, figsize=(1.5,1.5))
     sns.barplot(data=all_hists_combined, x='bin', y=plot_type, hue='edge_type', ax = ax, errwidth = 1)
     ax.set(ylabel = 'Fraction of Total Synapses', xlabel = 'Edge Strength', ylim=(0,1))
-    plt.savefig(f'small_plots/plots/{edge_type}-counts_edge-strength-per-node_{plot_type}_combined.pdf', bbox_inches='tight')
+    plt.savefig(f'plots/{edge_type}-counts_edge-strength-per-node_{plot_type}_combined.pdf', bbox_inches='tight')
 
 max_bin = 4
 
@@ -234,8 +225,8 @@ paired, _, _ = pm.Promat.extract_pairs_from_list(brain, pairs)
 in_edges_left = []
 in_edges_right = []
 for i in paired.index:
-    in_edges_left.append(pg.Prograph.pull_edges(Gad, paired.leftid[i], 'weight', 'in'))
-    in_edges_right.append(pg.Prograph.pull_edges(Gad, paired.rightid[i], 'weight', 'in'))
+    in_edges_left.append(Prograph.pull_edges(Gad, paired.leftid[i], 'weight', 'in'))
+    in_edges_right.append(Prograph.pull_edges(Gad, paired.rightid[i], 'weight', 'in'))
 
 all_in_edges = [x for sublist in in_edges_left for x in sublist] + [x for sublist in in_edges_right for x in sublist]
 all_in_edges = pd.DataFrame(all_in_edges, columns = ['pre', 'post', 'weight'])
