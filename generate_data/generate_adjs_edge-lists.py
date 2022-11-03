@@ -4,17 +4,18 @@ import pymaid
 import contools
 from contools import generate_adjs
 import numpy as np
+from datetime import datetime
 
 from pymaid_creds import url, name, password, token
 from data_settings import data_date, pairs_path
-data_date = '2022-03-17'
+data_date = datetime.today().strftime('%Y-%m-%d')
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 # %%
 # select neurons to include in adjacency matrices
-all_neurons = pymaid.get_skids_by_annotation(['mw brain paper clustered neurons', 'mw brain accessory neurons'])
-remove_neurons = pymaid.get_skids_by_annotation('mw brain very incomplete')
-all_neurons = list(np.setdiff1d(all_neurons, remove_neurons)) # remove neurons that are so incomplete, they have no split point
+all_neurons = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons'])
+remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
+all_neurons = list(np.setdiff1d(all_neurons, remove_neurons)) # remove neurons that are incomplete or partially differentiated (as well as SEZ motor neurons)
 
 # specify split tags
 split_tag = 'mw axon split'
@@ -38,10 +39,10 @@ generate_adjs.edge_thresholds(path='data/adj', threshold=threshold, left_annot='
 # %%
 # same with A1 neurons and brain
 # select neurons to include in adjacency matrices
-all_neurons = pymaid.get_skids_by_annotation(['mw brain paper clustered neurons', 'mw brain accessory neurons', 'mw A1 neurons paired'])
+all_neurons = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons', 'mw A1 neurons paired'])
 all_neurons = all_neurons + contools.Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories') # add a few nonpaired sensories to the list
 all_neurons = list(np.unique(all_neurons)) # remove duplicates between 'mw A1 neurons paired' and 'mw A1 sensories'
-remove_neurons = pymaid.get_skids_by_annotation('mw brain very incomplete')
+remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
 all_neurons = list(np.setdiff1d(all_neurons, remove_neurons)) # remove neurons that are so incomplete, they have no split point
 
 # specify split tags
