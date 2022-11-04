@@ -11,14 +11,18 @@ import pandas as pd
 import pickle
 
 from contools import Promat, Adjacency_matrix, Celltype_Analyzer, Celltype, Cascade_Analyzer
-today_date = '2022-03-15'
+today_date = '2022-11-03'
+
 # %%
 # load adjacency matrix for cascades
-subgraph = ['mw brain paper clustered neurons', 'mw brain accessory neurons']
+subgraph = ['mw brain and inputs', 'mw brain accessory neurons']
 adj_ad = Promat.pull_adj(type_adj='ad', data_date=data_date, subgraph=subgraph)
 
 # prep start and stop nodes
-skids = pymaid.get_skids_by_annotation(['mw brain neurons', 'mw brain accessory neurons'])
+skids = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons'])
+remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
+skids = list(np.setdiff1d(skids, remove_neurons))
+
 brain_pairs, brain_unpaired, brain_nonpaired = Promat.extract_pairs_from_list(skids, Promat.get_pairs(pairs_path))
 
 brain_pair_list = [list(brain_pairs.loc[i]) for i in brain_pairs.index]
@@ -26,7 +30,6 @@ brain_nonpaired_list = [list(brain_nonpaired.loc[i]) for i in brain_nonpaired.in
 brain_pair_list = brain_pair_list + brain_nonpaired_list
 
 output_skids = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs')
-output_skids = output_skids + pymaid.get_skids_by_annotation('mw motor')
 
 # %%
 # cascades from each neuron pair

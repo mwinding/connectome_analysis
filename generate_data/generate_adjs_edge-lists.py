@@ -39,6 +39,9 @@ generate_adjs.edge_thresholds(path='data/adj', threshold=threshold, left_annot='
 # %%
 # same with A1 neurons and brain
 # select neurons to include in adjacency matrices
+
+data_date = datetime.today().strftime('%Y-%m-%d') + 'b'
+
 all_neurons = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons', 'mw A1 neurons paired'])
 all_neurons = all_neurons + contools.Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories') # add a few nonpaired sensories to the list
 all_neurons = list(np.unique(all_neurons)) # remove duplicates between 'mw A1 neurons paired' and 'mw A1 sensories'
@@ -50,10 +53,12 @@ split_tag = 'mw axon split'
 special_split_tags = ['mw axon start', 'mw axon end']
 not_split_skids = pymaid.get_skids_by_annotation(['mw unsplittable'])
 
-generate_adjs.adj_split_axons_dendrites(all_neurons, split_tag, special_split_tags, not_split_skids)
+generate_adjs.adj_split_axons_dendrites(all_neurons, split_tag, special_split_tags, not_split_skids, data_date=data_date)
 
 # %%
 # generate edge list with %input threshold = 0.01 for brain + A1 dataset
+data_date = datetime.today().strftime('%Y-%m-%d') + 'b'
+
 threshold = 0.01
 pairs = contools.Promat.get_pairs(pairs_path=pairs_path, remove_notes=False)
 generate_adjs.edge_thresholds(path='data/adj', threshold=threshold, left_annot='mw left', right_annot='mw right', pairs = pairs, fraction_input=True, date=data_date)
