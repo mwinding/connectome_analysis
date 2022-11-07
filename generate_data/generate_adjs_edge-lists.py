@@ -26,7 +26,7 @@ generate_adjs.adj_split_axons_dendrites(all_neurons, split_tag, special_split_ta
 
 # %%
 # generate edge list with average pairwise threshold = 3
-threshold = 3
+threshold = 2
 pairs = contools.Promat.get_pairs(pairs_path=pairs_path)
 generate_adjs.edge_thresholds(path='data/adj', threshold=threshold, left_annot='mw left', right_annot='mw right', pairs = pairs, fraction_input=False, date=data_date)
 
