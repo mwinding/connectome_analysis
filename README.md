@@ -7,7 +7,8 @@ Installation and setup
 The associated tools in connectome_tools_deprecated have been reimplemented in the connectome_tools repo with updated features, https://github.com/mwinding/connectome_tools
 
 connectome tools can be installed via pip:
-``pip install git+https://github.com/mwinding/connectome_tools``
+
+```pip install git+https://github.com/mwinding/connectome_tools```
 
 Project Organization
 ------------
