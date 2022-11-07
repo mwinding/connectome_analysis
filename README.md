@@ -1,10 +1,15 @@
-Scripts to manipulate, process, and analyze the Drosophila larval brain connectome
+connectome_analysis
+==============================Scripts to manipulate, process, and analyze the Drosophila larval brain connectome
 
+Installation and setup
+--------
 The associated tools in connectome_tools_deprecated have been reimplemented in the connectome_tools repo with updated features, https://github.com/mwinding/connectome_tools
 
 connectome tools can be installed via pip
-`pip install git+https://github.com/mwinding/connectome_tools`
+``pip install git+https://github.com/mwinding/connectome_tools``
 
+Project Organization
+------------
 ├── LICENSE
 ├── README.md
 ├── data
@@ -32,3 +37,5 @@ connectome tools can be installed via pip
 │       └── etc.
 |
 └── scripts-for-figures.py  <- not currently updated
+
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
