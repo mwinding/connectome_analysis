@@ -9,7 +9,6 @@ import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
 from contools import Celltype, Celltype_Analyzer, Promat
-import navis
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
