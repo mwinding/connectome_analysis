@@ -4,17 +4,17 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+from contools import Celltype, Celltype_Analyzer, Promat, Prograph
+
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_skeletons as skel
-edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
-edge_ad = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
-pairs = pm.Promat.get_pairs()
+edges = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=True)
+edge_ad = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date, pairs_combined=False)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 edge_ad.set_index('upstream_skid', inplace=True)
 
 # %%
@@ -37,8 +37,8 @@ exclude = uPN + tPN + vPN + KC + mPN + LON + MBON + MBIN
 ds_uPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, uPN), :].downstream_skid), exclude)
 ds_vPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, vPN), :].downstream_skid), exclude)
 ds_tPNs = np.setdiff1d(np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, tPN), :].downstream_skid), exclude)
-LHN_pure = np.setdiff1d(np.unique(list(ds_uPNs)), exclude)
-LHN = np.setdiff1d(np.unique(list(ds_uPNs) + list(ds_vPNs) + list(ds_tPNs)), exclude)
+LHN_pure = np.setdiff1d(np.unique(ds_uPNs), exclude)
+LHN = np.setdiff1d(np.unique(np.concatenate([ds_uPNs, ds_vPNs, ds_tPNs])), exclude)
 
 pymaid.add_annotations(LHN_pure, 'mw LHN-from-uPN')
 #pymaid.add_annotations(LHN, 'mw LHN-from-uPN-vPN-tPN')
