@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from contools import Promat
 from pymaid_creds import url, name, password, token
 from data_settings import data_date, pairs_path
 import pymaid
@@ -12,7 +13,7 @@ all_brain_edges = pd.read_csv('data/completeness/all_brain_edges_2022-11-09.csv'
 brain_related_skels = pd.read_csv('data/completeness/brain_related_skels_2022-11-09.csv')
 
 # %%
-# pre completion
+# presynaptic site completion
 
 pre_only = all_brain_edges.copy()
 pre_only = pre_only.loc[:, ['pre_skeleton', 'connector']].set_index('pre_skeleton')
@@ -33,7 +34,7 @@ print(f'Complete Pre: {complete_pre}')
 print(f'Complete Presynaptic Sites: {pre_completeness*100:.1f}%')
 
 # %%
-# post completion
+# postsynaptic site completion
 
 post_only = all_brain_edges.copy()
 post_only = post_only.loc[:, ['connector', 'post_skeleton']].set_index('post_skeleton')
@@ -47,7 +48,7 @@ print(f'Total Post: {total_post}')
 print(f'Complete Post: {complete_post}')
 print(f'Complete Postsynaptic Sites: {post_completeness*100:.1f}%')
 # %%
-# summed post/pre completion
+# all synaptic site completion
 
 complete_all = complete_post + complete_pre
 total_all = total_post + total_pre
@@ -57,9 +58,48 @@ print(f'Total Synaptic Sites: {total_all}')
 print(f'Complete Synaptic Sites: {complete_all}')
 print(f'Complete Synaptic Sites: {all_completeness*100:.1f}%')
 
-print(f'Complete Presynaptic Sites: {pre_completeness*100:.1f}%')
+print(f'\nComplete Presynaptic Sites: {pre_completeness*100:.1f}%')
 print(f'Complete Postsynaptic Sites: {post_completeness*100:.1f}%')
 print(f'Complete Synaptic Sites: {all_completeness*100:.1f}%')
+
+# %%
+# number of differentiated brain neurons, completed on left and right
+
+brain = pymaid.get_skids_by_annotation('mw brain neurons')
+left = pymaid.get_skids_by_annotation('mw left')
+right = pymaid.get_skids_by_annotation('mw right')
+
+brain_right = len(np.intersect1d(right, brain))
+brain_left = len(np.intersect1d(left, brain))
+
+brain_right_incomplete = len(pymaid.get_skids_by_annotation('mw right incomplete'))
+brain_left_incomplete = len(pymaid.get_skids_by_annotation('mw left incomplete'))
+
+print(f'Total differentiated neurons: {len(brain)}')
+print(f'Total completed neurons: {(brain_left - brain_left_incomplete) + (brain_right - brain_right_incomplete)}')
+print(f'Percent completed neurons: {((brain_left - brain_left_incomplete)+ (brain_right - brain_right_incomplete))/len(brain)}')
+
+print(f'\nTotal left neurons: {brain_left}')
+print(f'Total completed left neurons: {brain_left - brain_left_incomplete}')
+print(f'Percent completed left neurons: {((brain_left - brain_left_incomplete)/(brain_left))*100:.1f}%')
+
+print(f'\nTotal right neurons: {brain_right}')
+print(f'Total completed right neurons: {brain_right - brain_right_incomplete}')
+print(f'Percent completed right neurons: {((brain_right - brain_right_incomplete)/(brain_right))*100:.1f}%')
+
+# %%
+# number of paired neurons and nonpaired
+
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+paired_neurons = np.concatenate([pairs.leftid, pairs.rightid, pymaid.get_skids_by_annotation('mw duplicated neurons')]) # duplicated neurons considered paired
+KC = pymaid.get_skids_by_annotation('mw KC')
+
+paired_neurons_brain = np.intersect1d(brain, paired_neurons)
+print(f'Paired brain neurons: {len(paired_neurons_brain)}')
+
+nonpaired_neurons_brain = np.setdiff1d(brain, paired_neurons)
+print(f'Nonpaired KCs: {len(np.intersect1d(nonpaired_neurons_brain, KC))}')
+print(f'Nonpaired brain neurons: {len(np.setdiff1d(nonpaired_neurons_brain, KC))}')
 
 # %%
 # edge completion
