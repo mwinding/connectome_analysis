@@ -2,10 +2,15 @@
 
 import numpy as np
 import pandas as pd
-import pymaid as pymaid
+from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
+import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
-all_brain_edges = pd.read_csv('brain_completeness/data/all_edges/all_brain_edges.csv')
-brain_related_skels = pd.read_csv('brain_completeness/data/all_edges/brain_related_skels.csv')
+# datasets generated from https://github.com/clbarnes/brain_completion/blob/master/brain_completion/scripts/completeness/all_edges.py
+all_brain_edges = pd.read_csv('data/completeness/all_brain_edges_2022-11-09.csv')
+brain_related_skels = pd.read_csv('data/completeness/brain_related_skels_2022-11-09.csv')
+
 # %%
 # pre completion
 
@@ -25,7 +30,7 @@ pre_completeness = complete_pre/total_pre
 
 print(f'Total Pre: {total_pre}')
 print(f'Complete Pre: {complete_pre}')
-print(f'Fraction Complete Pre: {pre_completeness}')
+print(f'Complete Presynaptic Sites: {pre_completeness*100:.1f}%')
 
 # %%
 # post completion
@@ -40,7 +45,7 @@ post_completeness = complete_post/total_post
 
 print(f'Total Post: {total_post}')
 print(f'Complete Post: {complete_post}')
-print(f'Fraction Complete Post: {post_completeness}')
+print(f'Complete Postsynaptic Sites: {post_completeness*100:.1f}%')
 # %%
 # summed post/pre completion
 
@@ -48,9 +53,14 @@ complete_all = complete_post + complete_pre
 total_all = total_post + total_pre
 
 all_completeness = complete_all/total_all
-print(f'Total Post: {total_all}')
-print(f'Complete Post: {complete_all}')
-print(f'Fraction Complete Post: {all_completeness}')
+print(f'Total Synaptic Sites: {total_all}')
+print(f'Complete Synaptic Sites: {complete_all}')
+print(f'Complete Synaptic Sites: {all_completeness*100:.1f}%')
+
+print(f'Complete Presynaptic Sites: {pre_completeness*100:.1f}%')
+print(f'Complete Postsynaptic Sites: {post_completeness*100:.1f}%')
+print(f'Complete Synaptic Sites: {all_completeness*100:.1f}%')
+
 # %%
 # edge completion
 from tqdm import tqdm
