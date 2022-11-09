@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
-import connectome_tools.process_matrix as pm
-import connectome_tools.celltype as ct
+from contools import Promat, Celltype, Celltype_Analyzer
 import navis
 
 # allows text to be editable in Illustrator
@@ -23,12 +22,13 @@ rm = pymaid.CatmaidInstance(url, token, name, password)
 
 brain = pymaid.get_skids_by_annotation('mw brain neurons')
 
-# inputs
+# load input neurons
 input_names = pymaid.get_annotated('mw brain inputs and ascending').name
 input_names_formatted = ['ORN', 'thermo', 'photo', 'AN-sens', 'MN-sens', 'vtd', 'proprio', 'mechano', 'class II_III', 'noci', 'unknown']
 inputs = [pymaid.get_skids_by_annotation(x) for x in input_names]
 inputs = inputs + [pymaid.get_skids_by_annotation('mw A1 ascending unknown')]
 
+# load output neurons
 outputs = [pymaid.get_skids_by_annotation(x) for x in pymaid.get_annotated('mw brain outputs').name]
 outputs_names_formatted = ['dSEZs', 'dVNCs', 'RGNs']
 
@@ -37,18 +37,22 @@ outputs = [outputs[i] for i in [2,0,1]]
 
 outputs_all = [x for sublist in outputs for x in sublist]
 
+# load brain neurons
 brain = list(np.setdiff1d(brain, outputs_all))
 
-celltypes_df, celltypes = ct.Celltype_Analyzer.default_celltypes()
+celltypes_df, celltypes = Celltype_Analyzer.default_celltypes()
 
 all_celltypes = [celltypes[1]] + celltypes[3:len(celltypes)]
 all_interneurons = [celltypes[1]] + celltypes[3:len(celltypes)-3]
 
 all_neurons = [x for sublist in [x.skids for x in celltypes] for x in sublist]
 unknown_brain = list(np.setdiff1d(brain, all_neurons))
-unknown_ct = ct.Celltype('Other', unknown_brain, color='tab:grey')
+unknown_ct = Celltype('Other', unknown_brain, color='tab:grey')
 all_celltypes = all_celltypes + [unknown_ct]
 celltype_names = [x.get_name() for x in all_celltypes]
+
+all_interneurons = all_interneurons + [unknown_ct]
+
 # %%
 # plot number brain inputs, interneurons, outputs
 
@@ -58,7 +62,7 @@ ylim = (0, 500)
 
 # interneurons (note that these counts are for mutually exclusive types)
 colors = [x.color for x in all_interneurons]
-fig, ax = plt.subplots(1,1,figsize=(col_width*len(all_interneurons), plot_height))
+fig, ax = plt.subplots(1,1,figsize=(col_width*len(colors), plot_height))
 graph = sns.barplot(x=[x.get_name() for x in all_interneurons], y=[len(x.skids) for x in all_interneurons], ax=ax, palette = colors)
 plt.xticks(rotation=45, ha='right')
 i=0
@@ -67,7 +71,7 @@ for p in graph.patches:
     graph.text(p.get_x()+p.get_width()/2., height + 5, [len(x.skids) for x in all_interneurons][i], ha="center", color=colors[i], fontdict = {'fontsize': 4})
     i += 1
 ax.set(ylim=ylim)
-plt.savefig('small_plots/plots/general-celltype-counts.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/general-celltype-counts.pdf', format='pdf', bbox_inches='tight')
 
 # inputs
 colors = ['#004C26', '#00753F', '#008743', '#00a854', '#00bf5f', '#00e271', '#0089a0', '#00a5d1', '#00b7f7', '#77cdfc', '#c0e7f9']
@@ -80,20 +84,22 @@ for p in graph.patches:
     graph.text(p.get_x()+p.get_width()/2., height + 5, [len(skids) for skids in inputs][i], ha="center", color=colors[i], fontdict = {'fontsize': 4})
     i += 1
 ax.set(ylim=ylim)
-plt.savefig('small_plots/plots/input-counts.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/input-counts.pdf', format='pdf', bbox_inches='tight')
 
 # outputs
 colors = ['#9467BD','#D88052', '#A52A2A']
 fig, ax = plt.subplots(1,1,figsize=(col_width*len(outputs),plot_height))
-graph = sns.barplot(x=outputs_names_formatted, y=[len(skids) for skids in outputs], ax=ax, palette=colors)
+output_counts = [len(skids) for skids in outputs]
+output_counts[0] = output_counts[0]-2 # note that two RGNs are also DN-VNC, did this to make them mutually exclusive
+graph = sns.barplot(x=outputs_names_formatted, y=output_counts, ax=ax, palette=colors)
 plt.xticks(rotation=45, ha='right')
 i=0
 for p in graph.patches:
     height = p.get_height()
-    graph.text(p.get_x()+p.get_width()/2., height + 5, [len(skids) for skids in outputs][i],ha="center", color=colors[i], fontdict = {'fontsize': 4})
+    graph.text(p.get_x()+p.get_width()/2., height + 5, output_counts[i],ha="center", color=colors[i], fontdict = {'fontsize': 4})
     i += 1
 ax.set(ylim=ylim)
-plt.savefig('small_plots/plots/output-counts.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/output-counts.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # plot interneurons with overlap allowed
@@ -101,7 +107,7 @@ plt.savefig('small_plots/plots/output-counts.pdf', format='pdf', bbox_inches='ti
 overlap_celltype_names = celltype_names[0:-1] # remove the 'Other' category and recalculate later
 annots = ['mw brain ' + name for name in overlap_celltype_names]
 
-celltype_skids = [list(np.unique(ct.Celltype_Analyzer.get_skids_from_meta_annotation(annot))) for annot in annots]
+celltype_skids = [list(np.unique(Celltype_Analyzer.get_skids_from_meta_annotation(annot))) for annot in annots]
 celltype_skids = celltype_skids + [unknown_ct.skids]
 
 ylim = (0,1000)
@@ -119,8 +125,8 @@ plt.savefig('small_plots/plots/general-celltype-counts_overlaps-allowed.pdf', fo
 
 # upset plot between all cell types
 #overlap_celltype_df = pd.DataFrame(zip(celltype_names, celltype_skids), columns=['celltype', 'skids'])
-overlap_celltype_cts = [ct.Celltype(x[0], x[1], x[2]) for x in zip(celltype_names, celltype_skids, colors)]
-overlap_celltype_cts = ct.Celltype_Analyzer(overlap_celltype_cts)
+overlap_celltype_cts = [Celltype(x[0], x[1], x[2]) for x in zip(celltype_names, celltype_skids, colors)]
+overlap_celltype_cts = Celltype_Analyzer(overlap_celltype_cts)
 overlap_celltype_cts.upset_members(
         threshold = 6,
         path = 'small_plots/plots/general-celltype-counts_overlaps-allowed_UPSET', 
