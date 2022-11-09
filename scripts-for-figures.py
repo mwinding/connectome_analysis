@@ -2,11 +2,11 @@
 # location of scripts to plot each figure in brain connectome paper
 import pandas as pd
 
-figure_scripts = [[1, 'A', '', ''],
-                    [1, 'B', 'scripts/brain_completeness/brain_simple-synaptic-completeness.py', ''],
-                    [1, 'C', '', ''],
-                    [1, 'D', '', ''],
-                    [1, 'E', '', ''],
+figure_scripts = [[1, 'A', None, 'used Blender'],
+                    [1, 'B', 'scripts/brain_completeness/brain_simple-synaptic-completeness.py', ['presynaptic site completion', 'postsynaptic site completion', 'all synaptic site completion', 'number of differentiated brain neurons, completed on left and right']],
+                    [1, 'C', 'scripts/brain_completeness/brain_simple-synaptic-completeness.py', 'number of paired neurons and nonpaired'],
+                    [1, 'D', None, 'used Illustrator'],
+                    [1, 'E', None, 'used Illustrator'],
                     [1, 'F', '', ''],
                     [1, 'G', '', ''],
                     [1, 'H', '', ''],
