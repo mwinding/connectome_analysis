@@ -7,9 +7,9 @@ figure_scripts = [[1, 'A', None, 'used Blender'],
                     [1, 'C', 'scripts/brain_completeness/brain_simple-synaptic-completeness.py', 'number of paired neurons and nonpaired'],
                     [1, 'D', None, 'used Illustrator'],
                     [1, 'E', None, 'used Illustrator'],
-                    [1, 'F', '', ''],
-                    [1, 'G', '', ''],
-                    [1, 'H', '', ''],
+                    [1, 'F', 'scripts/small_plots/fraction_cell-types_brain.py', 'plot number brain inputs, interneurons, outputs'],
+                    [1, 'G', 'scripts/small_plots/fraction_cell-types_brain.py', 'plot number brain inputs, interneurons, outputs'],
+                    [1, 'H', 'scripts/small_plots/fraction_cell-types_brain.py', 'plot number brain inputs, interneurons, outputs'],
                     [2, 'A', '', ''],
                     [2, 'B', '', ''],
                     [2, 'C', '', ''],
@@ -34,10 +34,21 @@ figure_scripts = [[1, 'A', None, 'used Blender'],
                     [4, 'I', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
                     [4, 'J', 'cascades/cluster_cascades/sensory_cascades_integration_clusters.py', ''],
                     [5, 'A', None, None],
-                    [5, 'B', 'synapse_distributions/synapse_dist_Br_ipsi-contra.py', 'all']]
+                    [5, 'B', 'synapse_distributions/synapse_dist_Br_ipsi-contra.py', 'all'],
+                    [6, '', '', ''],
+                    [7, '', '', '']]
 
 figure_scripts = pd.DataFrame(figure_scripts, columns = ['figure', 'panel', 'path', 'chunk'])
 
-suppl_figure_scripts = []
+sup_figure_scripts = [['S1', 'A', '', ''],
+                        ['S2', 'A', 'scripts/VNC_interaction/ascending_analysis.py', 'identities of ascending neurons'],
+                        ['S2', 'B', 'scripts/VNC_interaction/ascending_analysis.py', 'plotting neurons'],
+                        ['S2', 'C', 'scripts/VNC_interaction/ascending_analysis.py', 'plotting neurons'],
+                        ['S2', 'D', 'scripts/VNC_interaction/ascending_analysis.py', 'plotting neurons'],
+                        ['S2', 'E', 'scripts/VNC_interaction/ascending_analysis.py', 'plotting neurons'],
+                        ['S2', 'F', 'scripts/VNC_interaction/ascending_analysis.py', 'plotting neurons']]
+
+sup_figure_scripts = pd.DataFrame(sup_figure_scripts, columns = ['figure', 'panel', 'path', 'chunk'])
+
 
 # %%
