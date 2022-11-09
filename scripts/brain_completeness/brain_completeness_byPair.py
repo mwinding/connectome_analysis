@@ -1,21 +1,15 @@
 # %%
-import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
 
-import csv
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
+import pymaid
+rm = pymaid.CatmaidInstance(url, token, name, password)
 
-connectors = pd.read_csv('brain_completeness/brain_connector_completeness_2021_03_05.csv')
-print(connectors)
+connectors = pd.read_csv('scripts/brain_completeness/brain_connector_completeness_2021_03_05.csv')
 
 # postsynaptic completeness
 print(np.mean(connectors['postsyn_complete_ppn']))

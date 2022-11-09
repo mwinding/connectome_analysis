@@ -3,7 +3,7 @@
 import pandas as pd
 
 figure_scripts = [[1, 'A', '', ''],
-                    [1, 'B', '', ''],
+                    [1, 'B', 'scripts/brain_completeness/brain_simple-synaptic-completeness.py', ''],
                     [1, 'C', '', ''],
                     [1, 'D', '', ''],
                     [1, 'E', '', ''],
