@@ -15,6 +15,10 @@ from contools import Promat, Celltype, Celltype_Analyzer
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 
+# font settings
+plt.rcParams['font.size'] = 6
+plt.rcParams['font.family'] = 'arial'
+
 rm = pymaid.CatmaidInstance(url, token, name, password)
 select_neurons = pymaid.get_skids_by_annotation(['mw A1 neurons paired', 'mw dVNC'])
 select_neurons = select_neurons + Celltype_Analyzer.get_skids_from_meta_annotation('mw A1 sensories')
@@ -76,12 +80,14 @@ sens_asc_mat_plotting.iloc[:, 0:4][sens_asc_mat_plotting.iloc[:, 0:4]==4]=0
 A00c_other_segments = [2511238, 2816457, 1042538]
 cols = [x for x in sens_asc_mat_plotting.columns if x not in A00c_other_segments]
 
-sort = [15315491, 14522404, 12998937, 8059283, 2123422, 10929797, 8644484, 7766016, 10949382, 5343578, 4595609, 3220616, 4206755, 4555763, 21250110, 18458734, 11455472, 3564452, 5606265, 8057753]
+sort = [15315491, 14522404, 12998937, 8059283, 2123422, 10929797, 8644484, 7766016, 10949382, 5343578, 4595609, 4206755, 4555763, 21250110, 3220616, 18458734, 11455472, 3564452, 5606265, 8057753]
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1,1, figsize=(2.5,.75))
 annots = sens_asc_mat.astype(int).astype(str)
 annots[annots=='0']=''
-sns.heatmap(sens_asc_mat_plotting.loc[['Proprio','Noci','Chord','ClassII_III','ES'], sort], annot=annots.loc[['Proprio','Noci','Chord','ClassII_III','ES'], sort], fmt='s', cmap='Blues', square=True, ax=ax)
+sns.heatmap(sens_asc_mat_plotting.loc[['Proprio','Noci','Chord','ClassII_III','ES'], sort], annot=annots.loc[['Proprio','Noci','Chord','ClassII_III','ES'], sort], fmt='s', cmap='Blues', ax=ax)
+ax.xaxis.tick_top()
+plt.xticks(ticks=[x+0.5 for x in range(len(sort))], labels=sort, fontsize=5, rotation=90, ha='left')
 plt.savefig('plots/ascending_identity_plot.pdf', format='pdf', bbox_inches='tight')
 
 # %%
@@ -241,8 +247,8 @@ SEZ_right = pymaid.get_volume('SEZ_right')
 
 # calculate edges of each segment
 def volume_edges(vol_left, vol_right):
-    vol_min = np.mean([vol_left.bbox[2,0], vol_right.bbox[2,0]])
-    vol_max = np.mean([vol_left.bbox[2,1], vol_right.bbox[2,1]])
+    vol_min = np.mean([vol_left.bbox[0,2], vol_right.bbox[0,2]]) # row=0 is minimum corner, row=1 is maximum corner; columns=[0,1,2] is [x,y,z]
+    vol_max = np.mean([vol_left.bbox[1,2], vol_right.bbox[1,2]])    # determined by comparing to Volume_Manager widget in CATMAID
     return(vol_min, vol_max)
 
 SEZ_min, SEZ_max = volume_edges(SEZ_left, SEZ_right)
@@ -269,8 +275,8 @@ A4_A5 = np.mean([A4_max, A5_min])
 A5_A6 = np.mean([A5_max, A6_min])
 A6_A7 = np.mean([A6_max, A7_min])
 A7_A8 = np.mean([A7_max, A8_min])
-neuropil_max = neuropil.bbox[2,1]
-neuropil_min = neuropil.bbox[2,0]
+neuropil_max = neuropil.bbox[1,2]
+neuropil_min = neuropil.bbox[0,2]
 
 boundary_z = [neuropil_min, SEZ_T1, T1_T2, T2_T3,
                 T3_A1, A1_A2, A2_A3,
@@ -278,13 +284,13 @@ boundary_z = [neuropil_min, SEZ_T1, T1_T2, T2_T3,
                 A6_A7, A7_A8, neuropil_max]
 
 def plot_pair_split(num, neurons, min_z, max_z, bin_num, draw_boundaries):
-    cut1 = pymaid.cut_neuron(neurons[0], 'mw axon split')
-    outputs1 = cut1[0].connectors[cut1[0].connectors['relation']==0] # axon outputs
-    inputs1 = cut1[1].connectors[cut1[1].connectors['relation']==1] # dendrite inputs
+    cut1 = navis.cut_skeleton(neurons[0], 'mw axon split')
+    outputs1 = cut1[0].connectors[cut1[0].connectors['type']==0] # axon outputs
+    inputs1 = cut1[1].connectors[cut1[1].connectors['type']==1] # dendrite inputs
 
-    cut2 = pymaid.cut_neuron(neurons[1], 'mw axon split')
-    outputs2 = cut2[0].connectors[cut2[0].connectors['relation']==0] # axon outputs
-    inputs2 = cut2[1].connectors[cut2[1].connectors['relation']==1] # dendrite inputs
+    cut2 = navis.cut_skeleton(neurons[1], 'mw axon split')
+    outputs2 = cut2[0].connectors[cut2[0].connectors['type']==0] # axon outputs
+    inputs2 = cut2[1].connectors[cut2[1].connectors['type']==1] # dendrite inputs
 
     fig, axs = plt.subplots(1,1, figsize=(1.115, 0.25))
     ax = axs
@@ -305,14 +311,12 @@ def plot_pair_split(num, neurons, min_z, max_z, bin_num, draw_boundaries):
     # change size of yticks
     plt.tick_params(axis='both', which='major', labelsize=5, length=1.5, width=0.25)
 
-    fig.savefig(f'VNC_interaction/plots/individual_asc_morpho/synapse-distribution_{num}_{neurons[0].skeleton_id}.pdf', bbox_inches = 'tight')
+    fig.savefig(f'plots/asc_synapse-distribution_{num}_{neurons[0].skeleton_id}.pdf', bbox_inches = 'tight')
 
-ascendings = [int(x) for x in sens_asc_mat_thresh.columns]
-asc_pairs = [pairs[pairs.leftid==x].loc[:, ['leftid', 'rightid']].values for x in ascendings]
 
 for i, pair in enumerate(asc_pairs):
     neurons = pymaid.get_neurons(pair)
-    plot_pair_split(i, neurons, min_z = cns.bbox[2,0], max_z = cns.bbox[2,1], bin_num = 50, draw_boundaries = boundary_z)
+    plot_pair_split(i, neurons, min_z = cns.bbox[0,2], max_z = cns.bbox[1,2], bin_num = 50, draw_boundaries = boundary_z)
 
 
 # %%
