@@ -1,8 +1,7 @@
 #%%
-import sys
-sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -12,16 +11,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-from src.data import load_metagraph
-from src.visualization import CLASS_COLOR_DICT, adjplot
-from src.traverse import Cascade, to_transmission_matrix
-from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
-
-import connectome_tools.process_matrix as pm
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.cluster_analysis as clust
+from contools import Promat, Cascade_Analyzer, Celltype, Celltype_Analyzer
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -30,8 +20,8 @@ plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
 # cluster object
-cluster_level = 6
-clusters = clust.Analyze_Cluster(cluster_lvl=cluster_level)
+cluster_lvl = 7 
+clusters = Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_lvl}', split=True, return_celltypes=True)
 
 # load adj matrices
 adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accessory')
