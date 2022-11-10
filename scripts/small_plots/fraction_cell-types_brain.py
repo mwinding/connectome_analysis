@@ -104,16 +104,18 @@ plt.savefig('plots/output-counts.pdf', format='pdf', bbox_inches='tight')
 # %%
 # plot interneurons with overlap allowed
 
-overlap_celltype_names = celltype_names[0:-1] # remove the 'Other' category and recalculate later
+overlap_celltype_names = celltype_names[0:-4] # remove the 'Other' category and recalculate later; remove output types
 annots = ['mw brain ' + name for name in overlap_celltype_names]
 
 celltype_skids = [list(np.unique(Celltype_Analyzer.get_skids_from_meta_annotation(annot))) for annot in annots]
 celltype_skids = celltype_skids + [unknown_ct.skids]
 
+overlap_celltype_names = overlap_celltype_names + ['Other']
+
 ylim = (0,1000)
 colors = [x.color for x in all_celltypes]
 fig, ax = plt.subplots(1,1,figsize=(col_width*len(celltype_skids), plot_height))
-graph = sns.barplot(x=celltype_names, y=[len(skids) for skids in celltype_skids], ax=ax, palette = colors)
+graph = sns.barplot(x=overlap_celltype_names, y=[len(skids) for skids in celltype_skids], ax=ax, palette = colors)
 plt.xticks(rotation=45, ha='right')
 i=0
 for p in graph.patches:
@@ -121,18 +123,26 @@ for p in graph.patches:
     graph.text(p.get_x()+p.get_width()/2., height + 5, [len(skids) for skids in celltype_skids][i], ha="center", color=colors[i], fontdict = {'fontsize': 4})
     i += 1
 ax.set(ylim=ylim)
-plt.savefig('small_plots/plots/general-celltype-counts_overlaps-allowed.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/general-celltype-counts_overlaps-allowed.pdf', format='pdf', bbox_inches='tight')
 
 # upset plot between all cell types
-#overlap_celltype_df = pd.DataFrame(zip(celltype_names, celltype_skids), columns=['celltype', 'skids'])
-overlap_celltype_cts = [Celltype(x[0], x[1], x[2]) for x in zip(celltype_names, celltype_skids, colors)]
+#overlap_celltype_df = pd.DataFrame(zip(overlap_celltype_names, celltype_skids), columns=['celltype', 'skids'])
+overlap_celltype_cts = [Celltype(x[0], x[1], x[2]) for x in zip(overlap_celltype_names, celltype_skids, colors)]
 overlap_celltype_cts = Celltype_Analyzer(overlap_celltype_cts)
 overlap_celltype_cts.upset_members(
         threshold = 6,
-        path = 'small_plots/plots/general-celltype-counts_overlaps-allowed_UPSET', 
+        path = 'plots/general-celltype-counts_overlaps-allowed_UPSET', 
         plot_upset=True,
         exclude_singletons_from_threshold = True,
         threshold_dual_cats=6
+    )
+
+overlap_celltype_cts.upset_members(
+        threshold = 0,
+        path = 'plots/general-celltype-counts_overlaps-allowed_UPSET', 
+        plot_upset=True,
+        exclude_singletons_from_threshold = True,
+        threshold_dual_cats=0
     )
 
 # %%
@@ -141,7 +151,7 @@ overlap_celltype_cts.upset_members(
 exclusive_skids = overlap_celltype_cts.upset_members(threshold=10000, exclude_singletons_from_threshold=True)[1]
 exclusive_skids.reverse()
 
-celltype_data_df = pd.DataFrame(zip(celltype_names, [x.skids for x in exclusive_skids], celltype_skids), columns=['celltype', 'exclusive_skids', 'all_skids'])
+celltype_data_df = pd.DataFrame(zip([x.name for x in exclusive_skids], [x.skids for x in exclusive_skids], celltype_skids), columns=['celltype', 'exclusive_skids', 'all_skids'])
 celltype_data_df['promiscuous_skids'] = [list(np.setdiff1d(celltype_data_df['all_skids'][i], celltype_data_df['exclusive_skids'][i])) for i in range(len(celltype_data_df))]
 
 # plot morphology
@@ -183,7 +193,7 @@ for i, neuron_types in enumerate(neurons):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'small_plots/plots/morpho_brain-cell-types.png', format='png', dpi=300)
+fig.savefig(f'plots/morpho_brain-cell-types.png', format='png', dpi=300)
 
 
 
@@ -220,7 +230,7 @@ for i, neuron_types in enumerate(neurons_other):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'small_plots/plots/morpho_brain-cell-types_other.png', format='png', dpi=300)
+fig.savefig(f'plots/morpho_brain-cell-types_other.png', format='png', dpi=300)
 
 
 # plot pre-output neurons with different alpha
@@ -258,6 +268,6 @@ for i, neuron_types in enumerate(neurons_preoutput):
     ax.set_xlim3d((-4500, 110000))
     ax.set_ylim3d((-4500, 110000))
 
-fig.savefig(f'small_plots/plots/morpho_brain-cell-types_preoutputs.png', format='png', dpi=300)
+fig.savefig(f'plots/morpho_brain-cell-types_preoutputs.png', format='png', dpi=300)
 
 # %%
