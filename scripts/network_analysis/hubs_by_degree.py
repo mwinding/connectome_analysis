@@ -206,7 +206,7 @@ hubs.plot_memberships(f'plots/all-hubs_celltypes_raw.pdf', (0.67*len(hubs.Cellty
 # %%
 # location in cluster structure
 
-def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None):
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None, ylim=(0,1), yticks=([])):
 
     # all cell types plot data
     if(all_celltypes==None):
@@ -233,7 +233,7 @@ def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color
     ax = fig.add_subplot(gs[0:3, 0])
     ind = np.arange(0, len(cluster_analyze.Celltypes))
     ax.bar(ind, membership.iloc[0, :], color=particular_color)
-    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]), title=particular_cell_type.get_name())
+    ax.set(xlim = (-1, len(ind)), ylim=ylim, xticks=([]), yticks=yticks, title=particular_cell_type.get_name())
 
     ax = fig.add_subplot(gs[3, 0])
     ind = np.arange(0, len(cluster_analyze.Celltypes))
@@ -281,10 +281,12 @@ for i, adj_name in enumerate(adj_names):
 cluster_level = 4
 size = (0.5,0.5)
 adj_name = 'ad'
+ylim=(0,0.45)
+yticks = [0, 0.2, 0.4]
 
-plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
-plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
-plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes, ylim=ylim, yticks=yticks)
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes, ylim=ylim, yticks=yticks)
+plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes, ylim=ylim, yticks=yticks)
 
 # %%
 # plot cell type memberships of ad hubs

@@ -6,8 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
+from contools import Celltype, Celltype_Analyzer, Analyze_Cluster
 
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -20,9 +19,17 @@ plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
 # %%
+# celltype plot
 
-ct.plot_cell_types_cluster('lvl7_labels', 'cluster_analysis/plots/celltypes-clusters.pdf')
-ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('MBONs', pymaid.get_skids_by_annotation('mw MBON')), 'green', 'lvl7_labels', 'cluster_analysis/plots/MBON_celltypes-clusters.pdf')
+all_neurons = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons'])
+remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
+all_neurons = list(np.setdiff1d(all_neurons, remove_neurons)) # remove neurons that are incomplete or partially differentiated (as well as SEZ motor neurons)
+
+lvl=7
+clusters = Analyze_Cluster(cluster_lvl=lvl, meta_data_path='data/graphs/meta_data.csv', skids=all_neurons, sort='signal_flow')
+clusters.plot_cell_types_cluster(path=f'plots/cluster-level-{lvl}_celltypes.pdf')
+
+#ct.plot_marginal_cell_type_cluster((2,1), ct.Celltype('MBONs', pymaid.get_skids_by_annotation('mw MBON')), 'green', 'lvl7_labels', 'cluster_analysis/plots/MBON_celltypes-clusters.pdf')
 
 # %%
 
