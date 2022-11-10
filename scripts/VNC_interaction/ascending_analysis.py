@@ -168,13 +168,13 @@ A8_right.color = (250, 0, 150, .025*mult)
 def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_present=True):
 
     if(neurons_present):
-        fig, ax = navis.plot2d([neurons, cns], method=method, color = '#444140', linewidth=1.5, connectors=True, cn_size=2)
+        fig, ax = navis.plot2d([neurons, cns], method=method, color = 'k', linewidth=1.5, connectors=True, cn_size=4)
     if(neurons_present==False):
         fig, ax = navis.plot2d([cns], method=method)
 
     if(view == 'side'):
         ax.azim= 0
-        ax.dist = 5.2 # zoom
+        ax.dist = 6 # zoom
         navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
             navis.plot2d(segment, method=method, ax=ax)
@@ -186,7 +186,7 @@ def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_prese
 
     if(view == 'front'):
         ax.elev = 90
-        ax.dist = 5.2 # zoom
+        ax.dist = 6 # zoom
         navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
             navis.plot2d(segment, method=method, ax=ax)
@@ -198,7 +198,7 @@ def plot_pair(num, neurons, cns, neuropil, segments, view, method, neurons_prese
  
     if(view == 'top'):
         ax.azim = -90
-        ax.dist = 5.2 # zoom
+        ax.dist = 6 # zoom
         navis.plot2d(neuropil, method=method, ax=ax)
         for segment in segments:
             navis.plot2d(segment, method=method, ax=ax)
@@ -294,8 +294,8 @@ def plot_pair_split(num, neurons, min_z, max_z, bin_num, draw_boundaries):
 
     fig, axs = plt.subplots(1,1, figsize=(1.115, 0.25))
     ax = axs
-    sns.distplot(list(outputs1.z)+list(outputs2.z), color = 'crimson', kde = False, kde_kws = {'shade': True}, ax=ax, bins=range(int(min_z), int(max_z), int(max_z/bin_num)))
-    sns.distplot(list(inputs1.z)+list(inputs2.z), color = 'royalblue', kde = False, kde_kws = {'shade': True}, ax=ax, bins=range(int(min_z), int(max_z), int(max_z/bin_num)))
+    sns.distplot(list(outputs1.z)+list(outputs2.z), color = 'red', kde = False, kde_kws = {'shade': True}, ax=ax, bins=range(int(min_z), int(max_z), int(max_z/bin_num)))
+    sns.distplot(list(inputs1.z)+list(inputs2.z), color = 'cyan', kde = False, kde_kws = {'shade': True}, ax=ax, bins=range(int(min_z), int(max_z), int(max_z/bin_num)))
     #sns.distplot(outputs1.x, color = 'crimson', kde=False, bins = 30)
     
     ax.set(xlim=(min_z,max_z), ylim=(0, 100), xlabel='', xticks=([])) # set x/y axis limits
