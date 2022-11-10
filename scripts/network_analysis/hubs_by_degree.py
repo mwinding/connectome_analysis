@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
 import pymaid
 from contools import Celltype, Celltype_Analyzer, Promat, Analyze_Nx_G, Analyze_Cluster
-from data_settings import data_date
+from data_settings import data_date, pairs_path
 
 import networkx as nx
 
@@ -45,17 +45,17 @@ print(np.mean(G_hubs[0].loc[FBN]))
 # compare hubs to unfiltered hubs
 # this chunk is for a comment received during editing
 
-Gad_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gad.graphml', node_type=int)
-Gad_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gad_unfiltered)
+Gad_unfiltered = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gad.graphml', node_type=int)
+Gad_unfiltered = Analyze_Nx_G(edges=[], graph_type='directed', graph=Gad_unfiltered)
 
-Gaa_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gaa.graphml', node_type=int)
-Gaa_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gaa_unfiltered)
+Gaa_unfiltered = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gaa.graphml', node_type=int)
+Gaa_unfiltered = Analyze_Nx_G(edges=[], graph_type='directed', graph=Gaa_unfiltered)
 
-Gdd_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gdd.graphml', node_type=int)
-Gdd_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gdd_unfiltered)
+Gdd_unfiltered = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gdd.graphml', node_type=int)
+Gdd_unfiltered = Analyze_Nx_G(edges=[], graph_type='directed', graph=Gdd_unfiltered)
 
-Gda_unfiltered = nx.readwrite.graphml.read_graphml('data/graphs/Gda.graphml', node_type=int)
-Gda_unfiltered = pg.Analyze_Nx_G(edges=[], graph_type='directed', graph=Gda_unfiltered)
+Gda_unfiltered = nx.readwrite.graphml.read_graphml(f'data/processed/{data_date}/Gda.graphml', node_type=int)
+Gda_unfiltered = Analyze_Nx_G(edges=[], graph_type='directed', graph=Gda_unfiltered)
 
 all_degrees = Gad_unfiltered.get_node_degrees()
 threshold = np.round(all_degrees.mean()+1.5*all_degrees.std().mean())[0]
@@ -103,7 +103,7 @@ for i, hubs in enumerate(G_hubs):
     ax.axvline(x=19.5, color='grey', linewidth=0.25, alpha=0.5)
     ax.axhline(y=19.5, color='grey', linewidth=0.25, alpha=0.5)
     ax.legend().set_visible(False)
-    plt.savefig(f'network_analysis/plots/hubs_{adj_names[i]}.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig(f'plots/hubs_{adj_names[i]}.pdf', format='pdf', bbox_inches='tight')
 
     fig, ax = plt.subplots(1,1, figsize=(2,2))
     sns.scatterplot(data=hubs_plot, x='in_degree', y='out_degree', hue='type', size='count', ax=ax, 
@@ -111,14 +111,14 @@ for i, hubs in enumerate(G_hubs):
     ax.set(ylim=(-3, 100), xlim=(-3, 100))
     ax.axvline(x=19.5, color='grey', linewidth=0.25, alpha=0.5)
     ax.axhline(y=19.5, color='grey', linewidth=0.25, alpha=0.5)
-    plt.savefig(f'network_analysis/plots/hubs_{adj_names[i]}_legend.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig(f'plots/hubs_{adj_names[i]}_legend.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # determine pairwise hubs
 
 def pairwise_hubs(hubs_df):
 
-    hubs_df = pm.Promat.convert_df_to_pairwise(hubs_df)
+    hubs_df = Promat.convert_df_to_pairwise(hubs_df, pairs_path=pairs_path)
 
     pair_ids = [x[0] for x in hubs_df.loc[('pairs'), :].index]
     pair_ids = list(np.unique(pair_ids))
@@ -189,7 +189,7 @@ for adj_name in adj_names:
 
     hubs = Celltype_Analyzer([in_hubs_ct, in_out_hubs_ct, out_hubs_ct])
     hubs.set_known_types(celltypes)
-    hubs.plot_memberships(f'network_analysis/plots/{adj_name}_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
+    hubs.plot_memberships(f'plots/{adj_name}_hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
 
 
 ad_hubs_ct = Celltype('a-d', pymaid.get_skids_by_annotation(f'mw ad all_hubs'), blue)
@@ -199,8 +199,8 @@ da_hubs_ct = Celltype('d-a', pymaid.get_skids_by_annotation(f'mw da all_hubs'), 
 
 hubs = Celltype_Analyzer([ad_hubs_ct, aa_hubs_ct, dd_hubs_ct, da_hubs_ct])
 hubs.set_known_types(celltypes)
-hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
-hubs.plot_memberships(f'network_analysis/plots/all-hubs_celltypes_raw.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,525), raw_num=True)
+hubs.plot_memberships(f'plots/all-hubs_celltypes.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,1))
+hubs.plot_memberships(f'plots/all-hubs_celltypes_raw.pdf', (0.67*len(hubs.Celltypes),2), ylim=(0,525), raw_num=True)
 
 
 # %%
@@ -261,13 +261,13 @@ colors = [blue, orange, green, red]
 
 # plot ad, aa, dd, da hubs (each type: in, out, in/out) within cluster level 7
 for adj_name in adj_names:
-    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_out')), orange, cluster_level, f'plots/network-analysis_{adj_name}-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
-    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in')), green, cluster_level, f'plots/network-analysis_{adj_name}-in-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
         
-    try: Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
+    try: plot_marginal_cell_type_cluster(size, Celltype(f'{adj_name} In-Out Hubs', pymaid.get_skids_by_annotation(f'mw {adj_name} hubs_in_out')), red, cluster_level, f'plots/network-analysis_{adj_name}-in-out-hubs_celltypes-clusters{cluster_level}.pdf', all_celltypes = celltypes)
     except: print('no annotation')
 
 # plot all ad, aa, dd, and da hubs within cluster level 4
@@ -419,7 +419,7 @@ print(f'{fraction_FFN_hubs:.2f} of MB-FFNs are a-d in-out hubs')
 
 ######
 # how does in-degree/out-degree of MB-FBNs compare to other in-out hubs?
-FBN_pairids = pm.Promat.load_pairs_from_annotation('MB-FBN', pm.Promat.get_pairs(), return_type='all_pair_ids', skids=FBNs, use_skids=True)
+FBN_pairids = Promat.load_pairs_from_annotation('MB-FBN', Promat.get_pairs(pairs_path=pairs_path), return_type='all_pair_ids', skids=FBNs, use_skids=True)
 ad_hubs = G_hubs[0]
 
 # identify FBN and non-FBN ad hubs
@@ -456,7 +456,7 @@ print(f'Non-FBN out-degree: {np.mean(other_hubs_inout.out_degree):.2f} +/- {np.s
 
 #####
 # how does in-degree/out-degree of MB neurons compare to other in-out hubs?
-MB_pairids = pm.Promat.load_pairs_from_annotation('MB-types', pm.Promat.get_pairs(), return_type='all_pair_ids', skids=MB_types, use_skids=True)
+MB_pairids = Promat.load_pairs_from_annotation('MB-types', Promat.get_pairs(pairs_path=pairs_path), return_type='all_pair_ids', skids=MB_types, use_skids=True)
 ad_hubs = G_hubs[0]
 
 # identify FBN and non-FBN ad hubs
