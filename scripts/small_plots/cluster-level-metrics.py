@@ -57,7 +57,7 @@ morpho_sim = [1., 1., 1., .95, .94, .91, .92, .89, .96, .97, .92, .88,
                 .78, .68, .73, .65, .76, .87, .90, .84, .77, .80, .81, .81,
                 .76, .64, .68, .92, .84, .57, .69, .62]
 
-fig, ax = plt.subplots(1,1, figsize=(1,2))
+fig, ax = plt.subplots(1,1, figsize=(2,2))
 sns.histplot(morpho_sim, binwidth=.05, ax=ax)
 ax.set(xlim=(0,1.05), ylim=(0, 20))
 plt.savefig(f'plots/morpho-similarity_cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
