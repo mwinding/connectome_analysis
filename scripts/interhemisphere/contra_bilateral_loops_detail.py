@@ -5,14 +5,11 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.cluster_analysis as clust
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import connectome_tools.cascade_analysis as casc
+from contools import Celltype, Celltype_Analyzer, Promat, Prograph, Analyze_Cluster
 import navis
 
 # allows text to be editable in Illustrator
@@ -24,7 +21,7 @@ plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
 ad_edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
-pairs = pm.Promat.get_pairs()
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
 # identify and annotate partner loops
@@ -36,14 +33,14 @@ exclude = pymaid.get_skids_by_annotation('mw A1 neurons paired') + pymaid.get_sk
 partner_loops = ad_edges[(ad_edges.upstream_pair_id == ad_edges.downstream_pair_id) & (ad_edges.type=='contralateral') & ([True if x not in exclude else False for x in ad_edges.upstream_pair_id])]
 partner_loops.reset_index(inplace=True, drop=True)
 
-partner_loop_pairs = pm.Promat.get_paired_skids(list(partner_loops.upstream_pair_id), pairs)
+partner_loop_pairs = Promat.get_paired_skids(list(partner_loops.upstream_pair_id), pairs)
 
 # annotate neurons
 #pymaid.add_annotations(list(partner_loop_pairs.leftid) + list(partner_loop_pairs.rightid), 'mw partner loops')
 
 # %%
 # location in cluster structure
-celltypes_data, celltypes = ct.Celltype_Analyzer.default_celltypes()
+celltypes_data, celltypes = Celltype_Analyzer.default_celltypes()
 loops = pymaid.get_skids_by_annotation('mw partner loops')
 contra_loops = list(np.intersect1d(pymaid.get_skids_by_annotation('mw partner loops'), pymaid.get_skids_by_annotation('mw contralateral axon')))
 bi_loops = list(np.intersect1d(pymaid.get_skids_by_annotation('mw partner loops'), pymaid.get_skids_by_annotation('mw bilateral axon')))
@@ -54,9 +51,9 @@ blue = sns.color_palette()[0]
 orange = sns.color_palette()[1]
 green = sns.color_palette()[2]
 
-ct.plot_marginal_cell_type_cluster(size, ct.Celltype('Partner-Loops', loops), blue, cluster_level, 'interhemisphere/plots/partner-loops-in-cluster.pdf', all_celltypes = celltypes)
-ct.plot_marginal_cell_type_cluster(size, ct.Celltype('Bilateral-Partner-Loops', bi_loops), orange, cluster_level, 'interhemisphere/plots/bilateral-partner-loops-in-cluster.pdf', all_celltypes = celltypes)
-ct.plot_marginal_cell_type_cluster(size, ct.Celltype('Contra-Partner-Loops', contra_loops), green, cluster_level, 'interhemisphere/plots/contra-partner-loops-in-cluster.pdf', all_celltypes = celltypes)
+Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype('Partner-Loops', loops), blue, cluster_level, 'plots/partner-loops-in-cluster.pdf', all_celltypes = celltypes)
+Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype('Bilateral-Partner-Loops', bi_loops), orange, cluster_level, 'plots/bilateral-partner-loops-in-cluster.pdf', all_celltypes = celltypes)
+Celltype_Analyzer.plot_marginal_cell_type_cluster(size, Celltype('Contra-Partner-Loops', contra_loops), green, cluster_level, 'plots/contra-partner-loops-in-cluster.pdf', all_celltypes = celltypes)
 
 # %%
 # cell types of loops
