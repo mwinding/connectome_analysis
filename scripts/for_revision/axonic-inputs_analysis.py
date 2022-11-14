@@ -111,10 +111,50 @@ axon_input_output = axon_input_output[~np.isnan(axon_input_output)]
 axon_input_output = axon_input_output.loc[np.intersect1d(brain_neurons, axon_input_output.index)]
 
 axon_input_output = axon_input_output.sort_values(ascending=True)
-print(f'The median axonic I/O ratio is {np.median(axon_input_output):.3f}')
 
-fig, ax = plt.subplots(1,1)
-sns.scatterplot(x=range(len(axon_input_output)), y=axon_input_output.ratioIO, ec='gray', fc='none', alpha=0.75, ax=ax)
+mean = np.mean(axon_input_output)
+median = np.median(axon_input_output)
+std = np.std(axon_input_output)
+std_low = mean - std
+std_high = mean + std
+std2_high = mean + std*2
+std3_high = mean + std*3
+std4_high = mean + std*4
+
+print(f'The median axonic I/O ratio is {median:.3f}')
+print(f'The mean axonic I/O ratio is {mean:.3f}')
+
+fig, ax = plt.subplots(1,1, figsize=(4,4))
+sns.scatterplot(x=range(len(axon_input_output)), y=axon_input_output, ec='gray', fc='none', alpha=0.75, ax=ax)
+plt.axhline(y=mean, color='gray', linewidth = 0.5)
+plt.axhline(y=std2_high, color='gray', linewidth = 0.5)
+plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
+plt.savefig('plots/all-cell_ratio-axonic-IO.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# which neurons have highest and lowest IO ratio
+
+_, celltypes = Celltype_Analyzer.default_celltypes()
+
+std2_high_skids = axon_input_output[(axon_input_output>=std2_high) & (axon_input_output<std4_high)].index
+std4_high_skids = axon_input_output[axon_input_output>=std4_high].index
+
+cta = Celltype_Analyzer([Celltype('>=4*std ratioIO', std4_high_skids), Celltype('>=2*std ratioIO', std2_high_skids)])
+cta.set_known_types(celltypes)
+cta.plot_memberships(path='plots/high-axonic-IO-ratio.pdf', figsize=(1,1))
+
+print(f'There are {len(std4_high_skids)} neurons >=4*std axonic IO ratio')
+print(f'There are {len(std2_high_skids)} neurons 2-4*std axonic IO ratio')
+
+
+# %%
+# test role of APL/MBIN/KC
+to_remove = pymaid.get_skids_by_annotation(['mw APL', 'mw MBIN', 'mw KC'])
+
+fig, ax = plt.subplots(1,1, figsize=(1,1))
+sns.barplot(y=axon_input_output.loc[np.setdiff1d(axon_input_output.index, to_remove)], errorbar='sd', ax=ax)
+ax.set(ylim=(0,.5))
+plt.savefig('plots/mean-std_axonicIOratio_noKCs-MBINs-APL.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # ratio of axon input / output per celltypes
@@ -157,3 +197,4 @@ for i, name in enumerate(df_io_csv.celltype):
         df_io_csv.loc[i, 'celltype'] = to_replace[df_io_csv.loc[i, 'celltype']]
 
 df_io_csv.to_csv('plots/single-cell_axonic-input-output-ratio.csv', index=False)
+
