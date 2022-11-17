@@ -32,7 +32,7 @@ counts = [len(cluster) for cluster in clusters]
 fig, ax = plt.subplots(1,1, figsize=(1,2))
 sns.stripplot(y=counts, orient='v', ax=ax, s=1.25, color='k', alpha=0.5)
 sns.boxplot(y=counts, whis=np.inf, ax=ax, linewidth=0.5)
-plt.savefig(f'plots/counts-per-cluster-level-{cluster_lvl+1}.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/counts-per-cluster-level-{cluster_lvl}.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # distribution of intracluster similarity
