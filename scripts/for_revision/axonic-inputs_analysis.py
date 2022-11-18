@@ -146,6 +146,67 @@ cta.plot_memberships(path='plots/high-axonic-IO-ratio.pdf', figsize=(1,1))
 print(f'There are {len(std4_high_skids)} neurons >=4*std axonic IO ratio')
 print(f'There are {len(std2_high_skids)} neurons 2-4*std axonic IO ratio')
 
+# %%
+# where are these neurons in the clusters?
+
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None, ylim=(0,1), yticks=([])):
+
+    # all cell types plot data
+    if(all_celltypes==None):
+        _, all_celltypes = Celltype_Analyzer.default_celltypes()
+        
+    clusters = Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_level}', split=True, return_celltypes=True)
+    cluster_analyze = Celltype_Analyzer(clusters)
+
+    cluster_analyze.set_known_types(all_celltypes)
+    celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
+    all_memberships = cluster_analyze.memberships()
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16]] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    
+    # particular cell type data
+    cluster_analyze.set_known_types([particular_cell_type])
+    membership = cluster_analyze.memberships()
+
+    # plot
+    fig = plt.figure(figsize=size) 
+    fig.subplots_adjust(hspace=0.1)
+    gs = plt.GridSpec(4, 1)
+
+    ax = fig.add_subplot(gs[0:3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, membership.iloc[0, :], color=particular_color)
+    ax.set(xlim = (-1, len(ind)), ylim=ylim, xticks=([]), yticks=yticks, title=particular_cell_type.get_name())
+
+    ax = fig.add_subplot(gs[3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, all_memberships.iloc[0, :], color=celltype_colors[0])
+    bottom = all_memberships.iloc[0, :]
+    for i in range(1, len(all_memberships.index)):
+        plt.bar(ind, all_memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+        bottom = bottom + all_memberships.iloc[i, :]
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]))
+    ax.axis('off')
+    ax.axis('off')
+
+    plt.savefig(path, format='pdf', bbox_inches='tight')
+
+cluster_level = 7
+size = (2,0.5)
+adj_names = ['ad', 'aa', 'dd', 'da']
+_, celltypes = Celltype_Analyzer.default_celltypes()
+all_high_skids = np.concatenate([std2_high_skids, std4_high_skids])
+
+plot_marginal_cell_type_cluster(size, Celltype(f'>=2*SD Axonic Input/Output Ratio', all_high_skids), 'gray', cluster_level, f'plots/high-axonicIO_clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
+# %%
+# DNs for different behaviours within clusters
+
+candidate_behaviours_cts = Celltype_Analyzer.get_skids_from_meta_annotation('mw dVNC candidate behaviors', split=True, return_celltypes=True)
+
+for celltype in candidate_behaviours_cts:
+    plot_marginal_cell_type_cluster(size, celltype, 'gray', cluster_level, f'plots/DN-behaviours_{celltype.name.replace("mw ", "")}_clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
 
 # %%
 # test role of APL/MBIN/KC
@@ -198,3 +259,19 @@ for i, name in enumerate(df_io_csv.celltype):
 
 df_io_csv.to_csv('plots/single-cell_axonic-input-output-ratio.csv', index=False)
 
+
+# %%
+# do KCs have most aa connections per output count?
+
+aa_output_frac = adj_aa.sum(axis=1)
+aa_output_frac = aa_output_frac/axon_outputs.axon_output.loc[aa_output_frac.index]
+aa_output_frac = aa_output_frac.dropna()
+
+skid_ct = []
+for skid in aa_output_frac.index:
+    for celltype in celltypes:
+        if(skid in celltype.skids):
+            skid_ct.append([skid, aa_output_frac.loc[skid], celltype.name])
+            
+df_aa_frac = pd.DataFrame(skid_ct, columns=['skid', 'aa_frac_output', 'celltype'])
+sns.barplot(data = df_aa_frac, x='celltype', y='aa_frac_output')
