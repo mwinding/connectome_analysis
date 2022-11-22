@@ -24,10 +24,10 @@ pairs = Promat.get_pairs(pairs_path=pairs_path)
 threshold = 2
 synapse_threshold = True
 ad_edges = Promat.pull_edges(
-    type_edges='aa', 
-    threshold=threshold, 
-    data_date=data_date, 
-    pairs_combined=False, 
+    type_edges='aa',
+    threshold=threshold,
+    data_date=data_date,
+    pairs_combined=False,
     synapse_threshold=synapse_threshold
 )
 
@@ -124,12 +124,13 @@ std4_high = mean + std*4
 print(f'The median axonic I/O ratio is {median:.3f}')
 print(f'The mean axonic I/O ratio is {mean:.3f}')
 
-fig, ax = plt.subplots(1,1, figsize=(4,4))
+fig, ax = plt.subplots(1,1, figsize=(4,3))
 sns.scatterplot(x=range(len(axon_input_output)), y=axon_input_output, ec='gray', fc='none', alpha=0.75, ax=ax)
 plt.axhline(y=mean, color='gray', linewidth = 0.5)
 plt.axhline(y=std2_high, color='gray', linewidth = 0.5)
 plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
 plt.savefig('plots/all-cell_ratio-axonic-IO.pdf', format='pdf', bbox_inches='tight')
+
 
 # %%
 # which neurons have highest and lowest IO ratio
@@ -198,6 +199,104 @@ _, celltypes = Celltype_Analyzer.default_celltypes()
 all_high_skids = np.concatenate([std2_high_skids, std4_high_skids])
 
 plot_marginal_cell_type_cluster(size, Celltype(f'>=2*SD Axonic Input/Output Ratio', all_high_skids), 'gray', cluster_level, f'plots/high-axonicIO_clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
+# %%
+# ratio of dendritic output / input
+
+den_output_input = input_output[input_output.dendrite_input>0]
+den_output_input = den_output_input.dendrite_output/den_output_input.dendrite_input
+den_output_input = den_output_input[~np.isnan(den_output_input)]
+den_output_input = den_output_input.loc[np.intersect1d(brain_neurons, den_output_input.index)]
+
+den_output_input.loc[865151] = 0 # fixed issue with axon split point
+den_output_input = den_output_input.sort_values(ascending=True)
+
+mean = np.mean(den_output_input)
+median = np.median(den_output_input)
+std = np.std(den_output_input)
+std_low = mean - std
+std_high = mean + std
+std2_high = mean + std*2
+std3_high = mean + std*3
+std4_high = mean + std*4
+
+print(f'The median axonic I/O ratio is {median:.3f}')
+print(f'The mean axonic I/O ratio is {mean:.3f}')
+
+fig, ax = plt.subplots(1,1, figsize=(4,3))
+sns.scatterplot(x=range(len(den_output_input)), y=den_output_input, ec='gray', fc='none', alpha=0.75, ax=ax)
+plt.axhline(y=mean, color='gray', linewidth = 0.5)
+plt.axhline(y=std2_high, color='gray', linewidth = 0.5)
+plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
+plt.savefig('plots/all-cell_ratio-dendritic-OI.pdf', format='pdf', bbox_inches='tight')
+
+# %%
+# which neurons have highest and lowest IO ratio
+
+_, celltypes = Celltype_Analyzer.default_celltypes()
+
+std2_high_skids = den_output_input[(den_output_input>=std2_high) & (den_output_input<std4_high)].index
+std4_high_skids = den_output_input[den_output_input>=std4_high].index
+
+cta = Celltype_Analyzer([Celltype('>=4*std ratioOI', std4_high_skids), Celltype('>=2*std ratioOI', std2_high_skids)])
+cta.set_known_types(celltypes)
+cta.plot_memberships(path='plots/high-dendritic-OI-ratio.pdf', figsize=(1,1))
+
+print(f'There are {len(std4_high_skids)} neurons >=4*std dendritic OI ratio')
+print(f'There are {len(std2_high_skids)} neurons 2-4*std dendritic OI ratio')
+print(f'There are {len(np.setdiff1d(den_output_input.index, np.r_[std2_high_skids, std4_high_skids]))} neurons <2*std dendritic OI ratio')
+
+# %%
+# where are these neurons in the clusters?
+
+def plot_marginal_cell_type_cluster(size, particular_cell_type, particular_color, cluster_level, path, all_celltypes=None, ylim=(0,1), yticks=([])):
+
+    # all cell types plot data
+    if(all_celltypes==None):
+        _, all_celltypes = Celltype_Analyzer.default_celltypes()
+        
+    clusters = Celltype_Analyzer.get_skids_from_meta_annotation(f'mw brain clusters level {cluster_level}', split=True, return_celltypes=True)
+    cluster_analyze = Celltype_Analyzer(clusters)
+
+    cluster_analyze.set_known_types(all_celltypes)
+    celltype_colors = [x.get_color() for x in cluster_analyze.get_known_types()]
+    all_memberships = cluster_analyze.memberships()
+    all_memberships = all_memberships.iloc[[0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16], :] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    celltype_colors = [celltype_colors[i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,17,13,14,15,16]] # switching order so unknown is not above outputs and RGNs before pre-outputs
+    
+    # particular cell type data
+    cluster_analyze.set_known_types([particular_cell_type])
+    membership = cluster_analyze.memberships()
+
+    # plot
+    fig = plt.figure(figsize=size) 
+    fig.subplots_adjust(hspace=0.1)
+    gs = plt.GridSpec(4, 1)
+
+    ax = fig.add_subplot(gs[0:3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, membership.iloc[0, :], color=particular_color)
+    ax.set(xlim = (-1, len(ind)), ylim=ylim, xticks=([]), yticks=yticks, title=particular_cell_type.get_name())
+
+    ax = fig.add_subplot(gs[3, 0])
+    ind = np.arange(0, len(cluster_analyze.Celltypes))
+    ax.bar(ind, all_memberships.iloc[0, :], color=celltype_colors[0])
+    bottom = all_memberships.iloc[0, :]
+    for i in range(1, len(all_memberships.index)):
+        plt.bar(ind, all_memberships.iloc[i, :], bottom = bottom, color=celltype_colors[i])
+        bottom = bottom + all_memberships.iloc[i, :]
+    ax.set(xlim = (-1, len(ind)), ylim=(0,1), xticks=([]), yticks=([]))
+    ax.axis('off')
+    ax.axis('off')
+
+    plt.savefig(path, format='pdf', bbox_inches='tight')
+
+cluster_level = 7
+size = (2,0.5)
+_, celltypes = Celltype_Analyzer.default_celltypes()
+all_high_skids = np.concatenate([std2_high_skids, std4_high_skids])
+
+plot_marginal_cell_type_cluster(size, Celltype(f'>=2*SD Dendritic Output/Input Ratio', all_high_skids), 'gray', cluster_level, f'plots/high-dendriticOI_clusters{cluster_level}.pdf', all_celltypes = celltypes)
 
 # %%
 # DNs for different behaviours within clusters
