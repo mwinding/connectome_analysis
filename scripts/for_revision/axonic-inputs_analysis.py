@@ -109,12 +109,13 @@ axon_input_output = input_output[input_output.axon_output>0]
 axon_input_output = axon_input_output.axon_input/axon_input_output.axon_output
 axon_input_output = axon_input_output[~np.isnan(axon_input_output)]
 axon_input_output = axon_input_output.loc[np.intersect1d(brain_neurons, axon_input_output.index)]
+axon_input_output = Promat.convert_df_to_pairwise(pd.DataFrame(axon_input_output, columns=['axonicIO']), pairs_path=pairs_path)
+axon_input_output = axon_input_output.groupby(by='pair_id').mean()
+axon_input_output = axon_input_output.sort_values(ascending=True, by='axonicIO')
 
-axon_input_output = axon_input_output.sort_values(ascending=True)
-
-mean = np.mean(axon_input_output)
-median = np.median(axon_input_output)
-std = np.std(axon_input_output)
+mean = axon_input_output.mean()[0]
+median = axon_input_output.median()[0]
+std = axon_input_output.std()[0]
 std_low = mean - std
 std_high = mean + std
 std2_high = mean + std*2
@@ -125,7 +126,7 @@ print(f'The median axonic I/O ratio is {median:.3f}')
 print(f'The mean axonic I/O ratio is {mean:.3f}')
 
 fig, ax = plt.subplots(1,1, figsize=(4,3))
-sns.scatterplot(x=range(len(axon_input_output)), y=axon_input_output, ec='gray', fc='none', alpha=0.75, ax=ax)
+sns.scatterplot(x=range(len(axon_input_output)), y=axon_input_output.axonicIO, ec='gray', fc='none', alpha=0.75, ax=ax)
 plt.axhline(y=mean, color='gray', linewidth = 0.5)
 plt.axhline(y=std2_high, color='gray', linewidth = 0.5)
 plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
@@ -137,8 +138,12 @@ plt.savefig('plots/all-cell_ratio-axonic-IO.pdf', format='pdf', bbox_inches='tig
 
 _, celltypes = Celltype_Analyzer.default_celltypes()
 
-std2_high_skids = axon_input_output[(axon_input_output>=std2_high) & (axon_input_output<std4_high)].index
-std4_high_skids = axon_input_output[axon_input_output>=std4_high].index
+std2_high_skids = axon_input_output[(axon_input_output.axonicIO>=std2_high) & (axon_input_output.axonicIO<std4_high)].index
+std4_high_skids = axon_input_output[axon_input_output.axonicIO>=std4_high].index
+
+std2_high_skids = Promat.get_paired_skids(list(std2_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
+std4_high_skids = Promat.get_paired_skids(list(std4_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
+less_than_2std = Promat.get_paired_skids(list(np.setdiff1d(axon_input_output.index, np.r_[std2_high_skids, std4_high_skids])), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 
 cta = Celltype_Analyzer([Celltype('>=4*std ratioIO', std4_high_skids), Celltype('>=2*std ratioIO', std2_high_skids)])
 cta.set_known_types(celltypes)
@@ -146,6 +151,7 @@ cta.plot_memberships(path='plots/high-axonic-IO-ratio.pdf', figsize=(1,1))
 
 print(f'There are {len(std4_high_skids)} neurons >=4*std axonic IO ratio')
 print(f'There are {len(std2_high_skids)} neurons 2-4*std axonic IO ratio')
+print(f'There are {len(less_than_2std)} neurons <2*std axonic IO ratio')
 
 # %%
 # where are these neurons in the clusters?
@@ -207,24 +213,26 @@ den_output_input = input_output[input_output.dendrite_input>0]
 den_output_input = den_output_input.dendrite_output/den_output_input.dendrite_input
 den_output_input = den_output_input[~np.isnan(den_output_input)]
 den_output_input = den_output_input.loc[np.intersect1d(brain_neurons, den_output_input.index)]
-
 den_output_input.loc[865151] = 0 # fixed issue with axon split point
-den_output_input = den_output_input.sort_values(ascending=True)
 
-mean = np.mean(den_output_input)
-median = np.median(den_output_input)
-std = np.std(den_output_input)
+den_output_input = Promat.convert_df_to_pairwise(pd.DataFrame(den_output_input, columns=['dendriticOI']), pairs_path=pairs_path)
+den_output_input = den_output_input.groupby(by='pair_id').mean()
+den_output_input = den_output_input.sort_values(ascending=True, by='dendriticOI')
+
+mean = den_output_input.mean()[0]
+median = den_output_input.median()[0]
+std = den_output_input.std()[0]
 std_low = mean - std
 std_high = mean + std
 std2_high = mean + std*2
 std3_high = mean + std*3
 std4_high = mean + std*4
 
-print(f'The median axonic I/O ratio is {median:.3f}')
-print(f'The mean axonic I/O ratio is {mean:.3f}')
+print(f'The median dendritic O/I ratio is {median:.3f}')
+print(f'The mean dendritic O/I ratio is {mean:.3f}')
 
 fig, ax = plt.subplots(1,1, figsize=(4,3))
-sns.scatterplot(x=range(len(den_output_input)), y=den_output_input, ec='gray', fc='none', alpha=0.75, ax=ax)
+sns.scatterplot(x=range(len(den_output_input.index)), y=den_output_input.dendriticOI, ec='gray', fc='none', alpha=0.75, ax=ax)
 plt.axhline(y=mean, color='gray', linewidth = 0.5)
 plt.axhline(y=std2_high, color='gray', linewidth = 0.5)
 plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
@@ -235,8 +243,12 @@ plt.savefig('plots/all-cell_ratio-dendritic-OI.pdf', format='pdf', bbox_inches='
 
 _, celltypes = Celltype_Analyzer.default_celltypes()
 
-std2_high_skids = den_output_input[(den_output_input>=std2_high) & (den_output_input<std4_high)].index
-std4_high_skids = den_output_input[den_output_input>=std4_high].index
+std2_high_skids = den_output_input[(den_output_input.dendriticOI>=std2_high) & (den_output_input.dendriticOI<std4_high)].index
+std4_high_skids = den_output_input[den_output_input.dendriticOI>=std4_high].index
+
+std2_high_skids = Promat.get_paired_skids(list(std2_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
+std4_high_skids = Promat.get_paired_skids(list(std4_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
+less_than_2std = Promat.get_paired_skids(list(np.setdiff1d(den_output_input.index, np.r_[std2_high_skids, std4_high_skids])), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 
 cta = Celltype_Analyzer([Celltype('>=4*std ratioOI', std4_high_skids), Celltype('>=2*std ratioOI', std2_high_skids)])
 cta.set_known_types(celltypes)
@@ -244,7 +256,7 @@ cta.plot_memberships(path='plots/high-dendritic-OI-ratio.pdf', figsize=(1,1))
 
 print(f'There are {len(std4_high_skids)} neurons >=4*std dendritic OI ratio')
 print(f'There are {len(std2_high_skids)} neurons 2-4*std dendritic OI ratio')
-print(f'There are {len(np.setdiff1d(den_output_input.index, np.r_[std2_high_skids, std4_high_skids]))} neurons <2*std dendritic OI ratio')
+print(f'There are {len(less_than_2std)} neurons <2*std dendritic OI ratio')
 
 # %%
 # where are these neurons in the clusters?
@@ -297,6 +309,36 @@ _, celltypes = Celltype_Analyzer.default_celltypes()
 all_high_skids = np.concatenate([std2_high_skids, std4_high_skids])
 
 plot_marginal_cell_type_cluster(size, Celltype(f'>=2*SD Dendritic Output/Input Ratio', all_high_skids), 'gray', cluster_level, f'plots/high-dendriticOI_clusters{cluster_level}.pdf', all_celltypes = celltypes)
+
+# %%
+# check num. presyn and postsyn per axon /dendrite in highest dendritic OI neuron(s)
+import navis
+
+unsplittable = pymaid.get_skids_by_annotation('mw unsplittable')
+
+for skid in std4_high_skids:
+    if(skid not in unsplittable):
+        # Load the neuron
+        n = pymaid.get_neuron(skid)
+
+        # Pick a node ID
+        cut_node_id = n.tags['mw axon split'][0]
+        axon, dendrite = navis.cut_skeleton(n, cut_node_id)
+
+        print(f'{skid}: The axon has {sum(axon.connectors.type==1)} presyns and {sum(axon.connectors.type==0)} postsyns')
+        print(f'{skid}: The dendrite has {sum(dendrite.connectors.type==1)} presyns and {sum(dendrite.connectors.type==0)} postsyns')
+
+for skid in std2_high_skids:
+    if(skid not in unsplittable):
+        # Load the neuron
+        n = pymaid.get_neuron(skid)
+
+        # Pick a node ID
+        cut_node_id = n.tags['mw axon split'][0]
+        axon, dendrite = navis.cut_skeleton(n, cut_node_id)
+
+        print(f'{skid}: The axon has {sum(axon.connectors.type==1)} presyns and {sum(axon.connectors.type==0)} postsyns')
+        print(f'{skid}: The dendrite has {sum(dendrite.connectors.type==1)} presyns and {sum(dendrite.connectors.type==0)} postsyns')
 
 # %%
 # DNs for different behaviours within clusters
