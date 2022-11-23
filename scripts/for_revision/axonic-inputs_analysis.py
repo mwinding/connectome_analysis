@@ -109,6 +109,8 @@ axon_input_output = input_output[input_output.axon_output>0]
 axon_input_output = axon_input_output.axon_input/axon_input_output.axon_output
 axon_input_output = axon_input_output[~np.isnan(axon_input_output)]
 axon_input_output = axon_input_output.loc[np.intersect1d(brain_neurons, axon_input_output.index)]
+
+# pairwise analysis
 axon_input_output = Promat.convert_df_to_pairwise(pd.DataFrame(axon_input_output, columns=['axonicIO']), pairs_path=pairs_path)
 axon_input_output = axon_input_output.groupby(by='pair_id').mean()
 axon_input_output = axon_input_output.sort_values(ascending=True, by='axonicIO')
@@ -141,6 +143,7 @@ _, celltypes = Celltype_Analyzer.default_celltypes()
 std2_high_skids = axon_input_output[(axon_input_output.axonicIO>=std2_high) & (axon_input_output.axonicIO<std4_high)].index
 std4_high_skids = axon_input_output[axon_input_output.axonicIO>=std4_high].index
 
+# expand to include raw number of all paired/nonpaired neurons
 std2_high_skids = Promat.get_paired_skids(list(std2_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 std4_high_skids = Promat.get_paired_skids(list(std4_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 less_than_2std = Promat.get_paired_skids(list(np.setdiff1d(axon_input_output.index, np.r_[std2_high_skids, std4_high_skids])), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
@@ -215,6 +218,7 @@ den_output_input = den_output_input[~np.isnan(den_output_input)]
 den_output_input = den_output_input.loc[np.intersect1d(brain_neurons, den_output_input.index)]
 den_output_input.loc[865151] = 0 # fixed issue with axon split point
 
+# pairwise analysis
 den_output_input = Promat.convert_df_to_pairwise(pd.DataFrame(den_output_input, columns=['dendriticOI']), pairs_path=pairs_path)
 den_output_input = den_output_input.groupby(by='pair_id').mean()
 den_output_input = den_output_input.sort_values(ascending=True, by='dendriticOI')
@@ -246,6 +250,7 @@ _, celltypes = Celltype_Analyzer.default_celltypes()
 std2_high_skids = den_output_input[(den_output_input.dendriticOI>=std2_high) & (den_output_input.dendriticOI<std4_high)].index
 std4_high_skids = den_output_input[den_output_input.dendriticOI>=std4_high].index
 
+# expand to include raw number of all paired/nonpaired neurons
 std2_high_skids = Promat.get_paired_skids(list(std2_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 std4_high_skids = Promat.get_paired_skids(list(std4_high_skids), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
 less_than_2std = Promat.get_paired_skids(list(np.setdiff1d(den_output_input.index, np.r_[std2_high_skids, std4_high_skids])), Promat.get_pairs(pairs_path=pairs_path), unlist=True)
