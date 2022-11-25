@@ -6,12 +6,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pymaid_creds import url, name, password, token
+from data_settings import pairs_path, data_date
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
+from contools import Analyze_Nx_G, Celltype, Prograph, Promat
 import navis
 
 # allows text to be editable in Illustrator
@@ -22,13 +21,14 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-ad_edges = pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
+ad_edges = Promat.pull_edges()
+pd.read_csv('data/edges_threshold/ad_all-paired-edges.csv', index_col=0)
 ad_edges_split = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
 
-graph = pg.Analyze_Nx_G(ad_edges)
-graph_split = pg.Analyze_Nx_G(ad_edges_split, split_pairs=True)
+graph = Analyze_Nx_G(ad_edges)
+graph_split = Analyze_Nx_G(ad_edges_split, split_pairs=True)
 
-pairs = pm.Promat.get_pairs()
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
 # connection probability between ipsi/bilateral/contra
@@ -64,7 +64,7 @@ vmax = 0.05
 # plot interhemispheric cell type interactions
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(df, square=True, cmap='Greys', vmax=vmax)
-plt.savefig(f'interhemisphere/plots/connection-probability_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
 
 ipsi_connections = (df.iloc[0:len(celltypes), 0:len(celltypes)].values + df.iloc[len(celltypes):len(celltypes)*2, len(celltypes):len(celltypes)*2].values)/2
 contra_connections = (df.iloc[0:len(celltypes), len(celltypes):len(celltypes)*2].values + df.iloc[len(celltypes):len(celltypes)*2, 0:len(celltypes)].values)/2
@@ -81,7 +81,7 @@ blue_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Blues', color
 cmap = blue_cmap
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(diff_df, square=True, cmap=cmap, vmax=vmax, vmin=0)
-plt.savefig(f'interhemisphere/plots/connection-probability-diff_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability-diff_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
 
 # plot decreases in cell type interactions based on contralateral edges
 cmap = plt.cm.get_cmap('Reds') # modify 'Blues' cmap to have a white background
@@ -92,7 +92,7 @@ red_cmap = mpl.colors.LinearSegmentedColormap.from_list(name='New_Reds', colors=
 cmap = red_cmap
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(-(diff_df), square=True, cmap=cmap, vmax=vmax, vmin=0)
-plt.savefig(f'interhemisphere/plots/connection-probability-neg-diff_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability-neg-diff_all-celltypes-types_interhemisphere.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # plot examples of largest change for figure
@@ -123,15 +123,15 @@ cmap = blue_cmap
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(df.loc[:, ['contra', 'ipsi']].T, annot=True, square=True, cmap=cmap, vmin=0)
-plt.savefig(f'interhemisphere/plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap.pdf', format='pdf', bbox_inches='tight')
 
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(df.loc[[0,1,4,6], ['contra', 'ipsi']].T, annot=True, square=True, cmap=cmap, vmin=0)
-plt.savefig(f'interhemisphere/plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap-modulated.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap-modulated.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.heatmap(df.loc[[2,3,5,7,8,9], ['contra', 'ipsi']].T, annot=True, square=True, cmap=cmap, vmin=0)
-plt.savefig(f'interhemisphere/plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap-new.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/connection-probability-diff_example-celltypes-types_interhemisphere_heatmap-new.pdf', format='pdf', bbox_inches='tight')
 
 # %%
