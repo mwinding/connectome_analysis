@@ -26,6 +26,11 @@ plt.rcParams['font.family'] = 'arial'
 # %% 
 # load axon/dendrite types
 brain = pymaid.get_skids_by_annotation('mw brain neurons')
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+incomplete = pymaid.get_skids_by_annotation('mw brain very incomplete')
+
+brain = np.setdiff1d(brain, pdiff + incomplete)
+
 ipsi_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw ipsilateral dendrite'), brain)
 contra_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw contralateral dendrite'), brain)
 bilateral_dendrite = np.intersect1d(pymaid.get_skids_by_annotation('mw bilateral dendrite'), brain)
