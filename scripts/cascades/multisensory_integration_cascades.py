@@ -1,5 +1,4 @@
 #%%
-
 from pymaid_creds import url, name, password, token
 from data_settings import pairs_path, data_date
 import pymaid
@@ -40,8 +39,8 @@ hops = 8
 sens_types = [Celltype(hit_hist.get_name(), list(hit_hist.pairwise_threshold(hh_pairwise=hit_hist.hh_pairwise, pairs=pairs, threshold=threshold, hops=hops))) for hit_hist in input_hit_hist_list.cascade_objs]
 sens_types_analyzer = Celltype_Analyzer(sens_types)
 
-upset_threshold = 30
-upset_threshold_dual_cats = 20
+upset_threshold = 0#30 (use 30 for main figure)
+upset_threshold_dual_cats = 0#20 (use 20 for main figure)
 path = f'plots/sens-cascades_upset'
 upset_members, members_selected, skids_excluded = sens_types_analyzer.upset_members(threshold=upset_threshold, path=path, plot_upset=True, 
                                                                                     exclude_singletons_from_threshold=True, exclude_skids=input_skids, threshold_dual_cats=upset_threshold_dual_cats)
@@ -67,8 +66,23 @@ integrative_skids = [upset_analyzer.Celltypes[i].skids for i,x in enumerate(inte
 labeled_line_skids = [x for sublist in labeled_line_skids for x in sublist]
 integrative_skids = [x for sublist in integrative_skids for x in sublist]
 
-pymaid.add_annotations(labeled_line_skids, f'mw cascade labeled-line {data_date}')
-pymaid.add_annotations(integrative_skids, f'mw cascade integrative {data_date}')
+pymaid.add_annotations(labeled_line_skids, f'mw cascade-5-hop labeled-line {data_date}')
+pymaid.add_annotations(integrative_skids, f'mw cascade-5-hop integrative {data_date}')
+
+# %%
+# integrative from most modalities
+dVNC = pymaid.get_skids_by_annotation('mw dVNC')
+sum(upset_data.loc['dVNCs', np.array([x.count('and') + 1 for x in upset_data.columns])>6])/len(dVNC)
+
+dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
+sum(upset_data.loc['dSEZs', np.array([x.count('and') + 1 for x in upset_data.columns])>6])/len(dSEZ)
+
+RGN = pymaid.get_skids_by_annotation('mw RGN')
+sum(upset_data.loc['RGNs', np.array([x.count('and') + 1 for x in upset_data.columns])>6])/len(RGN)
+
+# all brain neurons
+all_upset_data = upset_data.sum(axis=0)
+sum(all_upset_data.loc[np.array([x.count('and') + 1 for x in all_upset_data.index])>6])/sum(all_upset_data)
 
 # %%
 # matched the order of the upset manually (couldn't find out quickly how to pull the data from the plot)
@@ -78,7 +92,7 @@ col_name_order = [upset_data.columns[i] for i in col_order]
 
 # %%
 # plot upset cell lines
-upset_data = upset_data.loc[:, col_name_order].drop(['sensories', 'ascendings'])
+upset_data = upset_data.drop(['sensories', 'ascendings'])
 
 # add set of miscellaneous integrations that is plotted as the final bar in the upset plot
 upset_data['and all other combinations'] = excluded_data
@@ -99,7 +113,7 @@ annotations[annotations=='0']=''
 # generate heatmap
 fig, ax = plt.subplots(1,1, figsize=(cell_width * data.shape[0], cell_width * data.shape[1]))
 sns.heatmap(data, annot=annotations, fmt='s', square=True, cmap='Blues', vmax=vmax, ax=ax)
-plt.savefig('plots/sens-cascades_upset_celltype-members_labelled-line.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/sens-cascades-{hops}hops_upset_celltype-members_labelled-line.pdf', format='pdf', bbox_inches='tight')
 
 #######
 # plot integrative
@@ -110,7 +124,7 @@ annotations[annotations=='0']=''
 # generate heatmap
 fig, ax = plt.subplots(1,1, figsize=(cell_width * data.shape[0], cell_width * data.shape[1]))
 sns.heatmap(data, annot=annotations, fmt='s', square=True, cmap='Reds', vmax=vmax, ax=ax)
-plt.savefig('plots/sens-cascades_upset_celltype-members_integrative.pdf', format='pdf', bbox_inches='tight')
+plt.savefig(f'plots/sens-cascades-{hops}hops_upset_celltype-members_integrative.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # plot hops from input labelled line vs integrative
@@ -191,7 +205,7 @@ fig, ax = plt.subplots(1,1, figsize=(1,1.5))
 sns.boxenplot(data=df_hops, x='type', y='hops', k_depth='full', orient='v', linewidth=0, showfliers=False, ax=ax)
 ax.set(ylim=(1, 8), yticks=[1,2,3,4,5,6,7,8])
 ax.set_xlabel([f'Labeled Line (N={ll_count})', f'Integrative (N={int_count})'])
-plt.savefig('plots/sens-cascades_hops-plot.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/sens-cascades-{hops}_hops-plot.pdf', format='pdf', bbox_inches='tight')
 #df_hops['hops'] = df_hops['hops']+0.5 # revert back to normal
 
 # %%
@@ -200,8 +214,9 @@ plt.savefig('plots/sens-cascades_hops-plot.pdf', format='pdf', bbox_inches='tigh
 # %%
 # labelled-line / integrative cells in sensory circuits (2nd-order, 3rd-order, 4th-order, etc.)
 
-ll_cells = pymaid.get_skids_by_annotation(f'mw cascade labeled-line {data_date}')
-int_cells = pymaid.get_skids_by_annotation(f'mw cascade integrative {data_date}')
+hop_name = '5-hop'
+ll_cells = pymaid.get_skids_by_annotation(f'mw cascade-{hop_name} labeled-line {data_date}')
+int_cells = pymaid.get_skids_by_annotation(f'mw cascade-{hop_name} integrative {data_date}')
 
 annots = ['2nd_order', '3rd_order', '4th_order', '5th_order']
 cells = [Celltype_Analyzer.get_skids_from_meta_annotation('mw brain inputs ' + annot) for annot in annots]
