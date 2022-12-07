@@ -1,16 +1,6 @@
-#%%
-import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    print(os.getcwd())
-except:
-    pass
-
 # %%
-import sys
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
+
+from data_settings import data_date, pairs_path
 from pymaid_creds import url, name, password, token
 import pymaid
 
@@ -19,10 +9,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 
-from graspy.plot import gridplot, heatmap
-from graspy.utils import binarize, pass_to_ranks
-from src.data import load_metagraph
-from src.visualization import CLASS_COLOR_DICT, adjplot
+from contools import Promat, Celltype, Celltype_Analyzer
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
