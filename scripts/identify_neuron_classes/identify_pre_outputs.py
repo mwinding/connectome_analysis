@@ -5,16 +5,15 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import data_date_A1_brain, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_skeletons as skel
+from contools import Celltype, Celltype_Analyzer, Promat
 
-edge_ad = pd.read_csv('data/edges_threshold/pairwise-threshold_ad_all-edges.csv', index_col=0)
-pairs = pm.Promat.get_pairs()
+
+edges_ad = Promat.pull_edges(type_edges='ad', threshold=0.01, data_date=data_date_A1_brain, pairs_combined=False)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
 #
@@ -23,10 +22,10 @@ dVNCs = pymaid.get_skids_by_annotation('mw dVNC')
 dSEZs = pymaid.get_skids_by_annotation('mw dSEZ')
 RGNs = pymaid.get_skids_by_annotation('mw RGN')
 
-edge_ad.set_index('downstream_skid', inplace=True)
-pre_dVNCs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, dVNCs), :].upstream_skid)
-pre_dSEZs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, dSEZs), :].upstream_skid)
-pre_RGNs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, RGNs), :].upstream_skid)
+edges_ad.set_index('downstream_skid', inplace=True)
+pre_dVNCs = np.unique(edges_ad.loc[np.intersect1d(edges_ad.index, dVNCs), :].upstream_skid)
+pre_dSEZs = np.unique(edges_ad.loc[np.intersect1d(edges_ad.index, dSEZs), :].upstream_skid)
+pre_RGNs = np.unique(edges_ad.loc[np.intersect1d(edges_ad.index, RGNs), :].upstream_skid)
 
 #pymaid.add_annotations(pre_dVNCs, 'mw pre-dVNC')
 #pymaid.add_annotations(pre_dSEZs, 'mw pre-dSEZ')
@@ -36,7 +35,7 @@ pre_RGNs = np.unique(edge_ad.loc[np.intersect1d(edge_ad.index, RGNs), :].upstrea
 # identify dVNCs-to-A1 and dVNCs-not-to-A1
 
 A1s = pymaid.get_skids_by_annotation('mw A1 neurons paired')
-dVNCs_to_A1 = edge_ad.loc[np.intersect1d(A1s, edge_ad.index), 'upstream_skid']
+dVNCs_to_A1 = edges_ad.loc[np.intersect1d(A1s, edges_ad.index), 'upstream_skid']
 dVNCs_to_A1 = list(np.intersect1d(np.unique(dVNCs_to_A1), dVNCs))
 dVNCs_not_to_A1 = list(np.setdiff1d(dVNCs, dVNCs_to_A1))
 
