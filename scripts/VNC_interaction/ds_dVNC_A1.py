@@ -222,6 +222,10 @@ dVNC_motor = Promat.get_paired_skids(dVNC_motor, pairs, unlist=True)
 dVNC_sens = Promat.get_paired_skids(dVNC_sens, pairs, unlist=True)
 dVNC_mixed = Promat.get_paired_skids(dVNC_mixed, pairs, unlist=True)
 
+dVNC_motor = list(np.unique(dVNC_motor))
+dVNC_sens = list(np.unique(dVNC_sens))
+dVNC_mixed = list(np.unique(dVNC_mixed))
+
 pymaid.add_annotations(dVNC_motor, 'mw dVNC to A1 motor')
 pymaid.add_annotations(dVNC_sens, 'mw dVNC to A1 sens')
 pymaid.add_annotations(dVNC_mixed, 'mw dVNC to A1 mixed')
@@ -234,6 +238,10 @@ ds_dVNC_mixed = [x[2] for x in multiindex_col if x[0]=='mixed']
 ds_dVNC_motor = Promat.get_paired_skids(ds_dVNC_motor, pairs, unlist=True)
 ds_dVNC_sens = Promat.get_paired_skids(ds_dVNC_sens, pairs, unlist=True)
 ds_dVNC_mixed = Promat.get_paired_skids(ds_dVNC_mixed, pairs, unlist=True)
+
+ds_dVNC_motor = list(np.unique(ds_dVNC_motor))
+ds_dVNC_sens = list(np.unique(ds_dVNC_sens))
+ds_dVNC_mixed = list(np.unique(ds_dVNC_mixed))
 
 pymaid.add_annotations(ds_dVNC_motor, 'mw A1 ds_dVNC motor')
 pymaid.add_annotations(ds_dVNC_sens, 'mw A1 ds_dVNC sens')
