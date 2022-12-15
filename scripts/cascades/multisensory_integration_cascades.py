@@ -244,3 +244,28 @@ for i in range(len(cells_2ndorder)):
     #print(f'{fraction_neither*100:.1f}% of {cells_2ndorder[i].name} were neither')
 
 # %%
+# unimodal and multimodal output neurons; generated manually from plot
+
+DN_VNC = [6/172, 166/172]#, 146/172]
+DN_SEZ = [48/122, 74/122]#, 44/122]
+RGN = [4/32, 28/32]#, 24/32]
+
+DN_VNC = [6/182, 166/182]#, 146/172]
+DN_SEZ = [48/184, 74/184]#, 44/122]
+RGN = [4/56, 28/56]#, 24/32]
+
+fig, ax = plt.subplots(1,1,figsize=(1,1))
+sns.barplot(x=['unimodal', 'multimodal'], y=DN_VNC, ax=ax)
+ax.set(ylim=(0,1))
+plt.savefig('plots/unimodal-multimodal_DN-VNCs.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1,figsize=(1,1))
+sns.barplot(x=['unimodal', 'multimodal'], y=DN_SEZ, ax=ax)
+ax.set(ylim=(0,1))
+plt.savefig('plots/unimodal-multimodal_DN-SEZs.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1,figsize=(1,1))
+sns.barplot(x=['unimodal', 'multimodal'], y=RGN, ax=ax)
+ax.set(ylim=(0,1))
+plt.savefig('plots/unimodal-multimodal_RGNs.pdf', format='pdf', bbox_inches='tight')
+# %%

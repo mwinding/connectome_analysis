@@ -21,8 +21,17 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-adj_ad = Promat.pull_adj(type_adj='ad', date=data_date) 
+adj_ad = Promat.pull_adj(type_adj='ad', data_date=data_date)
 pairs = Promat.get_pairs(pairs_path=pairs_path)
+
+# %%
+
+data = [.12465, .87534, .62]
+fig, ax = plt.subplots(1,1, figsize=(1,2))
+sns.barplot(x=['labelled line', 'multimodal', 'integrate from all modalities'], y=data, ax=ax)
+ax.set(ylim=(0,1))
+plt.savefig('plots/labelled-line_vs_mulitmodal.pdf', format='pdf', bbox_inches='tight')
+data = [.62]
 
 # %%
 # pull sensory annotations and then pull associated skids
@@ -65,6 +74,7 @@ max_hops = 8
 n_init = 1000
 simultaneous = True
 adj=adj_ad
+data_date = '2022-03-15'
 '''
 input_hit_hist_list = Cascade_Analyzer.run_cascades_parallel(source_skids_list=input_skids_list, source_names = ['left_inputs', 'right_inputs'], stop_skids=output_skids, 
                                                                     adj=adj_ad, p=p, max_hops=max_hops, n_init=n_init, simultaneous=simultaneous, pairs=pairs, pairwise=True, disable_tqdm=False)
@@ -296,7 +306,7 @@ right_signal = all_inputs_hit_hist_right/n_init
 right_signal = -(right_signal.sum(axis=1))
 
 integration = (left_signal + right_signal)
-integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index)
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = integration.index)
 
 
 df_left = integration_df.loc[dVNC_left, :]
@@ -338,11 +348,40 @@ RGN = Promat.load_pairs_from_annotation('mw RGN', pairs, return_type='pairs')
 left_signal = all_inputs_hit_hist_left/n_init
 left_signal = left_signal.sum(axis=1)
 
+df_left = integration_df.loc[dVNC_left, :]
+df_left = df_left.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_left = df_left.append(integration_df.loc[dSEZ_left, :])
+df_left = df_left.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_left = df_left.append(integration_df.loc[RGN_left, :])
+
+df_right = integration_df.loc[dVNC_right, :]
+df_right = df_right.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_right = df_right.append(integration_df.loc[dSEZ_right, :])
+df_right = df_right.append([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
+df_right = df_right.append(integration_df.loc[RGN_right, :])
+
+fig, axs = plt.subplots(1,2, figsize=(1.5,1.5), sharey=True)
+fig.tight_layout(pad=0.05)
+ax=axs[0]
+sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax, cbar=False)
+ax.tick_params(left=False, bottom=False)
+ax.set(yticks=([]))
+
+ax=axs[1]
+sns.heatmap(df_right, cmap=cmr.iceburn, ax=ax, cbar=False)
+ax.tick_params(left=False, bottom=False)
+ax.set(yticks=([]))
+fig.savefig('plots/interhemisphere_left-right-visits_brain_outputs.pdf', format='pdf', bbox_inches='tight')
+
+fig, ax = plt.subplots(1,1, figsize=(1.5,1.5), sharey=True)
+sns.heatmap(df_left, cmap=cmr.iceburn, ax=ax)
+fig.savefig('plots/interhemisphere_left-right-visits_brain_outputs_cbar.pdf', format='pdf', bbox_inches='tight')
+
 right_signal = all_inputs_hit_hist_right/n_init
 right_signal = -(right_signal.sum(axis=1))
 
 integration = (left_signal + right_signal)
-integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index, columns = ['left_signal', 'right_signal', 'left_right_signal'])
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = integration.index, columns = ['left_signal', 'right_signal', 'left_right_signal'])
 
 left_int = []
 right_int = []
