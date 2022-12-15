@@ -259,7 +259,7 @@ intercalated_cta.set_known_types(celltypes)
 memberships = intercalated_cta.memberships(raw_num=True).drop('sensories').T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'PNs-somato','LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'ascendings', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
@@ -270,7 +270,7 @@ order2_cta.set_known_types(celltypes)
 memberships = order2_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'PNs-somato', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
@@ -286,7 +286,7 @@ order3_cta.set_known_types(celltypes)
 memberships = order3_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'PNs-somato', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
@@ -302,7 +302,7 @@ order4_cta.set_known_types(celltypes)
 memberships = order4_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'PNs-somato', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
@@ -322,7 +322,7 @@ order45_cta.set_known_types(celltypes)
 memberships = order45_cta.memberships(raw_num=True).drop(['sensories', 'ascendings']).T
 
 memberships['Total'] = memberships.sum(axis=1)
-column_order = [ 'Total', 'LNs', 'PNs', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
+column_order = [ 'Total', 'LNs', 'PNs', 'PNs-somato', 'LHNs', 'FFNs', 'MBINs', 'KCs', 'MBONs', 'MB-FBNs', 'CNs', 'pre-dSEZs', 'pre-dVNCs', 'RGNs', 'dSEZs', 'dVNCs', 'unknown']
 memberships = memberships.loc[:, column_order]
 memberships = memberships.astype(int)
 
