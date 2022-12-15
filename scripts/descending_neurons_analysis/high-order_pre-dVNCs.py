@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
-from data_settings import data_date, pairs_path, data_date_projectome
+from data_settings import data_date, pairs_path#, data_date_projectome
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -101,7 +101,7 @@ neuropil.color = (250, 250, 250, .05)
 color = 'tab:gray'
 
 n_rows = 1
-n_cols = 6
+n_cols = 8
 alpha = 1
 cn_size = 0.5
 
