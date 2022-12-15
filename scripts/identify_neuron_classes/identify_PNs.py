@@ -5,13 +5,11 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
-import connectome_tools.celltype as ct
-import connectome_tools.process_graph as pg
-import connectome_tools.process_matrix as pm
-import connectome_tools.process_skeletons as skel
+from contools import Celltype, Celltype_Analyzer, Promat, Adjacency_matrix
 import navis
 
 # allows text to be editable in Illustrator
@@ -22,10 +20,10 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-adj = pm.Promat.pull_adj(type_adj='ad', subgraph='brain')
-inputs = pd.read_csv('data/graphs/inputs.csv', index_col=0)
-adj_mat = pm.Adjacency_matrix(adj, inputs, 'ad')
-pairs = pm.Promat.get_pairs()
+adj = Promat.pull_adj(type_adj='ad', data_date=data_date)
+inputs = pd.read_csv(f'data/adj/inputs_{data_date}.csv', index_col=0)
+pairs = Promat.get_pairs(pairs_path=pairs_path)
+adj_mat = Adjacency_matrix(adj, inputs, 'ad', pairs=pairs)
 
 # %%
 # remove LNs and outputs from each sensory 2nd-order neuropil to identify PNs
@@ -33,8 +31,8 @@ pairs = pm.Promat.get_pairs()
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
 order2 = [pymaid.get_skids_by_annotation(f'mw {celltype} 2nd_order') for celltype in order]
 
-LNs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
-outputs = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs')
+LNs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain LNs')
+outputs = Celltype_Analyzer.get_skids_from_meta_annotation('mw brain outputs')
 
 order2 = [list(np.setdiff1d(skids, LNs + outputs)) for skids in order2]
 

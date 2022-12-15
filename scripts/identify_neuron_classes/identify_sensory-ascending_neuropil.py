@@ -40,7 +40,7 @@ brain_inputs = Celltype_Analyzer.get_skids_from_meta_meta_annotation(modalities,
 brain_inputs = brain_inputs + pymaid.get_skids_by_annotation('mw A1 ascending unknown')
 brain = pymaid.get_skids_by_annotation('mw brain neurons') + brain_inputs
 
-pdiff = pymaid.get_skids_by_annotation('mw partially differentiated')
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated') + pymaid.get_skids_by_annotation('mw brain very incomplete')
 SEZ_motor = pymaid.get_skids_by_annotation('mw motor')
 
 threshold = 0.01
@@ -115,23 +115,25 @@ fig.savefig(f'plots/sensory-circuits_similarity-{sim_type}_sens_5th-order.pdf', 
 # %%
 # identify LNs in each layer
 pymaid.clear_cache()
-summed_adj = pd.read_csv(f'data/adj/all-neurons_all-all.csv', index_col = 0).rename(columns=int)
+summed_adj = Promat.pull_adj(type_adj='all-all', data_date=data_date)
+adj_aa = Promat.pull_adj(type_adj='aa', data_date=data_date)
+outputs = pd.read_csv(f'data/adj/outputs_{data_date}.csv', index_col=0)
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
 
-sens = [ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {celltype}') for celltype in order]
-order2_ct = [ct.Celltype(f'2nd-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 2nd_order')) for celltype in order]
-order3_ct = [ct.Celltype(f'3rd-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 3rd_order')) for celltype in order]
-order4_ct = [ct.Celltype(f'4th-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 4th_order')) for celltype in order]
-exclude = [pymaid.get_skids_by_annotation(x) for x in ['mw MBON', 'mw MBIN', 'mw RGN', 'mw dVNC', 'mw dSEZ', 'mw KC']]
+sens = [Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {celltype}') for celltype in order]
+order2_ct = [Celltype(f'2nd-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 2nd_order')) for celltype in order]
+order3_ct = [Celltype(f'3rd-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 3rd_order')) for celltype in order]
+order4_ct = [Celltype(f'4th-order {celltype}', pymaid.get_skids_by_annotation(f'mw {celltype} 4th_order')) for celltype in order]
+exclude = [pymaid.get_skids_by_annotation(x) for x in ['mw MBON', 'mw MBIN', 'mw RGN', 'mw dVNC', 'mw dSEZ', 'mw KC', 'mw partially differentiated', 'mw brain very incomplete']]
 exclude = [x for sublist in exclude for x in sublist]
 exclude = exclude + brain_inputs
-
+pdiff = pymaid.get_skids_by_annotation('mw partially differentiated') + pymaid.get_skids_by_annotation('mw brain very incomplete')
 # identify LNs
 # use 0.5 output fraction within group threshold
 threshold = 0.5
-LNs_2nd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, exclude=exclude)[0] for i, celltype in enumerate(order2_ct)]
-LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, exclude=exclude)[0] for i, celltype in enumerate(order3_ct)]
-LNs_4th = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order3_ct[i].get_skids(), outputs, exclude=exclude)[0] for i, celltype in enumerate(order4_ct)]
+LNs_2nd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, sens[i], outputs, pairs_path=pairs_path, exclude=exclude)[0] for i, celltype in enumerate(order2_ct)]
+LNs_3rd = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order2_ct[i].get_skids(), outputs, pairs_path=pairs_path, exclude=exclude)[0] for i, celltype in enumerate(order3_ct)]
+LNs_4th = [celltype.identify_LNs(threshold, summed_adj, adj_aa, order3_ct[i].get_skids(), outputs, pairs_path=pairs_path, exclude=exclude)[0] for i, celltype in enumerate(order4_ct)]
 
 # export LNs
 [pymaid.add_annotations(LNs_2nd[i], f'mw brain 2nd_order LN {name}') for i, name in enumerate(order) if len(LNs_2nd[i])>0]
@@ -144,8 +146,8 @@ pymaid.add_meta_annotations([f'mw brain 4th_order LN {name}' for i, name in enum
 # add special case for olfactory/gustatory 2nd-order because it's so interconnected
 pymaid.clear_cache()
 ct_skids = pymaid.get_skids_by_annotation('mw olfactory 2nd_order') + pymaid.get_skids_by_annotation('mw gustatory-external 2nd_order') + pymaid.get_skids_by_annotation('mw gustatory-pharyngeal 2nd_order')
-input_skids = ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw olfactory') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-external') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-pharyngeal')
-olf_gust_order2 = ct.Celltype('2nd-order olfactory-gustatory', ct_skids)
+input_skids = Celltype_Analyzer.get_skids_from_meta_annotation('mw olfactory') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-external') + ct.Celltype_Analyzer.get_skids_from_meta_annotation('mw gustatory-pharyngeal')
+olf_gust_order2 = Celltype('2nd-order olfactory-gustatory', ct_skids)
 olf_gust_LN_order2 = olf_gust_order2.identify_LNs(threshold, summed_adj, adj_aa, input_skids, outputs, exclude=exclude)[0] 
 pymaid.add_annotations(olf_gust_LN_order2, 'mw brain 2nd_order LN olfactory-gustatory')
 pymaid.clear_cache()

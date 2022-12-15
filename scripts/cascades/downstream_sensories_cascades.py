@@ -3,6 +3,7 @@ import sys
 sys.path.append('/Users/mwinding/repos/maggot_models')
 
 from pymaid_creds import url, name, password, token
+from data_settings import data_date, pairs_path
 import pymaid
 rm = pymaid.CatmaidInstance(url, token, name, password)
 
@@ -10,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+from contools import Promat, Celltype, Celltype_Analyzer, Cascade_Analyzer
 
 # allows text to be editable in Illustrator
 plt.rcParams['pdf.fonttype'] = 42
@@ -19,24 +21,15 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams['font.size'] = 5
 plt.rcParams['font.family'] = 'arial'
 
-from src.data import load_metagraph
-from src.visualization import CLASS_COLOR_DICT, adjplot
-from src.traverse import Cascade, to_transmission_matrix
-from src.traverse import TraverseDispatcher
-from src.visualization import matrixplot
 
-import connectome_tools.cascade_analysis as casc
-import connectome_tools.celltype as ct
-import connectome_tools.process_matrix as pm
-
-adj_ad = pm.Promat.pull_adj(type_adj='ad', subgraph='brain and accessory')
+adj_ad = Promat.pull_adj(type_adj='ad', data_date=data_date)
 
 #%%
 # pull sensory annotations and then pull associated skids
 order = ['olfactory', 'gustatory-external', 'gustatory-pharyngeal', 'enteric', 'thermo-warm', 'thermo-cold', 'visual', 'noci', 'mechano-Ch', 'mechano-II/III', 'proprio', 'respiratory']
-sens = [ct.Celltype(name, ct.Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
+sens = [Celltype(name, Celltype_Analyzer.get_skids_from_meta_annotation(f'mw {name}')) for name in order]
 input_skids_list = [x.get_skids() for x in sens]
-input_skids = ct.Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
+input_skids = Celltype_Analyzer.get_skids_from_meta_meta_annotation('mw brain sensory modalities')
 
 output_names = pymaid.get_annotated('mw brain outputs').name
 output_skids_list = list(map(pymaid.get_skids_by_annotation, pymaid.get_annotated('mw brain outputs').name))
@@ -59,7 +52,7 @@ input_hit_hist_list = casc.Cascade_Analyzer.run_cascades_parallel(source_skids_l
 pickle.dump(input_hit_hist_list, open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'wb'))
 '''
 
-input_hit_hist_list = pickle.load(open('data/cascades/sensory-modality-cascades_1000-n_init.p', 'rb'))
+input_hit_hist_list = pickle.load(open(f'data/cascades/all-sensory-modalities_1000-n_init_{data_date}.p', 'rb'))
 
 # %%
 # plot sensory cascades raw
@@ -72,7 +65,7 @@ for i, hit_hist in enumerate(input_hit_hist_list):
     sns.heatmap(hit_hist.skid_hit_hist, ax=ax)
     ax.set_xlabel(hit_hist.get_name())
 
-plt.savefig('cascades/plots/sensory_modality_signals.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/sensory_modality_signals.pdf', format='pdf', bbox_inches='tight')
 os.system('say "code executed"')
 
 # %%
@@ -84,13 +77,13 @@ dSEZ = pymaid.get_skids_by_annotation('mw dSEZ')
 RGN = pymaid.get_skids_by_annotation('mw RGN')
 
 # generate Cascade_Analyzer objects containing name of pathway and the hit_hist to each output type
-dVNC_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dVNC', hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
-dSEZ_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-dSEZ', hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
-RGN_hits = [casc.Cascade_Analyzer(f'{hit_hist.get_name()}-RGN', hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dVNC_hits = [Cascade_Analyzer(f'{hit_hist.get_name()}-dVNC', hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dSEZ_hits = [Cascade_Analyzer(f'{hit_hist.get_name()}-dSEZ', hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+RGN_hits = [Cascade_Analyzer(f'{hit_hist.get_name()}-RGN', hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
 
-dVNC_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dVNC'], hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
-dSEZ_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'dSEZ'], hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
-RGN_hits = [casc.Cascade_Analyzer([hit_hist.get_name(), 'RGN'], hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dVNC_hits = [Cascade_Analyzer([hit_hist.get_name(), 'dVNC'], hit_hist.skid_hit_hist.loc[dVNC, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+dSEZ_hits = [Cascade_Analyzer([hit_hist.get_name(), 'dSEZ'], hit_hist.skid_hit_hist.loc[dSEZ, :], n_init=n_init) for hit_hist in input_hit_hist_list]
+RGN_hits = [Cascade_Analyzer([hit_hist.get_name(), 'RGN'], hit_hist.skid_hit_hist.loc[RGN, :], n_init=n_init) for hit_hist in input_hit_hist_list]
 
 # max possible hits that all output neuron types could receive 
 max_dVNC_hits = len(dVNC_hits[0].skid_hit_hist.index)*n_init
@@ -122,7 +115,7 @@ cmap = cmr.torch
 sns.heatmap(sens_output_df_plot, ax = ax, cmap = cmap, vmax=vmax)
 ax.set_title('Signal to brain outputs')
 ax.set(xlim = (0, 11))
-plt.savefig('cascades/plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/sensory_modality_signals_to_output.pdf', format='pdf', bbox_inches='tight')
 
 # determine mean/median hop distance from sens -> output
 def counts_to_list(count_list):
@@ -139,22 +132,36 @@ for row in sens_output_df.iterrows():
     all_sens_output_dist.append([row[0][0], row[0][1], np.mean(list_hits), np.median(list_hits)])
 
 all_sens_output_dist = pd.DataFrame(all_sens_output_dist, columns = ['source', 'target', 'mean_hop', 'median_hop'])
+
+# %%
+# simplified version for main figure
+
+df = sens_output_df_plot.loc[(slice(None), 'dVNC'), :].copy()
+df_sum = df.sum(axis=1) # determine the summed signal in each row (from individual sensory modalities)
+
+# normalize each row
+for i in range(len(df.index)):
+    df.loc[df.index[i], :] = df.loc[df.index[i], :]/df_sum[i]
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+sns.barplot(df, ax=ax)
+plt.savefig('plots/input-to-output_depth.pdf', format='pdf', bbox_inches='tight')
+
 # %%
 # plotting visits by modality to each descending to VNC neuron pair
 # supplemental figure
 
 dVNC_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in dVNC_hits]
 dVNC_hits_summed = pd.concat(dVNC_hits_summed, axis=1)
-dVNC_hits_pairwise = pm.Promat.convert_df_to_pairwise(dVNC_hits_summed)
+dVNC_hits_pairwise = Promat.convert_df_to_pairwise(dVNC_hits_summed, pairs_path=pairs_path)
 
 dSEZ_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in dSEZ_hits]
 dSEZ_hits_summed = pd.concat(dSEZ_hits_summed, axis=1)
-dSEZ_hits_pairwise = pm.Promat.convert_df_to_pairwise(dSEZ_hits_summed)
+dSEZ_hits_pairwise = Promat.convert_df_to_pairwise(dSEZ_hits_summed, pairs_path=pairs_path)
 
 RGN_hits_summed = [pd.DataFrame(x.skid_hit_hist.iloc[:, 0:8].sum(axis=1), columns=[x.get_name()[0]]) for x in RGN_hits]
 RGN_hits_summed = pd.concat(RGN_hits_summed, axis=1)
-RGN_hits_pairwise = pm.Promat.convert_df_to_pairwise(RGN_hits_summed)
-
+RGN_hits_pairwise = Promat.convert_df_to_pairwise(RGN_hits_summed, pairs_path=pairs_path)
 
 fig, axs = plt.subplots(
     3, 1, figsize=(8, 8)
@@ -178,7 +185,7 @@ ax.get_xaxis().set_visible(False)
 ax.set_title('Signal to Individual Ring Gland Neurons')
 sns.heatmap(RGN_hits_pairwise.T, ax = ax)
 
-plt.savefig('cascades/plots/signal_to_individual_outputs.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('plots/signal_to_individual_outputs.pdf', format='pdf', bbox_inches='tight')
 
 #%%
 # alternative clustermap plot of descending neurons
@@ -215,19 +222,19 @@ dist_data = pd.DataFrame(list(zip(dVNC_dist.values, ['dVNC']*len(dVNC_dist))) + 
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.stripplot(data = dist_data, y = 'combinations', x='type', s=1, ax=ax)
-fig.savefig('cascades/plots/signal_to_outputs_dist.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/signal_to_outputs_dist.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.histplot(data = dVNC_dist-0.5, ax=ax, bins=len(sens))
-fig.savefig('cascades/plots/signal_to_dVNC_dist.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/signal_to_dVNC_dist.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.histplot(data = dSEZ_dist-0.5, ax=ax, bins=len(sens))
-fig.savefig('cascades/plots/signal_to_dSEZ_dist.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/signal_to_dSEZ_dist.pdf', format='pdf', bbox_inches='tight')
 
 fig, ax = plt.subplots(1,1, figsize=(4,4))
 sns.histplot(data = RGN_dist-0.5, ax=ax, bins=len(sens))
-fig.savefig('cascades/plots/signal_to_RGN_dist.pdf', format='pdf', bbox_inches='tight')
+fig.savefig('plots/signal_to_RGN_dist.pdf', format='pdf', bbox_inches='tight')
 
 # %%
 # parallel coordinates plots
