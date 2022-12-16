@@ -84,6 +84,7 @@ input_counts_dVNC = input_counts_dVNC.iloc[4:len(input_from_asc)-1]
 input_counts_dVNC[input_counts_dVNC==0]=1
 
 print(f'dVNCs receive {np.mean(input_from_asc/input_counts_dVNC)*100:.1f}+/-{np.std(input_from_asc/input_counts_dVNC)*100:.1f}% input from ascendings')
+(input_from_asc/input_counts_dVNC).sort_values(ascending=False)
 
 # dSEZ from ascending
 dSEZ_partners = pymaid.get_partners(dSEZ)
@@ -113,8 +114,9 @@ input_counts_asc = input_counts_asc.iloc[4:len(input_from_dVNC)-1]
 
 input_counts_asc[input_counts_asc==0]=1
 
-print(f'Ascendings receive {np.mean(input_from_dVNC/input_counts_asc)*100:.1f}+/-{np.std(input_from_dVNC/input_counts_asc)*100:.1f}% input from dVNCs')
-
+# a couple ascending axons with no dendrites were included, those were removed
+print(f'Ascendings receive {np.mean((input_from_dVNC/input_counts_asc).sort_values(ascending=False).iloc[2:])*100:.1f}+/-{np.std((input_from_dVNC/input_counts_asc).sort_values(ascending=False).iloc[2:])*100:.1f}% input from dVNCs')
+(input_from_dVNC/input_counts_asc).sort_values(ascending=False).iloc[2:]
 # %%
 # details on dVNC from ascending
 
