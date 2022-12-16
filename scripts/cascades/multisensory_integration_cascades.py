@@ -39,8 +39,8 @@ hops = 8
 sens_types = [Celltype(hit_hist.get_name(), list(hit_hist.pairwise_threshold(hh_pairwise=hit_hist.hh_pairwise, pairs=pairs, threshold=threshold, hops=hops))) for hit_hist in input_hit_hist_list.cascade_objs]
 sens_types_analyzer = Celltype_Analyzer(sens_types)
 
-upset_threshold = 0#30 (use 30 for main figure)
-upset_threshold_dual_cats = 0#20 (use 20 for main figure)
+upset_threshold = 30 #(use 30 for main figure)
+upset_threshold_dual_cats = 20 #(use 20 for main figure)
 path = f'plots/sens-cascades_upset'
 upset_members, members_selected, skids_excluded = sens_types_analyzer.upset_members(threshold=upset_threshold, path=path, plot_upset=True, 
                                                                                     exclude_singletons_from_threshold=True, exclude_skids=input_skids, threshold_dual_cats=upset_threshold_dual_cats)
@@ -66,8 +66,8 @@ integrative_skids = [upset_analyzer.Celltypes[i].skids for i,x in enumerate(inte
 labeled_line_skids = [x for sublist in labeled_line_skids for x in sublist]
 integrative_skids = [x for sublist in integrative_skids for x in sublist]
 
-pymaid.add_annotations(labeled_line_skids, f'mw cascade-5-hop labeled-line {data_date}')
-pymaid.add_annotations(integrative_skids, f'mw cascade-5-hop integrative {data_date}')
+#pymaid.add_annotations(labeled_line_skids, f'mw cascade-{hops}-hop labeled-line {data_date}')
+#pymaid.add_annotations(integrative_skids, f'mw cascade-{hops}-hop integrative {data_date}')
 
 # %%
 # integrative from most modalities
@@ -93,6 +93,7 @@ col_name_order = [upset_data.columns[i] for i in col_order]
 # %%
 # plot upset cell lines
 upset_data = upset_data.drop(['sensories', 'ascendings'])
+upset_data = upset_data.loc[:, col_name_order]
 
 # add set of miscellaneous integrations that is plotted as the final bar in the upset plot
 upset_data['and all other combinations'] = excluded_data
