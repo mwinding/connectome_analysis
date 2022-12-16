@@ -243,7 +243,7 @@ plt.axhline(y=std4_high, color='gray', linewidth = 0.5)
 plt.savefig('plots/all-cell_ratio-dendritic-OI.pdf', format='pdf', bbox_inches='tight')
 
 # %%
-# which neurons have highest and lowest IO ratio
+# which neurons have highest and lowest dendritic OI ratio
 
 _, celltypes = Celltype_Analyzer.default_celltypes()
 
@@ -344,6 +344,48 @@ for skid in std2_high_skids:
 
         print(f'{skid}: The axon has {sum(axon.connectors.type==1)} presyns and {sum(axon.connectors.type==0)} postsyns')
         print(f'{skid}: The dendrite has {sum(dendrite.connectors.type==1)} presyns and {sum(dendrite.connectors.type==0)} postsyns')
+
+# %%
+# ratio of axon input / output per celltypes
+
+den_output_input = pd.DataFrame(den_output_input, columns=['dendriticOI'])
+_, celltypes = Celltype_Analyzer.default_celltypes()
+
+skid_ct = []
+for skid in den_output_input.index:
+    for celltype in celltypes:
+        if(skid in celltype.skids):
+            skid_ct.append([skid, den_output_input.loc[skid, 'dendriticOI'], celltype.name])
+            
+df_oi = pd.DataFrame(skid_ct, columns=['skid', 'dendriticOI', 'celltype'])
+
+plt.rcParams['font.size'] = 8
+plt.rcParams['font.family'] = 'arial'
+
+fig, ax = plt.subplots(1,1,figsize=(8,4))
+sns.barplot(data=df_oi, x='celltype', y='dendriticOI', ax=ax)
+plt.xticks(rotation=45, ha='right')
+plt.savefig('plots/axonic-input-out-ratio_per_celltypes.png', bbox_inches='tight', format='png')
+
+# prep to save as CSV
+df_oi_csv = df_oi.sort_values('dendriticOI', ascending=False, ignore_index=True).loc[:, ['skid', 'celltype', 'dendriticOI']]
+df_oi_csv.columns = ['skid', 'celltype', 'dendritic_output-input_ratio']
+
+# replace some outdated names, dVNCs -> DN-VNCs; dSEZs -> DN-SEZs; FFNs -> MB-FFNs
+# save as CSV
+to_replace = {
+  'dVNCs': 'DN-VNCs',
+  'dSEZs': 'DN-SEZs',
+  'FFNs': 'MB-FFNs',
+  'pre-dSEZs': 'pre-DN-SEZs',
+  'pre-dVNCs': 'pre-DN-VNCs'
+}
+
+for i, name in enumerate(df_oi_csv.celltype):
+    if(name in to_replace.keys()):
+        df_oi_csv.loc[i, 'celltype'] = to_replace[df_oi_csv.loc[i, 'celltype']]
+
+df_oi_csv.to_csv('plots/single-cell_dendritic-output-input-ratio.csv', index=False)
 
 # %%
 # DNs for different behaviours within clusters
