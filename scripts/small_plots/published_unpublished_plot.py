@@ -1,13 +1,4 @@
 #%%
-import os
-import sys
-try:
-    os.chdir('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/maggot_models/')
-    sys.path.append('/Volumes/GoogleDrive/My Drive/python_code/connectome_tools/')
-except:
-    pass
-
 
 from pymaid_creds import url, name, password, token
 import pymaid
@@ -64,14 +55,14 @@ ax.azim = -90
 ax.elev = -90
 ax.dist = 3.5
 plt.show()
-fig.savefig('small_plots/plots/published_inputs.pdf', format='pdf', bbox_format = 'tight')
+fig.savefig('plots/published_inputs.pdf', format='pdf', bbox_format = 'tight')
 
 fig, ax = navis.plot2d(x=[unpub_inputs_nl, cns], connectors_only=False, color=sns.color_palette()[1], alpha=0.5)
 ax.azim = -90
 ax.elev = -90
 ax.dist = 3.5
 plt.show()
-fig.savefig('small_plots/plots/unpublished_inputs.pdf', format='pdf', bbox_format = 'tight')
+fig.savefig('plots/unpublished_inputs.pdf', format='pdf', bbox_format = 'tight')
 
 # %%
 # plot output neurons
@@ -81,14 +72,14 @@ ax.azim = -90
 ax.elev = -90
 ax.dist = 3.5
 plt.show()
-plt.savefig('small_plots/plots/published_outputs.pdf', format='pdf', bbox_format = 'tight')
+plt.savefig('plots/published_outputs.pdf', format='pdf', bbox_format = 'tight')
 
 fig, ax = navis.plot2d(x=[unpub_outputs_nl, cns], connectors_only=False, color=sns.color_palette()[1], alpha=0.5)
 ax.azim = -90
 ax.elev = -90
 ax.dist = 3.5
 plt.show()
-plt.savefig('small_plots/plots/unpublished_outputs.pdf', format='pdf', bbox_format = 'tight')
+plt.savefig('plots/unpublished_outputs.pdf', format='pdf', bbox_format = 'tight')
 
 # %%
 # plot interneurons

@@ -133,7 +133,7 @@ input_counts_dVNC = input_counts_dVNC.iloc[4:len(input_from_asc_A1)-1]
 
 input_counts_dVNC[input_counts_dVNC==0]=1
 
-print(f'dVNCs receive {np.mean(input_from_asc_A1/input_counts_dVNC)*100:.1f}+/-{np.std(input_from_asc_A1/input_counts_dVNC)*100:.1f}% input from ascendings-A1')
+print(f'dVNCs receive {np.mean(input_from_asc_A1/input_counts_dVNC)*100:.2f}+/-{np.std(input_from_asc_A1/input_counts_dVNC)*100:.1f}% input from ascendings-A1')
 
 # dVNC from ascending
 dVNC_partners = pymaid.get_partners(dVNC)
@@ -148,7 +148,7 @@ input_counts_dVNC = input_counts_dVNC.iloc[4:len(input_from_asc)-1]
 
 input_counts_dVNC[input_counts_dVNC==0]=1
 
-print(f'dVNCs receive {np.mean(input_from_asc/input_counts_dVNC)*100:.1f}+/-{np.std(input_from_asc/input_counts_dVNC)*100:.1f}% input from ascendings-nonA1')
+print(f'dVNCs receive {np.mean(input_from_asc/input_counts_dVNC)*100:.2f}+/-{np.std(input_from_asc/input_counts_dVNC)*100:.1f}% input from ascendings-nonA1')
 
 # %%
 # how many dVNCs synapse onto ascending neurons?

@@ -25,6 +25,7 @@ adj_ad = Promat.pull_adj(type_adj='ad', data_date=data_date)
 pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 # %%
+# a bit out of place
 
 data = [.12465, .87534, .62]
 fig, ax = plt.subplots(1,1, figsize=(1,2))
@@ -578,7 +579,7 @@ right_signal = all_inputs_hit_hist_right.loc[:, [0,1,2,3,4,5]]/n_init
 right_signal = -(right_signal.sum(axis=1))
 
 integration = (left_signal + right_signal)
-integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = adj.index, columns = ['left_signal', 'right_signal', 'left_right_signal'])
+integration_df = pd.DataFrame(list(zip(left_signal, right_signal, integration)), index = integration.index, columns = ['left_signal', 'right_signal', 'left_right_signal'])
 
 # lateralization of all brain neurons
 skids = np.setdiff1d(integration_df.index, input_skids + pymaid.get_skids_by_annotation('mw A1 ascending unknown') + pymaid.get_skids_by_annotation('mw motor'))
