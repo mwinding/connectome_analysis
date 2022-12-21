@@ -150,10 +150,15 @@ print(f'Correlation between cluster and PN modality category is {cramers_v:.3f} 
 
 # %%
 # correlation between KC claw-classification and clusters
-
+'''
 cts = Celltype_Analyzer.get_skids_from_meta_annotation('mw KC claws', split=True, return_celltypes=True)
 for ct in cts:
     ct.name = ct.name.replace('cutoff', 'KC')
+'''
+# combined 1/2, 3/4, or 5/6 claws into three categories: young, medium, early-born KCs
+cts = [Celltype('1/2 claws', pymaid.get_skids_by_annotation(['cutoff 1 claw', 'cutoff 2 claw'])),
+        Celltype('3/4 claws', pymaid.get_skids_by_annotation(['cutoff 3 claw', 'cutoff 4 claw'])),
+        Celltype('5/6 claws', pymaid.get_skids_by_annotation(['cutoff 5 claw', 'cutoff 6 claw']))]
 
 KC = np.unique([x for sublist in [ct.get_skids() for ct in cts] for x in sublist])
 clusters_cta = Celltype_Analyzer(clusters_cts)
@@ -171,6 +176,7 @@ for ct in cts:
             
 df = pd.DataFrame(data, columns=['skid', 'modality', 'cluster'])
 crosstab = pd.crosstab(df.cluster, df.modality)
+crosstab = crosstab.drop(crosstab.index[5]) # removes the non-olfactory KCs
 
 cramers_v = cramers_corrected_stat(crosstab)
 
