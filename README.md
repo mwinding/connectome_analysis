@@ -39,7 +39,7 @@ Project Organization
 │   └── etc.
 │       └── etc.
 |
-├── connectome_tools_deprecated  <- legacy tools reimplemented here: https://github.com/mwinding/connectome_tools
-|
-└── scripts-for-figures.py  <- not currently updated
+└── connectome_tools_deprecated  <- legacy tools reimplemented here: https://github.com/mwinding/connectome_tools
+                                       note that some early exploratory scripts still use these deprecated tools
+
 ```
