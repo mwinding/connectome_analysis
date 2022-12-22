@@ -2,8 +2,8 @@
 data
 plots
 pymaid_creds.py
-data_settings
+data_settings.py
 .DS_Store
 .__pycache__
 __pycache__
-
+scripts-for-figures.py
