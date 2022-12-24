@@ -87,7 +87,8 @@ df = clusters.cluster_df
 for i in range(len(data)):
     for j in df.index:
         if((data[i][0] in df.loc[j].skids)|(data[i][1] in df.loc[j].skids)):
-            data[i] = data[i] + [f'{df.index[j]}_level-7_clusterID-{int(df.cluster[j])}']
+            #data[i] = data[i] + [f'{df.index[j]}_level-7_clusterID-{int(df.cluster[j])}']
+            data[i] = data[i] + [f'{df.index[j]}']
 
     if(len(data[i])==3):
         data[i] = data[i] + ['no cluster']    
