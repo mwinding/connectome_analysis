@@ -17,7 +17,8 @@ _, celltypes = Celltype_Analyzer.default_celltypes()
 pairs = Promat.get_pairs(pairs_path=pairs_path)
 
 all_neurons = pymaid.get_skids_by_annotation(['mw brain and inputs', 'mw brain accessory neurons'])
-remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
+#remove_neurons = pymaid.get_skids_by_annotation(['mw brain very incomplete', 'mw partially differentiated', 'mw motor'])
+remove_neurons = pymaid.get_skids_by_annotation(['mw motor'])
 all_neurons = list(np.setdiff1d(all_neurons, remove_neurons)) # remove neurons that are incomplete or partially differentiated (as well as SEZ motor neurons)
 
 pairs_df = Promat.load_pairs_from_annotation(annot=[], pairList=pairs, return_type='all_pair_ids_bothsides', skids=all_neurons, use_skids=True)
@@ -47,7 +48,9 @@ PNsomato_meta = pymaid.get_annotated('mw brain PNs-somato').name
 PNsomato_cts = [Celltype(annot.replace('mw ', ''), pymaid.get_skids_by_annotation(annot)) for annot in PNsomato_meta]
 
 unknown_ascending_ct = [Celltype('unknown modality', pymaid.get_skids_by_annotation('mw A1 ascending unknown'))]
-annotated_cts = mb_nomen_cts + sens_meta_cts + pair_loops_cts + PN_cts + PNsomato_cts + unknown_ascending_ct
+pdiff_ct = [Celltype('partially differentiated', pymaid.get_skids_by_annotation('mw partially differentiated'))]
+
+annotated_cts = mb_nomen_cts + sens_meta_cts + pair_loops_cts + PN_cts + PNsomato_cts + unknown_ascending_ct + pdiff_ct
 
 # update names
 updated_names = ['sensory',
@@ -70,6 +73,10 @@ updated_names = ['sensory',
 
 for i in range(len(celltypes)):
     celltypes[i].name = updated_names[i]
+
+skids_celltypes = [skid for sublist in [x.skids for x in celltypes] for skid in sublist]
+skids_other = np.setdiff1d(all_neurons, skids_celltypes)
+celltypes = celltypes + [Celltype('other', skids_other)]
 
 data = []
 for i in pairs_df.index:
@@ -124,6 +131,23 @@ from natsort import natsort_keygen
 neurons_meta_df = neurons_meta_df.loc[:, ['leftid', 'rightid', 'celltype', 'annotated_name', 'left_name', 'right_name', 'cluster']]
 neurons_meta_df = neurons_meta_df.sort_values(by='cluster', key=natsort_keygen())
 neurons_meta_df = neurons_meta_df.reset_index(drop=True)
+
+# add entry for [3813487, 17068730]
+# these are center neurons (neither left nor right) and aren't properly handled by the script
+added = pd.DataFrame([[3813487, 3813487, 'MBIN', 'OAN-a2', 'Ladder (olfactory) post.', 'Ladder (olfactory) post.', 'no cluster'], 
+            [17068730, 17068730, 'MBIN', 'OAN-a1', 'Ladder (olfactory) ant.', 'Ladder (olfactory) ant.', 'no cluster']],
+            columns = neurons_meta_df.columns)
+
+neurons_meta_df = pd.concat([neurons_meta_df, added])
+neurons_meta_df = neurons_meta_df.reset_index(drop=True)
 neurons_meta_df.to_csv('plots/brain-neurons_meta-data.csv', index=False)
+
+# %%
+# check
+
+neurons_meta_df.leftid[neurons_meta_df.leftid!='no pair']
+neurons_meta_df.rightid[neurons_meta_df.rightid!='no pair']
+
+np.setdiff1d(np.unique(list(neurons_meta_df.leftid[neurons_meta_df.leftid!='no pair']) + list(neurons_meta_df.rightid[neurons_meta_df.rightid!='no pair'])), all_neurons)
 
 # %%
