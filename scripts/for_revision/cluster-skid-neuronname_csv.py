@@ -49,8 +49,9 @@ PNsomato_cts = [Celltype(annot.replace('mw ', ''), pymaid.get_skids_by_annotatio
 
 unknown_ascending_ct = [Celltype('unknown modality', pymaid.get_skids_by_annotation('mw A1 ascending unknown'))]
 pdiff_ct = [Celltype('partially differentiated', pymaid.get_skids_by_annotation('mw partially differentiated'))]
+nonbrain_ct = [Celltype('non-brain neuron', pymaid.get_skids_by_annotation('mw brain accessory neurons'))]
 
-annotated_cts = mb_nomen_cts + sens_meta_cts + pair_loops_cts + PN_cts + PNsomato_cts + unknown_ascending_ct + pdiff_ct
+annotated_cts = mb_nomen_cts + sens_meta_cts + pair_loops_cts + PN_cts + PNsomato_cts + unknown_ascending_ct + pdiff_ct + nonbrain_ct
 
 # update names
 updated_names = ['sensory',
@@ -74,6 +75,7 @@ updated_names = ['sensory',
 for i in range(len(celltypes)):
     celltypes[i].name = updated_names[i]
 
+# adding 'other' neurons
 skids_celltypes = [skid for sublist in [x.skids for x in celltypes] for skid in sublist]
 skids_other = np.setdiff1d(all_neurons, skids_celltypes)
 celltypes = celltypes + [Celltype('other', skids_other)]
