@@ -11,7 +11,7 @@ rm = pymaid.CatmaidInstance(url, token, name, password)
 from contools import Celltype, Celltype_Analyzer, Promat, Analyze_Cluster
 
 # %%
-# 
+# load neurons to include in meta-data
 
 _, celltypes = Celltype_Analyzer.default_celltypes()
 pairs = Promat.get_pairs(pairs_path=pairs_path)
@@ -27,7 +27,7 @@ left = pymaid.get_skids_by_annotation('mw left')
 right = pymaid.get_skids_by_annotation('mw right')
 
 # %%
-# pairs in clusters
+# pairs in clusters and with annotation information
 
 lvl=7
 clusters = Analyze_Cluster(cluster_lvl=lvl, meta_data_path='data/graphs/meta_data.csv', skids=all_neurons, sort='signal_flow')
@@ -126,12 +126,12 @@ for i in range(len(data)):
 
     data[i] = data[i] + [annotated_name, skid_left_name, skid_right_name]
 
-neurons_meta_df = pd.DataFrame(data, columns=['leftid', 'rightid', 'celltype', 'cluster', 'annotated_name', 'left_name', 'right_name'])
+neurons_meta_df = pd.DataFrame(data, columns=['left_id', 'right_id', 'celltype', 'level_7_cluster', 'additional_annotations', 'left_name', 'right_name'])
 
 from natsort import natsort_keygen
 
-neurons_meta_df = neurons_meta_df.loc[:, ['leftid', 'rightid', 'celltype', 'annotated_name', 'left_name', 'right_name', 'cluster']]
-neurons_meta_df = neurons_meta_df.sort_values(by='cluster', key=natsort_keygen())
+neurons_meta_df = neurons_meta_df.loc[:, ['left_id', 'right_id', 'celltype', 'additional_annotations', 'left_name', 'right_name', 'level_7_cluster']]
+neurons_meta_df = neurons_meta_df.sort_values(by='level_7_cluster', key=natsort_keygen())
 neurons_meta_df = neurons_meta_df.reset_index(drop=True)
 
 # add entry for [3813487, 17068730]
@@ -142,7 +142,7 @@ added = pd.DataFrame([[3813487, 3813487, 'MBIN', 'OAN-a2', 'Ladder (olfactory) p
 
 neurons_meta_df = pd.concat([neurons_meta_df, added])
 neurons_meta_df = neurons_meta_df.reset_index(drop=True)
-neurons_meta_df.to_csv('plots/brain-neurons_meta-data.csv', index=False)
+neurons_meta_df.to_csv('plots/Supplementary_Data_S2.csv', index=False)
 
 # %%
 # check
