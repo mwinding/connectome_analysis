@@ -261,6 +261,27 @@ backup_us, _, backup_ds, _ = plot_12order(skids_list=backup_skids, edges=edges, 
 hunch_us, _, hunch_ds, _ = plot_12order(skids_list=head_hunch_skids, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='hunch_head-move', colors=colors)
 all_us, _, all_ds, _ = plot_12order(skids_list=[list(x) for x in list(dVNC_pairs.values)], edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='all', colors=colors)
 
+# also plot 1st/2nd-order partners of pre-DN-VNCs
+skids_list = Promat.load_pairs_from_annotation('mw pre-dVNC', pairList=pairs).values
+all_us, _, all_ds, _ = plot_12order(skids_list=skids_list, edges=edges, hops=hops, pairs=pairs, figsize=figsize, behavior='pre-DN-VNC', colors=colors)
+
+# pooled DN-VNC vs pre-DN-VNC, who are 1st-order us partners?
+edges_temp = edges.copy()
+edges_temp.index = edges_temp.downstream_skid
+
+DN = pymaid.get_skids_by_annotation('mw dVNC')
+preDN = pymaid.get_skids_by_annotation('mw pre-dVNC')
+
+DN_us = np.unique(edges_temp.loc[np.intersect1d(DN, edges_temp.index), :].upstream_skid.values)
+preDN_us = np.unique(edges_temp.loc[np.intersect1d(preDN, edges_temp.index), :].upstream_skid.values)
+
+DN_us_cta = Celltype_Analyzer([Celltype('DN_us', DN_us)])
+preDN_us_cta = Celltype_Analyzer([Celltype('preDN_us', preDN_us)])
+DN_us_cta.set_known_types(celltypes)
+preDN_us_cta.set_known_types(celltypes)
+
+pd.concat([DN_us_cta.memberships(), preDN_us_cta.memberships()], axis=1)
+
 # %%
 # comparison of cell type connectivity to dVNCs of candidate behaviors
 
